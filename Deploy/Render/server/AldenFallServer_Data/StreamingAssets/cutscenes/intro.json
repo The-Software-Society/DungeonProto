@@ -1,0 +1,19 @@
+{
+  "id": "intro",
+  "letterbox": true,
+  "steps": [
+    { "type": "fade", "target": 1, "seconds": 0 },
+    { "type": "camera", "pos": [0, 30, -140], "lookAt": [0, 0, -115], "seconds": 0 },
+    { "type": "fade", "target": 0, "seconds": 1.6, "blocking": false },
+    { "type": "subtitle", "text": "ALDENFALL — Floor 1", "seconds": 3.4, "blocking": false },
+    { "type": "camera", "pos": [4, 8, -127], "lookAt": [0, 1.2, -115], "seconds": 5.0 },
+    { "type": "subtitle", "text": "You wake in a forest you don't remember entering.", "seconds": 3.6, "blocking": false },
+    { "type": "camera", "pos": [-2.6, 2.0, -119.5], "lookAt": [0, 1.4, -115], "seconds": 3.8 },
+    { "type": "face", "actor": "player", "lookAt": [1, 0, -90] },
+    { "type": "camera", "pos": [0, 3.2, -111], "lookAt": [2, 1.5, -88], "seconds": 4.2 },
+    { "type": "subtitle", "text": "Every floor must fall. This is the first.", "seconds": 3.0, "blocking": false },
+    { "type": "wait", "seconds": 1.2 },
+    { "type": "fade", "target": 1, "seconds": 0.7 },
+    { "type": "fade", "target": 0, "seconds": 0.6 }
+  ]
+}
