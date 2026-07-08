@@ -45,13 +45,34 @@ namespace AldenFall.Multiplayer
 
         public void SetLocalLogin(string serverAddress, string password, AldenPlayerProfile profile)
         {
-            networkAddress = string.IsNullOrWhiteSpace(serverAddress) ? "localhost" : serverAddress.Trim();
+            networkAddress = NormalizeServerAddress(serverAddress);
             LocalPassword = password ?? "";
             LocalProfile = profile;
         }
 
         public bool PasswordAccepted(string password) =>
             string.IsNullOrEmpty(requiredPassword) || password == requiredPassword;
+
+        private static string NormalizeServerAddress(string serverAddress)
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            const string fallback = "aldenfall-test-server.onrender.com";
+#else
+            const string fallback = "localhost";
+#endif
+            if (string.IsNullOrWhiteSpace(serverAddress))
+                return fallback;
+
+            string address = serverAddress.Trim();
+            if (Uri.TryCreate(address, UriKind.Absolute, out Uri uri) && !string.IsNullOrWhiteSpace(uri.Host))
+                address = uri.Host;
+
+            int slash = address.IndexOf('/');
+            if (slash >= 0)
+                address = address.Substring(0, slash);
+
+            return string.IsNullOrWhiteSpace(address) ? fallback : address;
+        }
 
         public void SetPendingProfile(NetworkConnectionToClient conn, AldenPlayerProfile profile)
         {
