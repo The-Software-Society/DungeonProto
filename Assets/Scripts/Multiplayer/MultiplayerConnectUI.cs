@@ -17,8 +17,10 @@ namespace AldenFall.Multiplayer
         private TMP_InputField passwordField;
         private TMP_InputField nameField;
         private TMP_Text statusText;
+        private TMP_Text characterStatusText;
         private GameObject previewRoot;
         private Player.CharacterAppearance previewAppearance;
+        private bool connecting;
         private int gender;
         private int skinTone;
         private int hairStyle = 1;
@@ -27,11 +29,13 @@ namespace AldenFall.Multiplayer
         private void Start()
         {
             EnsureEventSystem();
+            AldenPasswordAuthenticator.ClientAuthResult += OnAuthResult;
             Build();
         }
 
         private void OnDestroy()
         {
+            AldenPasswordAuthenticator.ClientAuthResult -= OnAuthResult;
             if (previewRoot != null)
                 Destroy(previewRoot);
         }
@@ -43,6 +47,12 @@ namespace AldenFall.Multiplayer
                 panelRoot.SetActive(visible);
             if (previewRoot != null)
                 previewRoot.SetActive(visible && characterRoot != null && characterRoot.activeSelf);
+
+            if (connecting && !NetworkClient.active && !NetworkClient.isConnected)
+            {
+                connecting = false;
+                SetStatus("Connection failed. Check the server and password.");
+            }
         }
 
         private void Build()
@@ -117,7 +127,7 @@ namespace AldenFall.Multiplayer
 
             Button(panel, "Back", new Vector2(160, -406), 100, ShowLogin);
             Button(panel, "Connect", new Vector2(280, -406), 140, Connect);
-            Label(panel, "PreviewNote", "Preview appears to the right. Final selection applies when you connect.", new Vector2(0, -462), new Vector2(500, 24), 12, new Color(0.72f, 0.68f, 0.78f));
+            characterStatusText = Label(panel, "PreviewNote", "Preview appears to the right. Final selection applies when you connect.", new Vector2(0, -462), new Vector2(500, 24), 12, new Color(0.72f, 0.68f, 0.78f));
         }
 
         private void ShowLogin()
@@ -141,6 +151,7 @@ namespace AldenFall.Multiplayer
 
             loginRoot.SetActive(false);
             characterRoot.SetActive(true);
+            SetStatus("Choose your character, then connect.");
             EnsurePreview();
             ApplyPreview();
         }
@@ -154,8 +165,16 @@ namespace AldenFall.Multiplayer
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(passwordField.text))
+            {
+                SetStatus("Enter the test password before connecting.");
+                ShowLogin();
+                return;
+            }
+
             manager.SetLocalLogin(serverField.text, passwordField.text, Profile());
             manager.StartClient();
+            connecting = true;
             SetStatus($"Connecting to {manager.networkAddress}...");
         }
 
@@ -170,7 +189,14 @@ namespace AldenFall.Multiplayer
 
             manager.SetLocalLogin("localhost", passwordField.text, Profile());
             manager.StartHost();
+            connecting = false;
             SetStatus("Hosting local test session...");
+        }
+
+        private void OnAuthResult(string message)
+        {
+            connecting = false;
+            SetStatus(message);
         }
 
         private void EnsurePreview()
@@ -256,6 +282,8 @@ namespace AldenFall.Multiplayer
         {
             if (statusText != null)
                 statusText.text = message;
+            if (characterStatusText != null)
+                characterStatusText.text = message;
         }
 
         private static string DefaultServer()
@@ -306,6 +334,11 @@ namespace AldenFall.Multiplayer
             var bg = rect.gameObject.AddComponent<Image>();
             bg.color = new Color(0.12f, 0.105f, 0.16f, 1f);
             var input = rect.gameObject.AddComponent<TMP_InputField>();
+            input.targetGraphic = bg;
+            input.caretWidth = 2;
+            input.customCaretColor = true;
+            input.caretColor = new Color(0.95f, 0.78f, 0.46f);
+            input.selectionColor = new Color(0.95f, 0.78f, 0.46f, 0.35f);
 
             var text = Label(rect, "Text", value, Vector2.zero, new Vector2(width - 30f, 32), 15, Color.white);
             text.alignment = TextAlignmentOptions.Left;
