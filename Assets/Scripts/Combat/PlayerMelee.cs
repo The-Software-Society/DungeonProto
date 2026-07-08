@@ -66,6 +66,8 @@ namespace AldenFall.Combat
             // Animator lives on the visual child, which exists by now
             if (animator == null)
                 animator = GetComponentInChildren<Animator>();
+            if (animator != null)
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
 
             if (targeting != null)
             {

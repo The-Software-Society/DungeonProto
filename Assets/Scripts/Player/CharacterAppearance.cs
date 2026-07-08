@@ -195,6 +195,14 @@ namespace AldenFall.Player
                 block.SetColor("_BaseColor", HairColors[HairColor]);
                 block.SetColor("_Color", HairColors[HairColor]);
                 renderer.SetPropertyBlock(block);
+                if (renderer.material != null)
+                {
+                    renderer.material.color = HairColors[HairColor];
+                    if (renderer.material.HasProperty("_BaseColor"))
+                        renderer.material.SetColor("_BaseColor", HairColors[HairColor]);
+                    if (renderer.material.HasProperty("_Color"))
+                        renderer.material.SetColor("_Color", HairColors[HairColor]);
+                }
             }
         }
 
@@ -204,15 +212,16 @@ namespace AldenFall.Player
             root.transform.SetParent(parent, false);
             if (anchoredToHeadBone)
             {
-                root.transform.localPosition = Vector3.up * 0.1f;
+                root.transform.localPosition = new Vector3(0f, 0.22f, 0.04f);
                 root.transform.localRotation = Quaternion.identity;
-                root.transform.localScale = Vector3.one;
+                root.transform.localScale = Vector3.one * 1.8f;
             }
             else if (TryGetBodyBounds(out var bodyBounds))
             {
                 root.transform.position = HairAnchorFromBounds(bodyBounds);
                 root.transform.rotation = transform.rotation;
-                root.transform.localScale = Vector3.one * Mathf.Clamp(bodyBounds.size.y / 2.2f, 0.75f, 1.35f);
+                root.transform.SetParent(transform, true);
+                root.transform.localScale = Vector3.one * Mathf.Clamp(bodyBounds.size.y / 1.4f, 1.25f, 2.25f);
             }
 
             switch (HairStyle)
@@ -252,8 +261,8 @@ namespace AldenFall.Player
         {
             return new Vector3(
                 bounds.center.x,
-                bounds.max.y - bounds.size.y * 0.08f,
-                bounds.center.z + bounds.size.z * 0.05f);
+                bounds.max.y + bounds.size.y * 0.03f,
+                bounds.center.z + bounds.size.z * 0.12f);
         }
 
         private static void CreateHairPiece(Transform parent, PrimitiveType type, Vector3 localPosition, Vector3 localScale, Quaternion localRotation)
@@ -268,6 +277,10 @@ namespace AldenFall.Player
             var collider = piece.GetComponent<Collider>();
             if (collider != null)
                 Destroy(collider);
+
+            var renderer = piece.GetComponent<Renderer>();
+            if (renderer != null)
+                renderer.material = new Material(Shader.Find("Sprites/Default"));
         }
 
         // ==================== HELPERS ====================
