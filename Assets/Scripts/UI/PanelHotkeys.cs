@@ -1,4 +1,5 @@
 using UnityEngine;
+using TMPro;
 
 namespace AldenFall.UI
 {
@@ -12,6 +13,25 @@ namespace AldenFall.UI
         public SlidePanel characterPanel;
         public SlidePanel skillsPanel;
         public SlidePanel treesPanel;
+
+        private void Start()
+        {
+            if (treesPanel != null)
+                treesPanel.shownPos = new Vector2(0, 250);
+
+            var panelButtons = transform.Find("PanelButtons") as RectTransform;
+            if (panelButtons != null)
+                panelButtons.anchoredPosition = new Vector2(-130, 52);
+
+            foreach (var text in GetComponentsInChildren<TMP_Text>(true))
+            {
+                if (text.name == "Header" && text.text == "COMBAT TREES")
+                {
+                    text.text = "COMBAT TREES (T)";
+                    break;
+                }
+            }
+        }
 
         private void Update()
         {

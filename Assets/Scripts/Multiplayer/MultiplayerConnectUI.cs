@@ -335,10 +335,13 @@ namespace AldenFall.Multiplayer
             bg.color = new Color(0.12f, 0.105f, 0.16f, 1f);
             var input = rect.gameObject.AddComponent<TMP_InputField>();
             input.targetGraphic = bg;
-            input.caretWidth = 2;
+            input.caretBlinkRate = 0.85f;
+            input.caretWidth = 4;
             input.customCaretColor = true;
             input.caretColor = new Color(0.95f, 0.78f, 0.46f);
             input.selectionColor = new Color(0.95f, 0.78f, 0.46f, 0.35f);
+            input.onSelect.AddListener(_ => bg.color = new Color(0.18f, 0.16f, 0.24f, 1f));
+            input.onDeselect.AddListener(_ => bg.color = new Color(0.12f, 0.105f, 0.16f, 1f));
 
             var text = Label(rect, "Text", value, Vector2.zero, new Vector2(width - 30f, 32), 15, Color.white);
             text.alignment = TextAlignmentOptions.Left;

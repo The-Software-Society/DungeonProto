@@ -213,6 +213,7 @@ namespace AldenFall.Multiplayer
 
             object matchWebpageProtocol = Enum.Parse(optionField.FieldType, "MatchWebpageProtocol");
             optionField.SetValue(settings, matchWebpageProtocol);
+            settingsField.SetValue(activeTransport, settings);
         }
     }
 }

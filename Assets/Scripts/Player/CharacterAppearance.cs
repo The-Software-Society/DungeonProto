@@ -158,12 +158,13 @@ namespace AldenFall.Player
             if (string.IsNullOrEmpty(hairId)) return;
 
             var prefab = ItemVisualLibrary.Instance?.GetModel(hairId);
-            var head = FindBone("head") ?? ActiveBodyRoot()?.transform;
-            if (head == null) return;
+            var head = FindBone("head");
+            var parent = head != null ? head : ActiveBodyRoot()?.transform;
+            if (parent == null) return;
 
             if (prefab != null)
             {
-                hairInstance = Instantiate(prefab, head, false);
+                hairInstance = Instantiate(prefab, parent, false);
                 hairInstance.name = "Hair";
 
                 // Bounds-normalize to head scale (Meshy props arrive at arbitrary sizes)
@@ -173,13 +174,16 @@ namespace AldenFall.Player
                     var bounds = prefabRenderers[0].bounds;
                     foreach (var r in prefabRenderers) bounds.Encapsulate(r.bounds);
                     float longest = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z, 0.001f);
-                    hairInstance.transform.localScale = Vector3.one * (0.3f / longest / Mathf.Max(head.lossyScale.x, 0.001f));
-                    hairInstance.transform.localPosition = Vector3.up * 0.08f;
+                    hairInstance.transform.localScale = Vector3.one * (0.3f / longest / Mathf.Max(parent.lossyScale.x, 0.001f));
+                    if (head != null)
+                        hairInstance.transform.localPosition = Vector3.up * 0.08f;
+                    else if (TryGetBodyBounds(out var bodyBounds))
+                        hairInstance.transform.position = HairAnchorFromBounds(bodyBounds);
                 }
             }
             else
             {
-                hairInstance = CreateFallbackHair(head);
+                hairInstance = CreateFallbackHair(parent, head != null);
             }
 
             var renderers = hairInstance.GetComponentsInChildren<Renderer>();
@@ -193,13 +197,22 @@ namespace AldenFall.Player
             }
         }
 
-        private GameObject CreateFallbackHair(Transform head)
+        private GameObject CreateFallbackHair(Transform parent, bool anchoredToHeadBone)
         {
             var root = new GameObject("Hair");
-            root.transform.SetParent(head, false);
-            root.transform.localPosition = Vector3.up * 0.1f;
-            root.transform.localRotation = Quaternion.identity;
-            root.transform.localScale = Vector3.one;
+            root.transform.SetParent(parent, false);
+            if (anchoredToHeadBone)
+            {
+                root.transform.localPosition = Vector3.up * 0.1f;
+                root.transform.localRotation = Quaternion.identity;
+                root.transform.localScale = Vector3.one;
+            }
+            else if (TryGetBodyBounds(out var bodyBounds))
+            {
+                root.transform.position = HairAnchorFromBounds(bodyBounds);
+                root.transform.rotation = transform.rotation;
+                root.transform.localScale = Vector3.one * Mathf.Clamp(bodyBounds.size.y / 2.2f, 0.75f, 1.35f);
+            }
 
             switch (HairStyle)
             {
@@ -217,6 +230,29 @@ namespace AldenFall.Player
             }
 
             return root;
+        }
+
+        private bool TryGetBodyBounds(out Bounds bounds)
+        {
+            bounds = default;
+            var body = ActiveBodyRoot();
+            if (body == null) return false;
+
+            var renderers = body.GetComponentsInChildren<Renderer>();
+            if (renderers.Length == 0) return false;
+
+            bounds = renderers[0].bounds;
+            foreach (var renderer in renderers)
+                bounds.Encapsulate(renderer.bounds);
+            return true;
+        }
+
+        private static Vector3 HairAnchorFromBounds(Bounds bounds)
+        {
+            return new Vector3(
+                bounds.center.x,
+                bounds.max.y - bounds.size.y * 0.08f,
+                bounds.center.z + bounds.size.z * 0.05f);
         }
 
         private static void CreateHairPiece(Transform parent, PrimitiveType type, Vector3 localPosition, Vector3 localScale, Quaternion localRotation)
