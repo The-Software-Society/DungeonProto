@@ -1,23 +1,24 @@
 using Mirror;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace AldenFall.Multiplayer
 {
     public class MultiplayerConnectUI : MonoBehaviour
     {
-#if UNITY_WEBGL && !UNITY_EDITOR
-        [SerializeField] private string defaultServer = "aldenfall-test-server.onrender.com";
-#else
-        [SerializeField] private string defaultServer = "localhost";
-#endif
+        private const string RenderServerHost = "aldenfall-test-server.onrender.com";
 
         private GameObject panelRoot;
+        private GameObject loginRoot;
+        private GameObject characterRoot;
         private TMP_InputField serverField;
         private TMP_InputField passwordField;
         private TMP_InputField nameField;
         private TMP_Text statusText;
+        private GameObject previewRoot;
+        private Player.CharacterAppearance previewAppearance;
         private int gender;
         private int skinTone;
         private int hairStyle = 1;
@@ -25,13 +26,23 @@ namespace AldenFall.Multiplayer
 
         private void Start()
         {
+            EnsureEventSystem();
             Build();
+        }
+
+        private void OnDestroy()
+        {
+            if (previewRoot != null)
+                Destroy(previewRoot);
         }
 
         private void Update()
         {
+            bool visible = !NetworkClient.isConnected && !NetworkServer.active;
             if (panelRoot != null)
-                panelRoot.SetActive(!NetworkClient.isConnected && !NetworkServer.active);
+                panelRoot.SetActive(visible);
+            if (previewRoot != null)
+                previewRoot.SetActive(visible && characterRoot != null && characterRoot.activeSelf);
         }
 
         private void Build()
@@ -47,38 +58,91 @@ namespace AldenFall.Multiplayer
             canvasObj.AddComponent<GraphicRaycaster>();
             panelRoot = canvasObj;
 
-            var panel = Rect(canvasObj.transform, "Panel", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(520, 455));
-            panel.gameObject.AddComponent<Image>().color = new Color(0.045f, 0.04f, 0.065f, 0.97f);
+            BuildLogin(canvasObj.transform);
+            BuildCharacterSelect(canvasObj.transform);
+            ShowLogin();
+        }
 
-            Label(panel, "Title", "ALDENFALL TEST LOGIN", new Vector2(0, -34), new Vector2(460, 34), 24, new Color(0.95f, 0.78f, 0.46f));
-            nameField = Input(panel, "Name", "Name", new Vector2(0, -92), "Tester");
-            serverField = Input(panel, "Server", "Server", new Vector2(0, -148), defaultServer);
-            passwordField = Input(panel, "Password", "Password", new Vector2(0, -204), "");
+        private void BuildLogin(Transform parent)
+        {
+            var panel = Rect(parent, "LoginPanel", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(560, 330));
+            panel.gameObject.AddComponent<Image>().color = new Color(0.045f, 0.04f, 0.065f, 0.97f);
+            loginRoot = panel.gameObject;
+
+            Label(panel, "Title", "ALDENFALL LOGIN", new Vector2(0, -34), new Vector2(500, 34), 24, new Color(0.95f, 0.78f, 0.46f));
+            serverField = Input(panel, "Server", "Server", new Vector2(0, -104), DefaultServer(), 420);
+            passwordField = Input(panel, "Password", "Password", new Vector2(0, -164), "", 420);
             passwordField.contentType = TMP_InputField.ContentType.Password;
 
-            Label(panel, "BodyLabel", "Body", new Vector2(-180, -258), new Vector2(90, 28), 15, Color.white);
-            Button(panel, "Male", new Vector2(210, -258), 80, () => gender = 0);
-            Button(panel, "Female", new Vector2(304, -258), 90, () => gender = 1);
+            Button(panel, "Next", new Vector2(160, -230), 120, ShowCharacterSelect);
+#if !UNITY_WEBGL
+            Button(panel, "Host", new Vector2(300, -230), 100, Host);
+#endif
+            statusText = Label(panel, "Status", "Enter the test password, then choose your character.", new Vector2(0, -286), new Vector2(500, 24), 12, new Color(0.72f, 0.68f, 0.78f));
+        }
 
-            Label(panel, "SkinLabel", "Skin", new Vector2(-180, -302), new Vector2(90, 28), 15, Color.white);
+        private void BuildCharacterSelect(Transform parent)
+        {
+            var panel = Rect(parent, "CharacterPanel", new Vector2(0.5f, 0.5f), new Vector2(-260, 0), new Vector2(560, 500));
+            panel.gameObject.AddComponent<Image>().color = new Color(0.045f, 0.04f, 0.065f, 0.97f);
+            characterRoot = panel.gameObject;
+
+            Label(panel, "Title", "CREATE CHARACTER", new Vector2(0, -34), new Vector2(500, 34), 24, new Color(0.95f, 0.78f, 0.46f));
+            nameField = Input(panel, "Name", "Name", new Vector2(0, -96), "Tester", 420);
+
+            Label(panel, "BodyLabel", "Body", new Vector2(-185, -160), new Vector2(90, 28), 15, Color.white);
+            Button(panel, "Male", new Vector2(230, -160), 80, () => SetGender(0));
+            Button(panel, "Female", new Vector2(324, -160), 90, () => SetGender(1));
+
+            Label(panel, "SkinLabel", "Skin", new Vector2(-185, -216), new Vector2(90, 28), 15, Color.white);
             for (int i = 0; i < Player.CharacterAppearance.SkinTones.Length; i++)
             {
                 int captured = i;
-                Swatch(panel, $"Skin{i}", Player.CharacterAppearance.SkinTones[i], new Vector2(210 + i * 44, -302), () => skinTone = captured);
+                Swatch(panel, $"Skin{i}", Player.CharacterAppearance.SkinTones[i], new Vector2(230 + i * 44, -216), () => SetSkin(captured));
             }
 
-            Label(panel, "HairLabel", "Hair", new Vector2(-180, -346), new Vector2(90, 28), 15, Color.white);
+            Label(panel, "HairLabel", "Hair", new Vector2(-185, -272), new Vector2(90, 28), 15, Color.white);
             for (int i = 0; i < Player.CharacterAppearance.HairStyleNames.Length; i++)
             {
                 int captured = i;
-                Button(panel, Player.CharacterAppearance.HairStyleNames[i], new Vector2(160 + i * 72, -346), 68, () => hairStyle = captured);
+                Button(panel, Player.CharacterAppearance.HairStyleNames[i], new Vector2(180 + i * 72, -272), 68, () => SetHair(captured));
             }
 
-            Button(panel, "Connect", new Vector2(150, -404), 130, Connect);
-#if !UNITY_WEBGL
-            Button(panel, "Host", new Vector2(300, -404), 100, Host);
-#endif
-            statusText = Label(panel, "Status", "WebGL connects to the test server. Desktop/editor can host locally.", new Vector2(0, -438), new Vector2(470, 24), 12, new Color(0.72f, 0.68f, 0.78f));
+            Label(panel, "HairColorLabel", "Color", new Vector2(-185, -328), new Vector2(90, 28), 15, Color.white);
+            for (int i = 0; i < Player.CharacterAppearance.HairColors.Length; i++)
+            {
+                int captured = i;
+                Swatch(panel, $"HairColor{i}", Player.CharacterAppearance.HairColors[i], new Vector2(230 + i * 44, -328), () => SetHairColor(captured));
+            }
+
+            Button(panel, "Back", new Vector2(160, -406), 100, ShowLogin);
+            Button(panel, "Connect", new Vector2(280, -406), 140, Connect);
+            Label(panel, "PreviewNote", "Preview appears to the right. Final selection applies when you connect.", new Vector2(0, -462), new Vector2(500, 24), 12, new Color(0.72f, 0.68f, 0.78f));
+        }
+
+        private void ShowLogin()
+        {
+            if (loginRoot != null)
+                loginRoot.SetActive(true);
+            if (characterRoot != null)
+                characterRoot.SetActive(false);
+            if (previewRoot != null)
+                previewRoot.SetActive(false);
+            SetStatus("Enter the test password, then choose your character.");
+        }
+
+        private void ShowCharacterSelect()
+        {
+            if (string.IsNullOrWhiteSpace(passwordField.text))
+            {
+                SetStatus("Enter the test password first.");
+                return;
+            }
+
+            loginRoot.SetActive(false);
+            characterRoot.SetActive(true);
+            EnsurePreview();
+            ApplyPreview();
         }
 
         private void Connect()
@@ -109,6 +173,76 @@ namespace AldenFall.Multiplayer
             SetStatus("Hosting local test session...");
         }
 
+        private void EnsurePreview()
+        {
+            if (previewRoot != null)
+            {
+                previewRoot.SetActive(true);
+                return;
+            }
+
+            var manager = NetworkManager.singleton;
+            if (manager == null || manager.playerPrefab == null || Camera.main == null)
+                return;
+
+            previewRoot = Instantiate(manager.playerPrefab);
+            previewRoot.name = "CharacterPreview";
+            foreach (var behaviour in previewRoot.GetComponentsInChildren<Behaviour>(true))
+            {
+                if (behaviour is Player.CharacterAppearance || behaviour is Animator)
+                    continue;
+                behaviour.enabled = false;
+            }
+
+            foreach (var collider in previewRoot.GetComponentsInChildren<Collider>(true))
+                collider.enabled = false;
+
+            previewAppearance = previewRoot.GetComponent<Player.CharacterAppearance>();
+
+            var cam = Camera.main.transform;
+            previewRoot.transform.position = Camera.main.ViewportToWorldPoint(new Vector3(0.74f, 0.43f, 4.5f));
+            previewRoot.transform.rotation = Quaternion.LookRotation(-cam.forward, Vector3.up);
+            previewRoot.transform.localScale = Vector3.one * 1.15f;
+
+            var lightObj = new GameObject("CharacterPreviewLight");
+            lightObj.transform.SetParent(previewRoot.transform, false);
+            lightObj.transform.localPosition = new Vector3(0f, 2.5f, -2f);
+            var light = lightObj.AddComponent<Light>();
+            light.type = LightType.Directional;
+            light.intensity = 1.6f;
+            lightObj.transform.rotation = Quaternion.Euler(45f, -25f, 0f);
+        }
+
+        private void SetGender(int value)
+        {
+            gender = value;
+            ApplyPreview();
+        }
+
+        private void SetSkin(int value)
+        {
+            skinTone = value;
+            ApplyPreview();
+        }
+
+        private void SetHair(int value)
+        {
+            hairStyle = value;
+            ApplyPreview();
+        }
+
+        private void SetHairColor(int value)
+        {
+            hairColor = value;
+            ApplyPreview();
+        }
+
+        private void ApplyPreview()
+        {
+            if (previewAppearance != null)
+                previewAppearance.ApplyNetworkSelection(gender, skinTone, hairStyle, hairColor);
+        }
+
         private AldenPlayerProfile Profile() => new AldenPlayerProfile
         {
             playerName = string.IsNullOrWhiteSpace(nameField.text) ? "Tester" : nameField.text.Trim(),
@@ -122,6 +256,25 @@ namespace AldenFall.Multiplayer
         {
             if (statusText != null)
                 statusText.text = message;
+        }
+
+        private static string DefaultServer()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return RenderServerHost;
+#else
+            return "localhost";
+#endif
+        }
+
+        private static void EnsureEventSystem()
+        {
+            if (EventSystem.current != null)
+                return;
+
+            var eventSystem = new GameObject("EventSystem");
+            eventSystem.AddComponent<EventSystem>();
+            eventSystem.AddComponent<StandaloneInputModule>();
         }
 
         private static RectTransform Rect(Transform parent, string name, Vector2 anchor, Vector2 pos, Vector2 size)
@@ -147,18 +300,18 @@ namespace AldenFall.Multiplayer
             return text;
         }
 
-        private static TMP_InputField Input(RectTransform parent, string name, string placeholder, Vector2 pos, string value)
+        private static TMP_InputField Input(RectTransform parent, string name, string placeholder, Vector2 pos, string value, float width)
         {
-            var rect = Rect(parent, name, new Vector2(0.5f, 1f), pos, new Vector2(380, 38));
+            var rect = Rect(parent, name, new Vector2(0.5f, 1f), pos, new Vector2(width, 38));
             var bg = rect.gameObject.AddComponent<Image>();
             bg.color = new Color(0.12f, 0.105f, 0.16f, 1f);
             var input = rect.gameObject.AddComponent<TMP_InputField>();
 
-            var text = Label(rect, "Text", value, Vector2.zero, new Vector2(350, 32), 15, Color.white);
+            var text = Label(rect, "Text", value, Vector2.zero, new Vector2(width - 30f, 32), 15, Color.white);
             text.alignment = TextAlignmentOptions.Left;
             text.rectTransform.anchorMin = text.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             text.rectTransform.anchoredPosition = new Vector2(8, 0);
-            var hint = Label(rect, "Placeholder", placeholder, Vector2.zero, new Vector2(350, 32), 15, new Color(0.55f, 0.52f, 0.62f));
+            var hint = Label(rect, "Placeholder", placeholder, Vector2.zero, new Vector2(width - 30f, 32), 15, new Color(0.55f, 0.52f, 0.62f));
             hint.alignment = TextAlignmentOptions.Left;
             hint.rectTransform.anchorMin = hint.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
             hint.rectTransform.anchoredPosition = new Vector2(8, 0);
