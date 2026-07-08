@@ -29,6 +29,7 @@ namespace AldenFall.Editor
             var report = BuildPipeline.BuildPlayer(options);
             LogReport("WebGL", report);
             CopyVercelConfig(WebBuildDir);
+            PatchWebGlFullscreen(WebBuildDir);
         }
 
         [MenuItem("AldenFall/Multiplayer/Build Linux Dedicated Server", priority = 101)]
@@ -77,6 +78,35 @@ namespace AldenFall.Editor
             {
                 File.Copy(source, target, true);
                 Debug.Log($"Copied Vercel config to {target}");
+            }
+        }
+
+        private static void PatchWebGlFullscreen(string buildDir)
+        {
+            string indexPath = Path.Combine(buildDir, "index.html");
+            if (File.Exists(indexPath))
+            {
+                string html = File.ReadAllText(indexPath);
+                html = html.Replace(
+                    "        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:\n" +
+                    "        canvas.style.width = \"960px\";\n" +
+                    "        canvas.style.height = \"600px\";",
+                    "        // Desktop style: fill the browser viewport.\n" +
+                    "        canvas.style.width = \"100vw\";\n" +
+                    "        canvas.style.height = \"100vh\";");
+                File.WriteAllText(indexPath, html);
+            }
+
+            string stylePath = Path.Combine(buildDir, "TemplateData", "style.css");
+            if (File.Exists(stylePath))
+            {
+                string css = File.ReadAllText(stylePath);
+                css = css.Replace("body { padding: 0; margin: 0 }", "html, body { width: 100%; height: 100%; padding: 0; margin: 0; overflow: hidden; background: #231F20 }");
+                css = css.Replace("#unity-container { position: absolute }", "#unity-container { position: fixed; width: 100%; height: 100% }");
+                css = css.Replace("#unity-container.unity-desktop { left: 50%; top: 50%; transform: translate(-50%, -50%) }", "#unity-container.unity-desktop { left: 0; top: 0; transform: none }");
+                css = css.Replace("#unity-canvas { background: #231F20 }", "#unity-canvas { width: 100%; height: 100%; background: #231F20 }");
+                css = css.Replace("#unity-footer { position: relative }", "#unity-footer { display: none }");
+                File.WriteAllText(stylePath, css);
             }
         }
 
