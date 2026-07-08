@@ -3,31 +3,46 @@ using UnityEngine.Events;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace DungeonProto.Combat
+namespace AldenFall.Combat
 {
     public class TargetingSystem : MonoBehaviour
     {
         [Header("Settings")]
-        [SerializeField] private float maxTargetDistance = 30f;
+        [SerializeField] private float maxTargetDistance = 500f;
         [SerializeField] private LayerMask targetableLayers;
         [SerializeField] private string enemyTag = "Enemy";
 
         [Header("Tab Targeting")]
         [SerializeField] private KeyCode tabTargetKey = KeyCode.Tab;
-        [SerializeField] private float tabTargetAngle = 90f; // Cone in front of player
+        [Tooltip("TAB only considers enemies within this range — without a cap it grabs the nearest monster anywhere on the map, through walls.")]
+        [SerializeField] private float tabAcquireRange = 30f;
+
+        [Header("Click Forgiveness")]
+        [Tooltip("If a click misses every enemy collider, the nearest enemy within this many screen pixels of the cursor is selected instead.")]
+        [SerializeField] private float clickBufferPixels = 28f;
 
         [Header("Visual")]
         [SerializeField] private GameObject targetIndicatorPrefab;
+
+        [Header("Attack-Move (right-click tap)")]
+        [SerializeField] private float tapMaxSeconds = 0.3f;
+        [SerializeField] private float tapMaxDragPixels = 8f;
 
         [Header("Events")]
         public UnityEvent<Transform> OnTargetChanged;
         public UnityEvent OnTargetLost;
 
+        /// <summary>Right-click tap on an enemy: LoL-style attack order (PlayerMelee pursues).</summary>
+        public UnityEvent<Transform> OnEngage;
+
         private Transform currentTarget;
         private List<Transform> nearbyTargets = new List<Transform>();
         private int currentTargetIndex = -1;
         private GameObject targetIndicatorInstance;
+        private LineRenderer targetRing;
         private Camera mainCamera;
+        private float rmbDownTime;
+        private Vector2 rmbDownPos;
 
         public Transform CurrentTarget => currentTarget;
         public bool HasTarget => currentTarget != null;
@@ -36,9 +51,34 @@ namespace DungeonProto.Combat
         {
             mainCamera = Camera.main;
 
+            // Auto-configure targetableLayers if not set (safety fallback)
+            if (targetableLayers == 0)
+            {
+                int enemyLayer = LayerMask.NameToLayer("Enemy");
+                if (enemyLayer >= 0)
+                    targetableLayers = (1 << enemyLayer) | 1;  // Enemy + Default
+                else
+                    targetableLayers = 1;  // Default layer only
+                Debug.Log($"TargetingSystem: Auto-configured targetableLayers = {targetableLayers}");
+            }
+
             if (targetIndicatorPrefab != null)
             {
                 targetIndicatorInstance = Instantiate(targetIndicatorPrefab);
+                targetIndicatorInstance.SetActive(false);
+            }
+            else
+            {
+                targetIndicatorInstance = new GameObject("TargetRing");
+                targetRing = targetIndicatorInstance.AddComponent<LineRenderer>();
+                targetRing.loop = true;
+                targetRing.useWorldSpace = false;
+                targetRing.positionCount = 64;
+                targetRing.startWidth = 0.08f;
+                targetRing.endWidth = 0.08f;
+                targetRing.material = new Material(Shader.Find("Sprites/Default"));
+                targetRing.startColor = new Color(1f, 0.72f, 0.24f, 0.95f);
+                targetRing.endColor = new Color(1f, 0.72f, 0.24f, 0.95f);
                 targetIndicatorInstance.SetActive(false);
             }
         }
@@ -46,6 +86,7 @@ namespace DungeonProto.Combat
         private void Update()
         {
             HandleClickTargeting();
+            HandleAttackMoveTap();
             HandleTabTargeting();
             ValidateCurrentTarget();
             UpdateTargetIndicator();
@@ -55,23 +96,109 @@ namespace DungeonProto.Combat
         {
             if (Input.GetMouseButtonDown(0) && !Input.GetKey(KeyCode.LeftShift))
             {
-                Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-                if (Physics.Raycast(ray, out RaycastHit hit, maxTargetDistance, targetableLayers))
+                var enemy = RaycastEnemyUnderCursor();
+                if (enemy != null)
                 {
-                    // Check if we hit something with the enemy tag or a Health component
-                    Transform potentialTarget = hit.transform;
-
-                    if (potentialTarget.CompareTag(enemyTag) || potentialTarget.GetComponent<Health>() != null)
-                    {
-                        SetTarget(potentialTarget);
-                    }
+                    SetTarget(enemy);
+                    return;
                 }
-                else
+
+                // Clicked on nothing targetable - clear target
+                ClearTarget();
+            }
+        }
+
+        /// <summary>
+        /// RMB tap (short press, no drag) on an enemy = attack order: lock the
+        /// target and raise OnEngage so PlayerMelee walks in and autos with no
+        /// further input. RMB *hold* stays camera orbit (ThirdPersonCamera).
+        /// </summary>
+        private void HandleAttackMoveTap()
+        {
+            if (Input.GetMouseButtonDown(1))
+            {
+                rmbDownTime = Time.unscaledTime;
+                rmbDownPos = Input.mousePosition;
+            }
+
+            if (Input.GetMouseButtonUp(1))
+            {
+                bool quick = Time.unscaledTime - rmbDownTime <= tapMaxSeconds;
+                bool still = ((Vector2)Input.mousePosition - rmbDownPos).magnitude <= tapMaxDragPixels;
+                if (!quick || !still) return;
+
+                var enemy = RaycastEnemyUnderCursor();
+                if (enemy != null)
                 {
-                    // Clicked on nothing - clear target
-                    ClearTarget();
+                    SetTarget(enemy);
+                    OnEngage?.Invoke(enemy);
                 }
             }
+        }
+
+        private Transform RaycastEnemyUnderCursor()
+        {
+            if (mainCamera == null) mainCamera = Camera.main;
+            if (mainCamera == null) return null;
+
+            Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+
+            // Raycast everything solid; resolve to the entity root via Health.
+            // GetComponentInParent means child colliders (real character models)
+            // resolve to the correct entity.
+            if (Physics.Raycast(ray, out RaycastHit hit, maxTargetDistance, ~0, QueryTriggerInteraction.Ignore))
+            {
+                var targetHealth = hit.collider.GetComponentInParent<Health>();
+                if (targetHealth != null
+                    && targetHealth.transform != transform
+                    && !targetHealth.IsDead
+                    && targetHealth.CompareTag(enemyTag))
+                {
+                    return targetHealth.transform;
+                }
+            }
+
+            // Near-miss forgiveness: moving enemies are hard to hit with a thin
+            // ray, so fall back to the closest visible enemy within a small
+            // screen-space radius of the cursor.
+            return FindEnemyNearCursor();
+        }
+
+        private Transform FindEnemyNearCursor()
+        {
+            Vector2 mouse = Input.mousePosition;
+            Transform best = null;
+            float bestPixels = clickBufferPixels;
+
+            Collider[] colliders = Physics.OverlapSphere(transform.position, maxTargetDistance,
+                targetableLayers, QueryTriggerInteraction.Ignore);
+
+            foreach (var collider in colliders)
+            {
+                var targetHealth = collider.GetComponentInParent<Health>();
+                if (targetHealth == null || targetHealth.transform == transform) continue;
+                if (targetHealth.IsDead || !targetHealth.CompareTag(enemyTag)) continue;
+
+                Vector3 center = collider.bounds.center;
+                Vector3 screen = mainCamera.WorldToScreenPoint(center);
+                if (screen.z <= 0f) continue; // Behind the camera
+
+                float pixels = Vector2.Distance(mouse, new Vector2(screen.x, screen.y));
+                if (pixels >= bestPixels) continue;
+
+                // Don't grab enemies hidden behind walls.
+                Vector3 camPos = mainCamera.transform.position;
+                if (Physics.Linecast(camPos, center, out RaycastHit block, ~0, QueryTriggerInteraction.Ignore)
+                    && block.collider.GetComponentInParent<Health>() != targetHealth)
+                {
+                    continue;
+                }
+
+                bestPixels = pixels;
+                best = targetHealth.transform;
+            }
+
+            return best;
         }
 
         private void HandleTabTargeting()
@@ -86,8 +213,17 @@ namespace DungeonProto.Combat
                     return;
                 }
 
-                // Cycle to next target
-                currentTargetIndex = (currentTargetIndex + 1) % nearbyTargets.Count;
+                // Always snap to the closest enemy first. Only once we already
+                // hold a target does TAB cycle outward in distance order, so
+                // the first press is always the nearest monster.
+                if (currentTarget != null && currentTargetIndex >= 0)
+                {
+                    currentTargetIndex = (currentTargetIndex + 1) % nearbyTargets.Count;
+                }
+                else
+                {
+                    currentTargetIndex = 0;
+                }
                 SetTarget(nearbyTargets[currentTargetIndex]);
             }
         }
@@ -96,24 +232,20 @@ namespace DungeonProto.Combat
         {
             nearbyTargets.Clear();
 
-            Collider[] colliders = Physics.OverlapSphere(transform.position, maxTargetDistance, targetableLayers);
+            Collider[] colliders = Physics.OverlapSphere(transform.position, tabAcquireRange,
+                targetableLayers, QueryTriggerInteraction.Ignore);
 
             foreach (var collider in colliders)
             {
-                if (collider.transform == transform) continue;
+                // Resolve to entity root; child colliders map to their parent Health.
+                var targetHealth = collider.GetComponentInParent<Health>();
+                if (targetHealth == null || targetHealth.transform == transform) continue;
+                if (targetHealth.IsDead || !targetHealth.CompareTag(enemyTag)) continue;
+                if (nearbyTargets.Contains(targetHealth.transform)) continue;
 
-                // Check tag or Health component
-                if (collider.CompareTag(enemyTag) || collider.GetComponent<Health>() != null)
-                {
-                    // Optional: Filter by angle (targets in front of player)
-                    Vector3 directionToTarget = (collider.transform.position - transform.position).normalized;
-                    float angle = Vector3.Angle(transform.forward, directionToTarget);
-
-                    if (angle <= tabTargetAngle)
-                    {
-                        nearbyTargets.Add(collider.transform);
-                    }
-                }
+                // No facing cone: TAB should find the closest monster no matter
+                // which way the player is looking — that's what makes it reliable.
+                nearbyTargets.Add(targetHealth.transform);
             }
 
             // Sort by distance
@@ -159,12 +291,34 @@ namespace DungeonProto.Combat
             if (currentTarget != null)
             {
                 targetIndicatorInstance.SetActive(true);
-                targetIndicatorInstance.transform.position = currentTarget.position + Vector3.up * 0.1f;
+                float radius = TargetRadius(currentTarget);
+                targetIndicatorInstance.transform.position = currentTarget.position + Vector3.up * 0.08f;
+                targetIndicatorInstance.transform.rotation = Quaternion.identity;
                 targetIndicatorInstance.transform.Rotate(Vector3.up, 90f * Time.deltaTime);
+                if (targetRing != null)
+                    SetRingRadius(radius);
             }
             else
             {
                 targetIndicatorInstance.SetActive(false);
+            }
+        }
+
+        private static float TargetRadius(Transform target)
+        {
+            var collider = target.GetComponentInChildren<Collider>();
+            if (collider == null) return 1.1f;
+            var extents = collider.bounds.extents;
+            return Mathf.Clamp(Mathf.Max(extents.x, extents.z) + 0.25f, 0.8f, 2.5f);
+        }
+
+        private void SetRingRadius(float radius)
+        {
+            if (targetRing == null) return;
+            for (int i = 0; i < targetRing.positionCount; i++)
+            {
+                float angle = i * Mathf.PI * 2f / targetRing.positionCount;
+                targetRing.SetPosition(i, new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius));
             }
         }
 

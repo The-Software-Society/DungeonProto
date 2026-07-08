@@ -22,6 +22,7 @@ namespace AldenFall.Player
         private const string SkinKey = "appearance_skin";
         private const string HairStyleKey = "appearance_hair_style";
         private const string HairColorKey = "appearance_hair_color";
+        private const bool UseGeneratedHairFallback = true;
 
         public static readonly Color[] SkinTones =
         {
@@ -162,7 +163,7 @@ namespace AldenFall.Player
             var parent = head != null ? head : ActiveBodyRoot()?.transform;
             if (parent == null) return;
 
-            if (prefab != null)
+            if (prefab != null && !UseGeneratedHairFallback)
             {
                 hairInstance = Instantiate(prefab, parent, false);
                 hairInstance.name = "Hair";

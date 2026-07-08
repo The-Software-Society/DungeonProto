@@ -1,27 +1,46 @@
 using UnityEngine;
 
-namespace DungeonProto.Combat
+namespace AldenFall.Combat
 {
+    /// <summary>
+    /// Swept-cast projectile. Hit detection is done with a SphereCast between the
+    /// previous and current position every frame, so hits are deterministic and do
+    /// not depend on trigger callbacks, rigidbody sync, or collider setup on targets.
+    /// Homing follows the target for a limited time, then falls ballistically.
+    /// </summary>
     public class Projectile : MonoBehaviour
     {
         [Header("Movement")]
-        [SerializeField] private float speed = 15f;
-        [SerializeField] private float homingStrength = 5f;
+        [SerializeField] private float speed = 18f;
+        [SerializeField] private float homingStrength = 6f;
         [SerializeField] private float maxLifetime = 5f;
 
+        [Header("Homing Behavior")]
+        [SerializeField] private float maxHomingTime = 2.5f;
+        [SerializeField] private float gravityAfterHoming = 15f;
+
         [Header("Damage")]
-        [SerializeField] private float damage = 20f;
-        [SerializeField] private LayerMask hitLayers;
+        [SerializeField] private float damage = 25f;
+        [SerializeField] private float hitRadius = 0.45f;
+        [SerializeField] private float knockbackForce = 0f;   // spells don't shove targets around
 
         [Header("Effects")]
         [SerializeField] private GameObject hitEffectPrefab;
-        [SerializeField] private bool destroyOnHit = true;
 
         private Transform target;
         private Vector3 direction;
         private GameObject owner;
         private bool isHoming;
         private float lifetime;
+        private float homingElapsed;
+        private Vector3 ballisticVelocity;
+        private bool exploded;
+        private System.Action<Health> onHit;
+
+        private void Awake()
+        {
+            EnsureVisibleProjectile();
+        }
 
         public void Initialize(Vector3 fireDirection, GameObject projectileOwner, Transform homingTarget = null)
         {
@@ -30,83 +49,185 @@ namespace DungeonProto.Combat
             target = homingTarget;
             isHoming = homingTarget != null;
             lifetime = 0f;
+            homingElapsed = 0f;
+            ballisticVelocity = direction * speed;
 
-            // Face the direction of travel
             if (direction != Vector3.zero)
-            {
                 transform.rotation = Quaternion.LookRotation(direction);
-            }
         }
 
-        public void SetDamage(float newDamage)
-        {
-            damage = newDamage;
-        }
+        public void SetDamage(float newDamage) => damage = newDamage;
 
+        /// <summary>
+        /// Custom on-hit hook (status effects, ability XP). When set, the caller
+        /// owns XP grants — the projectile's built-in Magic XP is skipped.
+        /// </summary>
+        public void SetOnHit(System.Action<Health> handler) => onHit = handler;
         public void SetSpeed(float newSpeed)
         {
             speed = newSpeed;
+            ballisticVelocity = direction * speed;
+        }
+
+        private void EnsureVisibleProjectile()
+        {
+            if (transform.Find("ProjectileGlow") != null)
+                return;
+
+            var glow = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            glow.name = "ProjectileGlow";
+            glow.transform.SetParent(transform, false);
+            glow.transform.localPosition = Vector3.zero;
+            glow.transform.localScale = Vector3.one * Mathf.Max(0.35f, hitRadius * 1.35f);
+            Destroy(glow.GetComponent<Collider>());
+
+            var renderer = glow.GetComponent<MeshRenderer>();
+            if (renderer != null)
+            {
+                var material = new Material(Shader.Find("Sprites/Default"));
+                material.color = new Color(1f, 0.48f, 0.08f, 1f);
+                renderer.material = material;
+            }
+
+            var light = glow.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(1f, 0.48f, 0.08f, 1f);
+            light.range = 4f;
+            light.intensity = 2.5f;
+
+            var trail = gameObject.AddComponent<TrailRenderer>();
+            trail.time = 0.22f;
+            trail.startWidth = 0.32f;
+            trail.endWidth = 0.02f;
+            trail.material = new Material(Shader.Find("Sprites/Default"));
+            trail.startColor = new Color(1f, 0.55f, 0.12f, 0.9f);
+            trail.endColor = new Color(1f, 0.18f, 0.03f, 0f);
         }
 
         private void Update()
         {
+            if (exploded) return;
+
             lifetime += Time.deltaTime;
             if (lifetime >= maxLifetime)
             {
-                Destroy(gameObject);
+                Explode(transform.position, null);
                 return;
             }
 
-            MoveProjectile();
+            Vector3 previousPosition = transform.position;
+            Vector3 nextPosition = ComputeNextPosition(previousPosition);
+
+            // Swept hit detection: everything solid or damageable along the travel path.
+            if (SweepForHit(previousPosition, nextPosition, out RaycastHit hit))
+            {
+                transform.position = hit.point;
+                Explode(hit.point, hit.collider);
+                return;
+            }
+
+            transform.position = nextPosition;
         }
 
-        private void MoveProjectile()
+        private Vector3 ComputeNextPosition(Vector3 current)
         {
-            if (isHoming && target != null)
+            if (isHoming && target != null && homingElapsed < maxHomingTime)
             {
-                // Calculate direction to target
-                Vector3 targetDirection = (target.position + Vector3.up - transform.position).normalized;
+                homingElapsed += Time.deltaTime;
 
-                // Smoothly rotate towards target
-                direction = Vector3.Slerp(direction, targetDirection, homingStrength * Time.deltaTime);
+                // Aim at the target's mid-body: use collider bounds when available.
+                Vector3 aimPoint = target.position + Vector3.up;
+                var targetCollider = target.GetComponentInChildren<Collider>();
+                if (targetCollider != null)
+                    aimPoint = targetCollider.bounds.center;
+
+                Vector3 toTarget = (aimPoint - current).normalized;
+                direction = Vector3.Slerp(direction, toTarget, homingStrength * Time.deltaTime).normalized;
+                ballisticVelocity = direction * speed;
+
                 transform.rotation = Quaternion.LookRotation(direction);
+                return current + direction * speed * Time.deltaTime;
             }
 
-            // Move forward
-            transform.position += direction * speed * Time.deltaTime;
+            // Ballistic phase — gravity takes over.
+            ballisticVelocity += Vector3.down * gravityAfterHoming * Time.deltaTime;
+            if (ballisticVelocity.sqrMagnitude > 0.01f)
+                transform.rotation = Quaternion.LookRotation(ballisticVelocity.normalized);
+            return current + ballisticVelocity * Time.deltaTime;
         }
 
-        private void OnTriggerEnter(Collider other)
+        private bool SweepForHit(Vector3 from, Vector3 to, out RaycastHit result)
         {
-            // Don't hit owner
-            if (owner != null && other.gameObject == owner) return;
-            if (other.transform.IsChildOf(owner?.transform)) return;
+            result = default;
+            Vector3 delta = to - from;
+            float distance = delta.magnitude;
+            if (distance < Mathf.Epsilon) return false;
 
-            // Check if we should hit this layer
-            if (((1 << other.gameObject.layer) & hitLayers) == 0) return;
+            LayerMask sweepMask = GameLayers.GetWorldMask() | GameLayers.GetEnemyMask() | GameLayers.GetPlayerMask();
+            var hits = Physics.SphereCastAll(from, hitRadius, delta / distance, distance, sweepMask,
+                QueryTriggerInteraction.Ignore);
 
-            // Apply damage if target has Health component
-            var health = other.GetComponent<Health>();
-            if (health != null)
+            float best = float.MaxValue;
+            bool found = false;
+            foreach (var hit in hits)
             {
-                health.TakeDamage(damage, owner);
+                if (IsOwner(hit.collider.transform)) continue;
+                if (hit.distance >= best) continue;
+                best = hit.distance;
+                result = hit;
+                found = true;
+            }
+            return found;
+        }
+
+        private bool IsOwner(Transform t)
+        {
+            return owner != null && (t.gameObject == owner || t.IsChildOf(owner.transform));
+        }
+
+        private void Explode(Vector3 position, Collider directHit)
+        {
+            if (exploded) return;
+            exploded = true;
+
+            // Damage the directly hit entity (Health may be on a parent of the collider).
+            Health directHealth = directHit != null ? directHit.GetComponentInParent<Health>() : null;
+            if (directHealth != null && !IsOwner(directHealth.transform))
+            {
+                directHealth.TakeDamage(damage, owner);
+
+                if (knockbackForce > 0f)
+                {
+                    Vector3 knockDir = direction.sqrMagnitude > 0.01f
+                        ? direction
+                        : (directHealth.transform.position - position).normalized;
+                    directHealth.ApplyKnockback(knockDir, knockbackForce);
+                }
+
+                if (onHit != null)
+                {
+                    onHit(directHealth);
+                }
+                else if (owner != null)
+                {
+                    // Landing a spell trains Magic (ability callbacks own their own XP)
+                    var skills = owner.GetComponent<Progression.Skills>();
+                    skills?.AddXp(Progression.SkillType.Magic, damage * 1.2f);
+                }
             }
 
-            // Spawn hit effect
+            HitEffect.CreateFireballImpact(position);
+
             if (hitEffectPrefab != null)
-            {
-                Instantiate(hitEffectPrefab, transform.position, Quaternion.identity);
-            }
+                Instantiate(hitEffectPrefab, position, Quaternion.identity);
 
-            if (destroyOnHit)
-            {
-                Destroy(gameObject);
-            }
+            Destroy(gameObject);
         }
 
         private void OnDrawGizmosSelected()
         {
             Gizmos.color = Color.red;
+            Gizmos.DrawWireSphere(transform.position, hitRadius);
             Gizmos.DrawRay(transform.position, direction * 2f);
 
             if (target != null)

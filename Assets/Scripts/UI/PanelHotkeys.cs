@@ -17,7 +17,7 @@ namespace AldenFall.UI
         private void Start()
         {
             if (treesPanel != null)
-                treesPanel.shownPos = new Vector2(0, 250);
+                treesPanel.shownPos = new Vector2(0, 365);
 
             var panelButtons = transform.Find("PanelButtons") as RectTransform;
             if (panelButtons != null)

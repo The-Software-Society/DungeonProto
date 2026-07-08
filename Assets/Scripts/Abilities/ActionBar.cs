@@ -35,7 +35,7 @@ namespace AldenFall.Abilities
     {
         public const int SlotCount = 10;
         public const int CombatSlots = 5;   // indices 0-4 = keys 1-5
-        private const string PrefsKey = "actionbar_v1";
+        private const string PrefsKey = "actionbar_v2";
 
         private readonly SlotBinding[] slots = new SlotBinding[SlotCount];
 
@@ -151,8 +151,8 @@ namespace AldenFall.Abilities
                 slots[i] = SlotBinding.Empty;
             slots[0] = SlotBinding.Ability("fireball");
             slots[1] = SlotBinding.Ability("blade_rush");
-            slots[2] = SlotBinding.Ability("ember_nova");
-            slots[3] = SlotBinding.Ability("savage_cleave");
+            slots[2] = SlotBinding.Ability("whirlwind");
+            slots[3] = SlotBinding.Ability("seismic_slam");
             slots[4] = SlotBinding.Ability("bulwark");
             Save();
             OnChanged?.Invoke();
