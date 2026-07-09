@@ -100,6 +100,12 @@ namespace AldenFall.Multiplayer
             Ensure<PlayerInteractor>();
         }
 
+        private T Ensure<T>() where T : Component
+        {
+            var component = GetComponent<T>();
+            return component != null ? component : gameObject.AddComponent<T>();
+        }
+
         private void Update()
         {
             if (isLocalPlayer)
