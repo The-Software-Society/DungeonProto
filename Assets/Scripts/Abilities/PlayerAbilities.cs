@@ -254,26 +254,19 @@ namespace AldenFall.Abilities
             float damage = CombatMath.SpellDamage(stats, def.BaseDamage)
                          * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
 
-            var fireball = fireballPrefab != null
-                ? Instantiate(fireballPrefab, spawnPos, Quaternion.LookRotation(aimDirection))
-                : new GameObject("Fireball");
+            var fireball = new GameObject("RuntimeFireball");
             fireball.transform.SetPositionAndRotation(spawnPos, Quaternion.LookRotation(aimDirection));
 
-            var projectile = fireball.GetComponent<Projectile>();
-            if (projectile == null)
-                projectile = fireball.AddComponent<Projectile>();
+            var projectile = fireball.AddComponent<Projectile>();
 
-            if (projectile != null)
+            projectile.SetDamage(damage);
+            projectile.SetSpeed(fireballSpeed);
+            projectile.SetOnHit(hit =>
             {
-                projectile.SetDamage(damage);
-                projectile.SetSpeed(fireballSpeed);
-                projectile.SetOnHit(hit =>
-                {
-                    skills?.AddXp(SkillType.Magic, damage * 1.2f);
-                    ApplyDefStatus(def, hit);
-                });
-                projectile.Initialize(aimDirection, gameObject, target);
-            }
+                skills?.AddXp(SkillType.Magic, damage * 1.2f);
+                ApplyDefStatus(def, hit);
+            });
+            projectile.Initialize(aimDirection, gameObject, target);
         }
 
         private void CastNova(AbilityDef def)
