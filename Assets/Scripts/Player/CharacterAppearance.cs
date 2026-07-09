@@ -212,30 +212,30 @@ namespace AldenFall.Player
             root.transform.SetParent(parent, false);
             if (anchoredToHeadBone)
             {
-                root.transform.localPosition = new Vector3(0f, 0.22f, 0.04f);
+                root.transform.localPosition = new Vector3(0f, 0.09f, 0.02f);
                 root.transform.localRotation = Quaternion.identity;
-                root.transform.localScale = Vector3.one * 1.8f;
+                root.transform.localScale = Vector3.one * 0.85f;
             }
             else if (TryGetBodyBounds(out var bodyBounds))
             {
                 root.transform.position = HairAnchorFromBounds(bodyBounds);
                 root.transform.rotation = transform.rotation;
                 root.transform.SetParent(transform, true);
-                root.transform.localScale = Vector3.one * Mathf.Clamp(bodyBounds.size.y / 1.4f, 1.25f, 2.25f);
+                root.transform.localScale = Vector3.one * Mathf.Clamp(bodyBounds.size.y / 4.5f, 0.35f, 0.75f);
             }
 
             switch (HairStyle)
             {
                 case 2:
-                    CreateHairPiece(root.transform, PrimitiveType.Sphere, new Vector3(0f, 0.12f, 0.02f), new Vector3(0.28f, 0.12f, 0.22f), Quaternion.identity);
-                    CreateHairPiece(root.transform, PrimitiveType.Sphere, new Vector3(0f, -0.02f, -0.12f), new Vector3(0.24f, 0.34f, 0.12f), Quaternion.identity);
+                    CreateHairPiece(root.transform, PrimitiveType.Sphere, new Vector3(0f, 0.07f, 0.02f), new Vector3(0.22f, 0.08f, 0.17f), Quaternion.identity);
+                    CreateHairPiece(root.transform, PrimitiveType.Sphere, new Vector3(0f, -0.03f, -0.08f), new Vector3(0.18f, 0.22f, 0.09f), Quaternion.identity);
                     break;
                 case 3:
-                    CreateHairPiece(root.transform, PrimitiveType.Sphere, new Vector3(0f, 0.12f, 0.02f), new Vector3(0.27f, 0.12f, 0.21f), Quaternion.identity);
-                    CreateHairPiece(root.transform, PrimitiveType.Capsule, new Vector3(0f, -0.02f, -0.27f), new Vector3(0.08f, 0.22f, 0.08f), Quaternion.Euler(90f, 0f, 0f));
+                    CreateHairPiece(root.transform, PrimitiveType.Sphere, new Vector3(0f, 0.07f, 0.02f), new Vector3(0.21f, 0.08f, 0.16f), Quaternion.identity);
+                    CreateHairPiece(root.transform, PrimitiveType.Capsule, new Vector3(0f, -0.03f, -0.2f), new Vector3(0.045f, 0.16f, 0.045f), Quaternion.Euler(90f, 0f, 0f));
                     break;
                 default:
-                    CreateHairPiece(root.transform, PrimitiveType.Sphere, new Vector3(0f, 0.12f, 0.02f), new Vector3(0.27f, 0.1f, 0.2f), Quaternion.identity);
+                    CreateHairPiece(root.transform, PrimitiveType.Sphere, new Vector3(0f, 0.07f, 0.02f), new Vector3(0.21f, 0.07f, 0.15f), Quaternion.identity);
                     break;
             }
 
@@ -261,8 +261,8 @@ namespace AldenFall.Player
         {
             return new Vector3(
                 bounds.center.x,
-                bounds.max.y + bounds.size.y * 0.03f,
-                bounds.center.z + bounds.size.z * 0.12f);
+                bounds.max.y - bounds.size.y * 0.03f,
+                bounds.center.z + bounds.size.z * 0.04f);
         }
 
         private static void CreateHairPiece(Transform parent, PrimitiveType type, Vector3 localPosition, Vector3 localScale, Quaternion localRotation)
