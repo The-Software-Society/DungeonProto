@@ -1,4 +1,8 @@
 using AldenFall.Player;
+using AldenFall.Abilities;
+using AldenFall.Items;
+using AldenFall.Progression;
+using AldenFall.Stats;
 using Mirror;
 using TMPro;
 using UnityEngine;
@@ -36,6 +40,7 @@ namespace AldenFall.Multiplayer
 
         private void Awake()
         {
+            EnsureGameplayComponents();
             appearance = GetComponent<CharacterAppearance>();
             controller = GetComponent<PlayerController>();
             animator = GetComponentInChildren<Animator>();
@@ -58,6 +63,7 @@ namespace AldenFall.Multiplayer
 
         public override void OnStartLocalPlayer()
         {
+            EnsureGameplayComponents();
             gameObject.tag = "Player";
             gameObject.name = "LocalPlayer";
             SetLocalAuthorityVisuals(true);
@@ -68,6 +74,30 @@ namespace AldenFall.Multiplayer
 
             if (nameplate != null)
                 nameplate.color = new Color(0.9f, 1f, 0.75f);
+
+            GetComponent<StarterLoadout>()?.EnsureGranted();
+        }
+
+        private void EnsureGameplayComponents()
+        {
+            Ensure<StatBlock>();
+            Ensure<Skills>();
+            Ensure<Combat.Health>();
+            Ensure<Combat.StatusSystem>();
+            Ensure<Combat.TargetingSystem>();
+            Ensure<Combat.PlayerMelee>();
+            Ensure<Combat.PlayerDefence>();
+            Ensure<Inventory>();
+            Ensure<Equipment>();
+            Ensure<StarterLoadout>();
+            Ensure<PlayerAbilities>();
+            Ensure<AbilityMastery>();
+            Ensure<ActionBar>();
+            Ensure<Combat.CombatStyleController>();
+            Ensure<PlayerConsumables>();
+            Ensure<FishingController>();
+            Ensure<CookingController>();
+            Ensure<PlayerInteractor>();
         }
 
         private void Update()

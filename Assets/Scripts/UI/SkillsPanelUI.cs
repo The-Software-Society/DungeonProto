@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using AldenFall.Multiplayer;
 using AldenFall.Progression;
 
 namespace AldenFall.UI
@@ -46,7 +47,7 @@ namespace AldenFall.UI
 
         private void TryBindSkills()
         {
-            var player = GameObject.FindGameObjectWithTag("Player");
+            var player = LocalPlayerLocator.Find();
             skills = player != null ? player.GetComponent<Skills>() : null;
         }
 

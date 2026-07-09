@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using AldenFall.Combat;
+using AldenFall.Multiplayer;
 
 namespace AldenFall.UI
 {
@@ -46,7 +47,7 @@ namespace AldenFall.UI
 
         private void TryBindController()
         {
-            var player = GameObject.FindGameObjectWithTag("Player");
+            var player = LocalPlayerLocator.Find();
             var found = player != null ? player.GetComponent<CombatStyleController>() : null;
             if (found == null || found == controller) return;
 
