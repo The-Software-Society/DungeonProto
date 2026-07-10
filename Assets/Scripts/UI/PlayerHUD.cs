@@ -2,7 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-namespace DungeonProto.UI
+namespace AldenFall.UI
 {
     using Combat;
     using Player;
@@ -23,8 +23,16 @@ namespace DungeonProto.UI
         [Header("Ability Cooldowns")]
         [SerializeField] private Image fireballCooldownFill;
         [SerializeField] private TextMeshProUGUI fireballKeyText;
+        [SerializeField] private Image novaCooldownFill;
+
+        [Header("Status Display")]
+        [SerializeField] private Image dodgeCooldownFill;
+        [SerializeField] private TextMeshProUGUI dodgeCooldownText;
+        [SerializeField] private GameObject statusPanel;
 
         private Health playerHealth;
+        private PlayerController playerController;
+        private Abilities.PlayerAbilities playerAbilities;
         private TargetingSystem targetingSystem;
         private Health currentTargetHealth;
 
@@ -34,18 +42,33 @@ namespace DungeonProto.UI
 
         private void Start()
         {
-            // Find player components
-            var player = FindFirstObjectByType<PlayerController>();
-            if (player != null)
+            // IMPORTANT: Create gradient FIRST before any code uses it
+            if (playerHealthGradient == null || playerHealthGradient.colorKeys.Length == 0)
             {
-                playerHealth = player.GetComponent<Health>();
-                targetingSystem = player.GetComponent<TargetingSystem>();
+                playerHealthGradient = CreateDefaultGradient();
+            }
+
+            // Find player components
+            playerController = FindFirstObjectByType<PlayerController>();
+            if (playerController != null)
+            {
+                playerHealth = playerController.GetComponent<Health>();
+                targetingSystem = playerController.GetComponent<TargetingSystem>();
+                playerAbilities = playerController.GetComponent<Abilities.PlayerAbilities>();
             }
 
             if (playerHealth != null)
             {
                 playerHealth.OnHealthChanged.AddListener(OnPlayerHealthChanged);
+                playerDisplayedHealth = playerHealth.HealthPercent;
                 UpdatePlayerHealth(playerHealth.CurrentHealth, playerHealth.MaxHealth);
+
+                // Initialize health bar visual immediately (gradient is now available)
+                if (playerHealthFill != null)
+                {
+                    playerHealthFill.fillAmount = playerDisplayedHealth;
+                    playerHealthFill.color = playerHealthGradient.Evaluate(playerDisplayedHealth);
+                }
             }
 
             if (targetingSystem != null)
@@ -56,17 +79,55 @@ namespace DungeonProto.UI
             // Hide target panel initially
             if (targetPanel != null)
                 targetPanel.SetActive(false);
-
-            // Set up default gradient
-            if (playerHealthGradient == null || playerHealthGradient.colorKeys.Length == 0)
-            {
-                playerHealthGradient = CreateDefaultGradient();
-            }
         }
 
         private void Update()
         {
             SmoothHealthBars();
+            UpdateCooldownDisplays();
+        }
+
+        private void UpdateCooldownDisplays()
+        {
+            // Update dodge cooldown display
+            if (playerController != null && dodgeCooldownFill != null)
+            {
+                float cooldownPercent = playerController.GetDodgeCooldownPercent();
+                dodgeCooldownFill.fillAmount = cooldownPercent;
+
+                if (dodgeCooldownText != null)
+                {
+                    if (cooldownPercent > 0.01f)
+                    {
+                        float remaining = playerController.GetDodgeCooldownRemaining();
+                        dodgeCooldownText.text = remaining.ToString("F1");
+                        dodgeCooldownText.gameObject.SetActive(true);
+                    }
+                    else
+                    {
+                        dodgeCooldownText.text = "";
+                        dodgeCooldownText.gameObject.SetActive(false);
+                    }
+                }
+
+                // Show/hide status panel based on any active cooldowns
+                if (statusPanel != null)
+                {
+                    statusPanel.SetActive(cooldownPercent > 0.01f);
+                }
+            }
+
+            // Update fireball cooldown display
+            if (playerAbilities != null && fireballCooldownFill != null)
+            {
+                fireballCooldownFill.fillAmount = playerAbilities.GetCooldown01("fireball");
+            }
+
+            // Update nova cooldown display
+            if (playerAbilities != null && novaCooldownFill != null)
+            {
+                novaCooldownFill.fillAmount = playerAbilities.GetCooldown01("ember_nova");
+            }
         }
 
         private void SmoothHealthBars()
@@ -110,8 +171,8 @@ namespace DungeonProto.UI
                 return;
             }
 
-            // Unsubscribe from old target
-            if (currentTargetHealth != null)
+            // Unsubscribe from old target (check gameObject to handle destroyed Unity objects)
+            if (currentTargetHealth != null && currentTargetHealth.gameObject != null)
             {
                 currentTargetHealth.OnHealthChanged.RemoveListener(OnTargetHealthChanged);
             }
@@ -159,11 +220,12 @@ namespace DungeonProto.UI
 
         private void ClearTarget()
         {
-            if (currentTargetHealth != null)
+            // Check gameObject to handle destroyed Unity objects (prevents NullReferenceException)
+            if (currentTargetHealth != null && currentTargetHealth.gameObject != null)
             {
                 currentTargetHealth.OnHealthChanged.RemoveListener(OnTargetHealthChanged);
-                currentTargetHealth = null;
             }
+            currentTargetHealth = null;
 
             if (targetPanel != null)
                 targetPanel.SetActive(false);
@@ -175,9 +237,11 @@ namespace DungeonProto.UI
             gradient.SetKeys(
                 new GradientColorKey[]
                 {
-                    new GradientColorKey(new Color(0.8f, 0.2f, 0.2f), 0f),
-                    new GradientColorKey(new Color(0.8f, 0.6f, 0.2f), 0.5f),
-                    new GradientColorKey(new Color(0.2f, 0.8f, 0.2f), 1f)
+                    new GradientColorKey(new Color(0.9f, 0.15f, 0.15f), 0f),      // Bright red at 0%
+                    new GradientColorKey(new Color(0.95f, 0.6f, 0.1f), 0.33f),    // Orange at 33%
+                    new GradientColorKey(new Color(0.9f, 0.85f, 0.1f), 0.5f),     // Yellow at 50%
+                    new GradientColorKey(new Color(0.5f, 0.9f, 0.2f), 0.66f),     // Yellow-green at 66%
+                    new GradientColorKey(new Color(0.2f, 0.85f, 0.2f), 1f)        // Bright green at 100%
                 },
                 new GradientAlphaKey[]
                 {

@@ -30,6 +30,7 @@ namespace AldenFall.Abilities
         private StatusSystem statuses;
         private StatBlock stats;
         private Skills skills;
+        private PlayerCombat combat;   // routes damage to the server (server-authoritative combat)
         private AbilityMastery mastery;
         private Equipment equipment;
         private CharacterController controller;
@@ -60,6 +61,7 @@ namespace AldenFall.Abilities
             statuses = GetComponent<StatusSystem>();
             stats = GetComponent<StatBlock>();
             skills = GetComponent<Skills>();
+            combat = GetComponent<PlayerCombat>();
             mastery = GetComponent<AbilityMastery>();
             equipment = GetComponent<Equipment>();
             controller = GetComponent<CharacterController>();
@@ -304,11 +306,11 @@ namespace AldenFall.Abilities
                 float damage = (meleeNova
                     ? CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
                     : CombatMath.SpellDamage(stats, def.BaseDamage)) * multiplier;
-                enemyHealth.TakeDamage(damage, gameObject);
+                combat?.DealDamage(enemyHealth, damage);
                 if (def.Knockback > 0f)
                 {
                     Vector3 knockDir = (enemyHealth.transform.position - transform.position).normalized;
-                    enemyHealth.ApplyKnockback(knockDir, def.Knockback);
+                    combat?.ApplyKnockbackTo(enemyHealth, knockDir, def.Knockback);
                 }
                 else if (def.Knockback < 0f)
                 {
@@ -343,7 +345,7 @@ namespace AldenFall.Abilities
 
                 float damage = CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
                              * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
-                targetHealth.TakeDamage(damage, gameObject);
+                combat?.DealDamage(targetHealth, damage);
                 HitEffect.CreateMeleeImpact(target.position + Vector3.up);
                 skills?.AddXp(TreeSkill(def), damage * 1.2f);
 
@@ -481,7 +483,7 @@ namespace AldenFall.Abilities
 
             float damage = CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
                          * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
-            targetHealth.TakeDamage(damage, gameObject);
+            combat?.DealDamage(targetHealth, damage);
             HitEffect.CreateMeleeImpact(target.position + Vector3.up);
 
             targetHealth.GetComponent<StatusSystem>()?.Apply(new StatusEffect
@@ -512,7 +514,7 @@ namespace AldenFall.Abilities
 
             float damage = CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
                          * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
-            targetHealth.TakeDamage(damage, gameObject);
+            combat?.DealDamage(targetHealth, damage);
             HitEffect.CreateMeleeImpact(target.position + Vector3.up);
             ApplyDefStatus(def, targetHealth);
             skills?.AddXp(TreeSkill(def), damage * 1.2f);

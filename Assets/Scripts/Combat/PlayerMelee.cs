@@ -36,6 +36,7 @@ namespace AldenFall.Combat
         private CharacterController controller;
         private Player.PlayerController playerController;
         private Abilities.PlayerAbilities abilities;
+        private PlayerCombat combat;   // server-auth damage relay
         private float lastSwingTime = float.NegativeInfinity;
         private bool engaged; // attack order active: pursue until cancelled
 
@@ -59,6 +60,7 @@ namespace AldenFall.Combat
             controller = GetComponent<CharacterController>();
             playerController = GetComponent<Player.PlayerController>();
             abilities = GetComponent<Abilities.PlayerAbilities>();
+            combat = GetComponent<PlayerCombat>();
         }
 
         private void Start()
@@ -191,7 +193,7 @@ namespace AldenFall.Combat
 
             float damage = Stats.CombatMath.MeleeDamage(stats);
 
-            targetHealth.TakeDamage(damage, gameObject, canMiss: true);
+            combat?.DealDamage(targetHealth, damage, canMiss: true);
             HitEffect.CreateMeleeImpact(target.position + Vector3.up);
 
             // Train ONLY the selected combat style — you level what you choose

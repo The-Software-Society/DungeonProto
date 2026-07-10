@@ -40,6 +40,9 @@ namespace AldenFall.Combat
         private void Awake()
         {
             EnsureVisibleProjectile();
+            // Safety net: guarantee despawn even if Update stalls or Explode throws before
+            // it reaches Destroy — otherwise the glowing sphere orphans and never goes away.
+            Destroy(gameObject, maxLifetime + 0.5f);
         }
 
         public void Initialize(Vector3 fireDirection, GameObject projectileOwner, Transform homingTarget = null)
@@ -172,6 +175,7 @@ namespace AldenFall.Combat
             foreach (var hit in hits)
             {
                 if (IsOwner(hit.collider.transform)) continue;
+                if (IsFriendlyPlayer(hit.collider.transform)) continue; // fly through allies while PvP is off
                 if (hit.distance >= best) continue;
                 best = hit.distance;
                 result = hit;
@@ -185,43 +189,71 @@ namespace AldenFall.Combat
             return owner != null && (t.gameObject == owner || t.IsChildOf(owner.transform));
         }
 
+        /// <summary>
+        /// True when this projectile came from a player and is passing another player
+        /// while PvP is disabled — the shot flies through instead of exploding on allies.
+        /// Not a hard PvP lock: gated on CombatRules.PvpEnabled for the future PvP system.
+        /// </summary>
+        private bool IsFriendlyPlayer(Transform t)
+        {
+            if (CombatRules.PvpEnabled) return false;
+            if (owner == null || !CombatRules.IsPlayer(owner)) return false;
+            return t.GetComponentInParent<Multiplayer.NetworkPlayerAvatar>() != null;
+        }
+
         private void Explode(Vector3 position, Collider directHit)
         {
             if (exploded) return;
             exploded = true;
 
-            // Damage the directly hit entity (Health may be on a parent of the collider).
-            Health directHealth = directHit != null ? directHit.GetComponentInParent<Health>() : null;
-            if (directHealth != null && !IsOwner(directHealth.transform))
+            try
             {
-                directHealth.TakeDamage(damage, owner);
+                // Damage the directly hit entity (Health may be on a parent of the collider).
+                Health directHealth = directHit != null ? directHit.GetComponentInParent<Health>() : null;
+                if (directHealth != null && !IsOwner(directHealth.transform))
+                {
+                    // Projectiles are local visuals; route the hit through the caster's
+                    // server relay so damage is server-authoritative. Non-player owners
+                    // (server-side) apply directly.
+                    var ownerCombat = owner != null ? owner.GetComponent<PlayerCombat>() : null;
+                    if (ownerCombat != null)
+                        ownerCombat.DealDamage(directHealth, damage);
+                    else
+                        directHealth.TakeDamage(damage, owner);
 
-                if (knockbackForce > 0f)
-                {
-                    Vector3 knockDir = direction.sqrMagnitude > 0.01f
-                        ? direction
-                        : (directHealth.transform.position - position).normalized;
-                    directHealth.ApplyKnockback(knockDir, knockbackForce);
+                    if (knockbackForce > 0f)
+                    {
+                        Vector3 knockDir = direction.sqrMagnitude > 0.01f
+                            ? direction
+                            : (directHealth.transform.position - position).normalized;
+                        if (ownerCombat != null)
+                            ownerCombat.ApplyKnockbackTo(directHealth, knockDir, knockbackForce);
+                        else
+                            directHealth.ApplyKnockback(knockDir, knockbackForce);
+                    }
+
+                    if (onHit != null)
+                    {
+                        onHit(directHealth);
+                    }
+                    else if (owner != null)
+                    {
+                        // Landing a spell trains Magic (ability callbacks own their own XP)
+                        var skills = owner.GetComponent<Progression.Skills>();
+                        skills?.AddXp(Progression.SkillType.Magic, damage * 1.2f);
+                    }
                 }
 
-                if (onHit != null)
-                {
-                    onHit(directHealth);
-                }
-                else if (owner != null)
-                {
-                    // Landing a spell trains Magic (ability callbacks own their own XP)
-                    var skills = owner.GetComponent<Progression.Skills>();
-                    skills?.AddXp(Progression.SkillType.Magic, damage * 1.2f);
-                }
+                HitEffect.CreateFireballImpact(position);
+
+                if (hitEffectPrefab != null)
+                    Instantiate(hitEffectPrefab, position, Quaternion.identity);
             }
-
-            HitEffect.CreateFireballImpact(position);
-
-            if (hitEffectPrefab != null)
-                Instantiate(hitEffectPrefab, position, Quaternion.identity);
-
-            Destroy(gameObject);
+            finally
+            {
+                // Always despawn — even if damage or effects threw.
+                Destroy(gameObject);
+            }
         }
 
         private void OnDrawGizmosSelected()

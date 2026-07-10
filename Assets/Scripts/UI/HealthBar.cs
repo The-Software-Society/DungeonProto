@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace DungeonProto.UI
+namespace AldenFall.UI
 {
     using Combat;
 

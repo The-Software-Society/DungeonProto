@@ -1,7 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 
-namespace DungeonProto.World
+namespace AldenFall.World
 {
     public class TileMaterialManager : MonoBehaviour
     {

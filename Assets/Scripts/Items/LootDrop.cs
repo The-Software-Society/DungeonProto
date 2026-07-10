@@ -1,30 +1,82 @@
 using UnityEngine;
+using Mirror;
 using AldenFall.Multiplayer;
 
 namespace AldenFall.Items
 {
     /// <summary>
-    /// A world item pickup: bobbing, spinning, glowing. Auto-collected when the
-    /// player walks close. Spawned by enemies on death via LootDrop.Spawn.
+    /// A networked world-item pickup: bobbing, spinning, glowing, auto-collected when
+    /// a player walks close. The WORLD drop is server-authoritative (spawned via
+    /// NetworkServer.Spawn) so every player sees it; inventories stay client-local, so
+    /// pickup routes through the server which grants the item to the requesting player.
+    /// First requester in range wins — no double pickups.
     /// </summary>
-    public class LootDrop : MonoBehaviour
+    public class LootDrop : NetworkBehaviour
     {
         private const float PickupRange = 1.8f;
         private const float Lifetime = 120f;
 
-        private string itemId;
+        [SyncVar(hook = nameof(OnItemIdSync))] private string itemId;
+        [SyncVar] private float pickupDelay;   // grace so a just-dropped item isn't re-vacuumed
+
         private Transform player;
         private float baseY;
         private float age;
-        private float pickupDelay;
         private Light glow;
+        private bool visualBuilt;
+        private float nextPickupRequestTime;   // client: throttle pickup requests
+        private bool claimed;                  // server: first requester wins
 
         public string ItemId => itemId;
 
+        // ---------------- spawning ----------------
+
+        private static GameObject cachedPrefab;
+        private static GameObject Prefab =>
+            cachedPrefab != null ? cachedPrefab : (cachedPrefab = Resources.Load<GameObject>("NetLootDrop"));
+
+        /// <summary>Server-authoritative spawn — a networked world drop visible to everyone.</summary>
+        public static LootDrop ServerSpawn(string itemId, Vector3 position, float pickupDelay = 0f)
+        {
+            if (!NetworkServer.active) return null;
+            if (ItemDatabase.Get(itemId) == null) return null;
+
+            var prefab = Prefab;
+            if (prefab == null)
+            {
+                Debug.LogWarning("LootDrop: NetLootDrop prefab missing from Resources — rebuild the demo (AldenFall > Build Emberfall Demo).");
+                return null;
+            }
+
+            var obj = Instantiate(prefab, position + Vector3.up * 0.5f, Quaternion.identity);
+            var drop = obj.GetComponent<LootDrop>();
+            drop.itemId = itemId;          // SyncVar set before Spawn → carried in the spawn payload
+            drop.pickupDelay = pickupDelay;
+            NetworkServer.Spawn(obj);
+            return drop;
+        }
+
         /// <summary>
-        /// Add to the bag if there's room, otherwise drop at the owner's feet —
-        /// a created item must NEVER silently vanish (cooking with a full bag).
-        /// Returns true when it went into the bag.
+        /// Back-compat entry used by every legacy call site (mob death, chests, bag drops,
+        /// cooking overflow). On the server it spawns directly; on a client it asks the
+        /// server to spawn via the local player's relay. Returns null on the client path
+        /// (the networked spawn is asynchronous).
+        /// </summary>
+        public static LootDrop Spawn(string itemId, Vector3 position, float pickupDelay = 0f)
+        {
+            if (NetworkServer.active)
+                return ServerSpawn(itemId, position, pickupDelay);
+
+            var localPlayer = LocalPlayerLocator.Find();
+            var combat = localPlayer != null ? localPlayer.GetComponent<AldenFall.Combat.PlayerCombat>() : null;
+            combat?.RequestDrop(itemId, position, pickupDelay);
+            return null;
+        }
+
+        /// <summary>
+        /// Add to the bag if there's room, otherwise drop at the owner's feet — a created
+        /// item must NEVER silently vanish (cooking with a full bag). Returns true when it
+        /// went into the bag.
         /// </summary>
         public static bool GiveOrDrop(Inventory inventory, string itemId, Transform owner)
         {
@@ -35,18 +87,26 @@ namespace AldenFall.Items
             return false;
         }
 
-        public static LootDrop Spawn(string itemId, Vector3 position, float pickupDelay = 0f)
-        {
-            var def = ItemDatabase.Get(itemId);
-            if (def == null) return null;
+        // ---------------- visual (client) ----------------
 
-            var obj = new GameObject($"Loot_{def.Id}");
-            obj.transform.position = position + Vector3.up * 0.5f;
-            var drop = obj.AddComponent<LootDrop>();
-            drop.itemId = itemId;
-            drop.pickupDelay = pickupDelay;
-            drop.BuildVisual(def);
-            return drop;
+        public override void OnStartClient()
+        {
+            baseY = transform.position.y;
+            EnsureVisual();
+        }
+
+        private void OnItemIdSync(string _, string __)
+        {
+            EnsureVisual();
+        }
+
+        private void EnsureVisual()
+        {
+            if (visualBuilt || string.IsNullOrEmpty(itemId)) return;
+            var def = ItemDatabase.Get(itemId);
+            if (def == null) return;
+            BuildVisual(def);
+            visualBuilt = true;
         }
 
         private void BuildVisual(ItemDef def)
@@ -100,20 +160,22 @@ namespace AldenFall.Items
         private void Update()
         {
             age += Time.deltaTime;
-            if (age > Lifetime)
+
+            // Server owns lifetime despawn.
+            if (isServer && age > Lifetime)
             {
-                Destroy(gameObject);
+                NetworkServer.Destroy(gameObject);
                 return;
             }
 
-            // Bob + spin
+            if (!isClient) return;
+
+            // Cosmetic bob + spin + glow pulse (local only — position isn't networked past spawn).
             transform.position = new Vector3(
                 transform.position.x,
                 baseY + Mathf.Sin(Time.time * 2.2f) * 0.15f,
                 transform.position.z);
             transform.Rotate(Vector3.up, 55f * Time.deltaTime, Space.World);
-
-            // Pulse the glow slightly
             if (glow != null)
                 glow.intensity = 1.6f + Mathf.Sin(Time.time * 3f) * 0.35f;
 
@@ -122,9 +184,8 @@ namespace AldenFall.Items
 
         private void TryPickup()
         {
-            // Grace period so an item the player just dropped isn't instantly
-            // vacuumed back into the bag.
             if (age < pickupDelay) return;
+            if (Time.time < nextPickupRequestTime) return;
 
             if (player == null)
             {
@@ -136,11 +197,33 @@ namespace AldenFall.Items
             if (Vector3.Distance(transform.position, player.position + Vector3.up) > PickupRange)
                 return;
 
-            var inventory = player.GetComponent<Inventory>();
-            if (inventory != null && inventory.Add(itemId))
-            {
-                Destroy(gameObject);
-            }
+            // Ask the server to grant it. Retry a couple times a second until granted (the
+            // object despawns on success) — a denial (someone else grabbed it) despawns it too.
+            nextPickupRequestTime = Time.time + 0.4f;
+            CmdTryPickup();
+        }
+
+        [Command(requiresAuthority = false)]
+        private void CmdTryPickup(NetworkConnectionToClient sender = null)
+        {
+            if (claimed || sender == null || sender.identity == null) return;
+            if (age < pickupDelay) return;   // server-side grace re-check
+
+            // Range check against the requesting player (generous, for client/server lag).
+            float dist = Vector3.Distance(transform.position, sender.identity.transform.position + Vector3.up);
+            if (dist > PickupRange + 1.5f) return;
+
+            claimed = true;
+            TargetGrant(sender, itemId);
+            NetworkServer.Destroy(gameObject);
+        }
+
+        [TargetRpc]
+        private void TargetGrant(NetworkConnection target, string grantedItemId)
+        {
+            var playerObj = LocalPlayerLocator.Find();
+            var inventory = playerObj != null ? playerObj.GetComponent<Inventory>() : null;
+            inventory?.Add(grantedItemId);
         }
     }
 }

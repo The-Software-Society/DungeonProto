@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace DungeonProto.Player
+namespace AldenFall.Player
 {
     using Combat;
 
@@ -16,7 +16,7 @@ namespace DungeonProto.Player
 
         [Header("Components to Disable on Death")]
         [SerializeField] private PlayerController playerController;
-        [SerializeField] private PlayerCombat playerCombat;
+        [SerializeField] private Abilities.PlayerAbilities playerAbilities;
         [SerializeField] private TargetingSystem targetingSystem;
 
         private Health health;
@@ -39,8 +39,8 @@ namespace DungeonProto.Player
             if (playerController == null)
                 playerController = GetComponent<PlayerController>();
 
-            if (playerCombat == null)
-                playerCombat = GetComponent<PlayerCombat>();
+            if (playerAbilities == null)
+                playerAbilities = GetComponent<Abilities.PlayerAbilities>();
 
             if (targetingSystem == null)
                 targetingSystem = GetComponent<TargetingSystem>();
@@ -68,8 +68,8 @@ namespace DungeonProto.Player
             if (playerController != null)
                 playerController.enabled = false;
 
-            if (playerCombat != null)
-                playerCombat.enabled = false;
+            if (playerAbilities != null)
+                playerAbilities.enabled = false;
 
             if (targetingSystem != null)
             {
@@ -113,8 +113,8 @@ namespace DungeonProto.Player
             if (playerController != null)
                 playerController.enabled = true;
 
-            if (playerCombat != null)
-                playerCombat.enabled = true;
+            if (playerAbilities != null)
+                playerAbilities.enabled = true;
 
             if (targetingSystem != null)
                 targetingSystem.enabled = true;

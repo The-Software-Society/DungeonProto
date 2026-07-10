@@ -1,111 +1,73 @@
+using Mirror;
 using UnityEngine;
 
-namespace DungeonProto.Combat
+namespace AldenFall.Combat
 {
-    public class PlayerCombat : MonoBehaviour
+    /// <summary>
+    /// Client→server damage relay for the local player. Combat is server-authoritative
+    /// (Health.TakeDamage/ApplyKnockback only run on the server), so player attacks route
+    /// their hit through here: on the host it applies directly; on a client it sends a
+    /// Command and the server applies it, then the result replicates back via the Health
+    /// SyncVar + damage-number RPC.
+    ///
+    /// Damage is computed client-side and trusted by the server — fine for a co-op PvE
+    /// test. If PvP/competitive ever matters, recompute damage server-side from the
+    /// attacker's StatBlock instead.
+    /// </summary>
+    public class PlayerCombat : NetworkBehaviour
     {
-        [Header("Fireball (Key 1)")]
-        [SerializeField] private GameObject fireballPrefab;
-        [SerializeField] private Transform firePoint;
-        [SerializeField] private float fireballDamage = 25f;
-        [SerializeField] private float fireballSpeed = 12f;
-        [SerializeField] private float fireballCooldown = 1f;
-
-        [Header("Animation")]
-        [SerializeField] private Animator animator;
-
-        private TargetingSystem targetingSystem;
-        private float lastFireballTime;
-
-        // Animation hashes
-        private static readonly int AttackHash = Animator.StringToHash("Attack");
-        private static readonly int SpecialAttackHash = Animator.StringToHash("SpecialAttack");
-
-        private void Awake()
+        public void DealDamage(Health target, float damage, bool canMiss = false)
         {
-            targetingSystem = GetComponent<TargetingSystem>();
-
-            if (animator == null)
-                animator = GetComponentInChildren<Animator>();
-
-            if (firePoint == null)
-            {
-                // Create default fire point
-                var firePointObj = new GameObject("FirePoint");
-                firePoint = firePointObj.transform;
-                firePoint.SetParent(transform);
-                firePoint.localPosition = new Vector3(0, 1.2f, 0.5f);
-            }
+            if (target == null || damage <= 0f) return;
+            if (isServer)
+                target.TakeDamage(damage, gameObject, canMiss);
+            else if (isLocalPlayer)
+                CmdDealDamage(target.netIdentity, damage, canMiss);
         }
 
-        private void Update()
+        [Command]
+        private void CmdDealDamage(NetworkIdentity target, float damage, bool canMiss)
         {
-            HandleFireballInput();
+            if (target == null) return;
+            var health = target.GetComponent<Health>();
+            if (health != null)
+                health.TakeDamage(damage, gameObject, canMiss);
         }
 
-        private void HandleFireballInput()
+        public void ApplyKnockbackTo(Health target, Vector3 direction, float force)
         {
-            if (Input.GetKeyDown(KeyCode.Alpha1) || Input.GetKeyDown(KeyCode.Keypad1))
-            {
-                TryFireball();
-            }
+            if (target == null || force <= 0f) return;
+            if (isServer)
+                target.ApplyKnockback(direction, force);
+            else if (isLocalPlayer)
+                CmdKnockback(target.netIdentity, direction, force);
         }
 
-        private void TryFireball()
+        [Command]
+        private void CmdKnockback(NetworkIdentity target, Vector3 direction, float force)
         {
-            if (Time.time - lastFireballTime < fireballCooldown) return;
-            if (fireballPrefab == null) return;
-
-            lastFireballTime = Time.time;
-
-            // Trigger animation
-            if (animator != null)
-            {
-                animator.SetTrigger(SpecialAttackHash);
-            }
-
-            // Spawn fireball
-            SpawnFireball();
+            if (target == null) return;
+            var health = target.GetComponent<Health>();
+            if (health != null)
+                health.ApplyKnockback(direction, force);
         }
 
-        private void SpawnFireball()
+        // ---- loot drop relay: a client dropping an item asks the server to spawn the
+        // networked world drop so every player sees it (LootDrop.Spawn routes here). ----
+
+        public void RequestDrop(string itemId, Vector3 position, float pickupDelay)
         {
-            Vector3 spawnPos = firePoint != null ? firePoint.position : transform.position + Vector3.up;
-            GameObject fireball = Instantiate(fireballPrefab, spawnPos, Quaternion.identity);
-
-            var projectile = fireball.GetComponent<Projectile>();
-            if (projectile != null)
-            {
-                // Get direction - towards target if we have one, otherwise forward
-                Vector3 direction = transform.forward;
-                Transform target = null;
-
-                if (targetingSystem != null && targetingSystem.HasTarget)
-                {
-                    target = targetingSystem.CurrentTarget;
-                    direction = (target.position + Vector3.up - spawnPos).normalized;
-                }
-
-                projectile.Initialize(direction, gameObject, target);
-                projectile.SetDamage(fireballDamage);
-                projectile.SetSpeed(fireballSpeed);
-            }
+            if (string.IsNullOrEmpty(itemId)) return;
+            if (isServer)
+                Items.LootDrop.ServerSpawn(itemId, position, pickupDelay);
+            else if (isLocalPlayer)
+                CmdRequestDrop(itemId, position, pickupDelay);
         }
 
-        // Called by animation event if needed
-        public void OnAttackHit()
+        [Command]
+        private void CmdRequestDrop(string itemId, Vector3 position, float pickupDelay)
         {
-            // For melee attacks later
-        }
-
-        private void OnDrawGizmosSelected()
-        {
-            if (firePoint != null)
-            {
-                Gizmos.color = Color.red;
-                Gizmos.DrawWireSphere(firePoint.position, 0.1f);
-                Gizmos.DrawRay(firePoint.position, transform.forward * 2f);
-            }
+            Items.LootDrop.ServerSpawn(itemId, position, pickupDelay);
         }
     }
 }

@@ -11,6 +11,8 @@ namespace AldenFall.Editor
         private const string ScenePath = "Assets/Scenes/EmberfallDemo.unity";
         private const string WebBuildDir = "Builds/WebGL";
         private const string ServerBuildDir = "Builds/LinuxServer";
+        private const string MacBuildDir = "Builds/Mac";
+        private const string WinBuildDir = "Builds/Windows";
 
         [MenuItem("AldenFall/Multiplayer/Build WebGL Test", priority = 100)]
         public static void BuildWebGlTest()
@@ -62,6 +64,119 @@ namespace AldenFall.Editor
 
             var report = BuildPipeline.BuildPlayer(options);
             LogReport("Linux dedicated server", report);
+        }
+
+        // ---------------------------------------------------------------------
+        // Desktop builds — the dev source-of-truth (closest to the Play button)
+        // and the payload we hand to itch.io / Steam later. Same scene, same code
+        // as WebGL, just a faithful standalone target.
+        // ---------------------------------------------------------------------
+
+        [MenuItem("AldenFall/Multiplayer/Build Mac Desktop", priority = 110)]
+        public static void BuildMacDesktop()
+        {
+            EnsureSceneExists();
+            EnsureStandaloneIdentity();
+            if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Standalone, BuildTarget.StandaloneOSX))
+            {
+                Debug.LogError("Mac Build Support is not installed for Unity 6000.3.2f1. Add it in Unity Hub, then rerun.");
+                return;
+            }
+
+            Directory.CreateDirectory(MacBuildDir);
+            TrySetMacUniversal();
+
+            var options = new BuildPlayerOptions
+            {
+                scenes = new[] { ScenePath },
+                locationPathName = $"{MacBuildDir}/AldenFall.app",
+                target = BuildTarget.StandaloneOSX,
+                targetGroup = BuildTargetGroup.Standalone,
+                options = BuildOptions.None
+            };
+
+            var report = BuildPipeline.BuildPlayer(options);
+            LogReport("Mac desktop", report);
+        }
+
+        [MenuItem("AldenFall/Multiplayer/Build Windows Desktop", priority = 111)]
+        public static void BuildWindowsDesktop()
+        {
+            EnsureSceneExists();
+            EnsureStandaloneIdentity();
+            if (!BuildPipeline.IsBuildTargetSupported(BuildTargetGroup.Standalone, BuildTarget.StandaloneWindows64))
+            {
+                Debug.LogError("Windows Build Support is not installed for Unity 6000.3.2f1. Add it in Unity Hub, then rerun.");
+                return;
+            }
+
+            Directory.CreateDirectory(WinBuildDir);
+
+            var options = new BuildPlayerOptions
+            {
+                scenes = new[] { ScenePath },
+                locationPathName = $"{WinBuildDir}/AldenFall.exe",
+                target = BuildTarget.StandaloneWindows64,
+                targetGroup = BuildTargetGroup.Standalone,
+                options = BuildOptions.None
+            };
+
+            var report = BuildPipeline.BuildPlayer(options);
+            LogReport("Windows desktop", report);
+        }
+
+        [MenuItem("AldenFall/Multiplayer/Build All Desktop (Mac + Windows)", priority = 112)]
+        public static void BuildAllDesktop()
+        {
+            BuildMacDesktop();
+            BuildWindowsDesktop();
+        }
+
+        /// <summary>
+        /// Headless entrypoint for CI / terminal builds (run once Unity is closed):
+        /// Unity -batchmode -quit -projectPath . -executeMethod AldenFall.Editor.MultiplayerBuildTools.BuildAllDesktopCI
+        /// </summary>
+        public static void BuildAllDesktopCI()
+        {
+            BuildMacDesktop();
+            BuildWindowsDesktop();
+        }
+
+        /// <summary>Standalone macOS builds want a bundle identifier; fill one in if the project left it blank.</summary>
+        private static void EnsureStandaloneIdentity()
+        {
+            if (string.IsNullOrEmpty(PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.Standalone)))
+                PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Standalone, "io.thesoftwaresociety.aldenfall");
+        }
+
+        /// <summary>
+        /// Best-effort: make the macOS build a Universal binary (Intel + Apple Silicon) so a
+        /// friend's Mac runs it natively regardless of chip. Reflection-guarded so it never
+        /// breaks the build if the OSXStandalone API shifts between Unity versions.
+        /// </summary>
+        private static void TrySetMacUniversal()
+        {
+            try
+            {
+                System.Type settings = null;
+                foreach (var asm in System.AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    settings = asm.GetType("UnityEditor.OSXStandalone.UserBuildSettings");
+                    if (settings != null) break;
+                }
+                var archProp = settings?.GetProperty("architecture",
+                    System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                if (archProp != null)
+                {
+                    var universal = System.Enum.Parse(archProp.PropertyType, "x64ARM64");
+                    archProp.SetValue(null, universal);
+                    Debug.Log("macOS build architecture set to Universal (x64 + ARM64).");
+                }
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogWarning($"Could not force macOS Universal architecture (non-fatal, using default): {e.Message}");
+            }
         }
 
         private static void EnsureSceneExists()

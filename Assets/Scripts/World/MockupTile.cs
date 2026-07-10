@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace DungeonProto.World
+namespace AldenFall.World
 {
     [ExecuteInEditMode]
     public class MockupTile : MonoBehaviour
@@ -70,12 +70,17 @@ namespace DungeonProto.World
             {
                 TileType.Cobblestone => new Color(0.5f, 0.5f, 0.55f),      // Gray
                 TileType.Grass => new Color(0.3f, 0.6f, 0.3f),             // Green
-                TileType.Building => new Color(0.6f, 0.45f, 0.3f),         // Brown/Tan
-                TileType.Wall => new Color(0.3f, 0.3f, 0.35f),             // Dark Gray
-                TileType.Water => new Color(0.2f, 0.4f, 0.7f),             // Blue
-                TileType.Market => new Color(0.8f, 0.5f, 0.2f),            // Warm Orange
-                TileType.Path => new Color(0.55f, 0.45f, 0.35f),           // Light Brown
+                TileType.Building => new Color(0.55f, 0.4f, 0.3f),         // Brown/Tan
+                TileType.Wall => new Color(0.35f, 0.35f, 0.35f),           // Dark Gray
+                TileType.Water => new Color(0.2f, 0.4f, 0.8f),             // Blue
+                TileType.Market => new Color(0.9f, 0.6f, 0.2f),            // Warm Orange
+                TileType.Path => new Color(0.6f, 0.55f, 0.4f),             // Light Brown
                 TileType.WoodPlatform => new Color(0.5f, 0.35f, 0.2f),     // Wood Brown
+                TileType.Tavern => new Color(0.6f, 0.35f, 0.2f),           // Warm Brown
+                TileType.Temple => new Color(0.9f, 0.85f, 0.6f),           // Cream/Gold
+                TileType.Guild => new Color(0.4f, 0.3f, 0.5f),             // Purple
+                TileType.Bank => new Color(0.8f, 0.75f, 0.5f),             // Gold/Tan
+                TileType.Smithy => new Color(0.3f, 0.3f, 0.35f),           // Dark Metal
                 _ => Color.magenta
             };
         }

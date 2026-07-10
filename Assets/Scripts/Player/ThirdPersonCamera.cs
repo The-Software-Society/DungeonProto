@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace DungeonProto.Player
+namespace AldenFall.Player
 {
     public class ThirdPersonCamera : MonoBehaviour
     {
@@ -20,6 +20,7 @@ namespace DungeonProto.Player
         [SerializeField] private float minVerticalAngle = -20f;
         [SerializeField] private float maxVerticalAngle = 60f;
         [SerializeField] private float rotationSmoothTime = 0.05f;
+        [SerializeField] private float followSmoothTime = 0.045f;
 
         [Header("Collision")]
         [SerializeField] private LayerMask collisionLayers;
@@ -35,6 +36,13 @@ namespace DungeonProto.Player
         private float pitchVelocity;
         private float targetYaw;
         private float targetPitch;
+        private Vector3 followVelocity;
+
+        // RMB is shared with attack-move taps: only lock the cursor and orbit
+        // once the press has actually dragged, so a tap never flickers the cursor.
+        private Vector2 rmbDownPos;
+        private bool orbiting;
+        private const float OrbitDragThresholdPixels = 8f;
 
         private void Start()
         {
@@ -67,21 +75,38 @@ namespace DungeonProto.Player
 
         private void HandleInput()
         {
-            // Right-click to rotate camera (BG3 style)
+            // Right-click-drag to rotate camera (BG3 style). A quick tap is an
+            // attack-move order (TargetingSystem) and must not grab the cursor.
+            if (Input.GetMouseButtonDown(1))
+            {
+                rmbDownPos = Input.mousePosition;
+                orbiting = false;
+            }
+
             if (Input.GetMouseButton(1))
             {
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
+                if (!orbiting &&
+                    ((Vector2)Input.mousePosition - rmbDownPos).magnitude > OrbitDragThresholdPixels)
+                {
+                    orbiting = true;
+                }
 
-                float mouseX = Input.GetAxis("Mouse X") * rotationSensitivity;
-                float mouseY = Input.GetAxis("Mouse Y") * rotationSensitivity;
+                if (orbiting)
+                {
+                    Cursor.lockState = CursorLockMode.Locked;
+                    Cursor.visible = false;
 
-                targetYaw += mouseX;
-                targetPitch -= mouseY;
-                targetPitch = Mathf.Clamp(targetPitch, minVerticalAngle, maxVerticalAngle);
+                    float mouseX = Input.GetAxis("Mouse X") * rotationSensitivity;
+                    float mouseY = Input.GetAxis("Mouse Y") * rotationSensitivity;
+
+                    targetYaw += mouseX;
+                    targetPitch -= mouseY;
+                    targetPitch = Mathf.Clamp(targetPitch, minVerticalAngle, maxVerticalAngle);
+                }
             }
             else
             {
+                orbiting = false;
                 Cursor.lockState = CursorLockMode.None;
                 Cursor.visible = true;
             }
@@ -118,7 +143,9 @@ namespace DungeonProto.Player
 
             // Apply final position
             Vector3 finalPosition = targetPosition - (rotation * Vector3.forward * actualDistance);
-            transform.position = finalPosition;
+            transform.position = followSmoothTime > 0f
+                ? Vector3.SmoothDamp(transform.position, finalPosition, ref followVelocity, followSmoothTime)
+                : finalPosition;
             transform.rotation = rotation;
         }
 
@@ -129,10 +156,21 @@ namespace DungeonProto.Player
 
             if (Physics.SphereCast(targetPos, collisionBuffer, direction.normalized, out RaycastHit hit, distance, collisionLayers))
             {
-                return hit.distance - collisionBuffer;
+                return Mathf.Max(minDistance * 0.35f, hit.distance - collisionBuffer);
             }
 
             return currentDistance;
+        }
+
+        public void BeginDodgeAssist(Vector3 worldDirection)
+        {
+            worldDirection.y = 0f;
+            if (worldDirection.sqrMagnitude < 0.01f) return;
+
+            float dodgeYaw = Quaternion.LookRotation(worldDirection.normalized).eulerAngles.y;
+            targetYaw = Mathf.LerpAngle(targetYaw, dodgeYaw, 0.45f);
+            targetPitch = Mathf.Clamp(24f, minVerticalAngle, maxVerticalAngle);
+            targetDistance = Mathf.Clamp(defaultDistance * 0.82f, minDistance, maxDistance);
         }
 
         public void SetTarget(Transform newTarget)

@@ -1,9 +1,10 @@
 #if UNITY_EDITOR
 using UnityEngine;
 using UnityEditor;
+using UnityEngine.Rendering;
 using System.Collections.Generic;
 
-namespace DungeonProto.World.Editor
+namespace AldenFall.World.Editor
 {
     public class CityLayoutEditor : EditorWindow
     {
@@ -17,7 +18,7 @@ namespace DungeonProto.World.Editor
         private Material[] tileMaterials;
         private bool showGrid = true;
 
-        [MenuItem("DungeonProto/City Layout Editor")]
+        [MenuItem("AldenFall/Advanced/City Layout Editor (Manual)", priority = 110)]
         public static void ShowWindow()
         {
             GetWindow<CityLayoutEditor>("City Layout Editor");
@@ -34,6 +35,34 @@ namespace DungeonProto.World.Editor
             SceneView.duringSceneGui -= OnSceneGUI;
         }
 
+        private static Material CreateColoredMaterial(Color color)
+        {
+            Material mat = null;
+
+            // Primary: Clone from render pipeline default material
+            var rpAsset = GraphicsSettings.currentRenderPipeline;
+            if (rpAsset != null && rpAsset.defaultMaterial != null)
+            {
+                mat = new Material(rpAsset.defaultMaterial);
+            }
+
+            // Fallback
+            if (mat == null)
+            {
+                var shader = Shader.Find("Universal Render Pipeline/Lit");
+                if (shader == null) shader = Shader.Find("Lit");
+                if (shader == null) shader = Shader.Find("Unlit/Color");
+                mat = new Material(shader);
+            }
+
+            if (mat.HasProperty("_BaseColor"))
+                mat.SetColor("_BaseColor", color);
+            if (mat.HasProperty("_Color"))
+                mat.SetColor("_Color", color);
+
+            return mat;
+        }
+
         private void CreateDefaultMaterials()
         {
             tileMaterials = new Material[System.Enum.GetValues(typeof(TileType)).Length];
@@ -41,8 +70,7 @@ namespace DungeonProto.World.Editor
             int index = 0;
             foreach (TileType type in System.Enum.GetValues(typeof(TileType)))
             {
-                var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-                mat.color = MockupTile.GetDefaultColor(type);
+                var mat = CreateColoredMaterial(MockupTile.GetDefaultColor(type));
                 mat.name = $"Tile_{type}";
                 tileMaterials[index++] = mat;
             }

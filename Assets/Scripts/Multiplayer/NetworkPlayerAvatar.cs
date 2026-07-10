@@ -189,6 +189,7 @@ namespace AldenFall.Multiplayer
                 Enable<PlayerController>();
                 Enable<Combat.PlayerMelee>();
                 Enable<Abilities.PlayerAbilities>();
+                Enable<Abilities.ActionBar>();
                 Enable<Combat.TargetingSystem>();
                 Enable<Items.PlayerConsumables>();
                 Enable<FishingController>();
@@ -208,6 +209,7 @@ namespace AldenFall.Multiplayer
             Disable<PlayerController>();
             Disable<Combat.PlayerMelee>();
             Disable<Abilities.PlayerAbilities>();
+            Disable<Abilities.ActionBar>();  // remote avatars must NOT read our number keys
             Disable<Combat.TargetingSystem>();
             Disable<Items.PlayerConsumables>();
             Disable<FishingController>();
