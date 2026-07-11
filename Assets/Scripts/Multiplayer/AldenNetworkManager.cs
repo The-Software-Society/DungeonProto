@@ -55,10 +55,10 @@ namespace AldenFall.Multiplayer
 
         private static string NormalizeServerAddress(string serverAddress)
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
-            const string fallback = "aldenfall-test-server.onrender.com";
-#else
+#if UNITY_EDITOR
             const string fallback = "localhost";
+#else
+            const string fallback = "aldenfall-test-server.onrender.com";
 #endif
             if (string.IsNullOrWhiteSpace(serverAddress))
                 return fallback;

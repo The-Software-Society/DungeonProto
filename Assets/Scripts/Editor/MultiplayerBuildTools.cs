@@ -9,30 +9,9 @@ namespace AldenFall.Editor
     public static class MultiplayerBuildTools
     {
         private const string ScenePath = "Assets/Scenes/EmberfallDemo.unity";
-        private const string WebBuildDir = "Builds/WebGL";
         private const string ServerBuildDir = "Builds/LinuxServer";
         private const string MacBuildDir = "Builds/Mac";
         private const string WinBuildDir = "Builds/Windows";
-
-        [MenuItem("AldenFall/Multiplayer/Build WebGL Test", priority = 100)]
-        public static void BuildWebGlTest()
-        {
-            EnsureSceneExists();
-            Directory.CreateDirectory(WebBuildDir);
-
-            var options = new BuildPlayerOptions
-            {
-                scenes = new[] { ScenePath },
-                locationPathName = WebBuildDir,
-                target = BuildTarget.WebGL,
-                options = BuildOptions.None
-            };
-
-            var report = BuildPipeline.BuildPlayer(options);
-            LogReport("WebGL", report);
-            CopyVercelConfig(WebBuildDir);
-            PatchWebGlFullscreen(WebBuildDir);
-        }
 
         [MenuItem("AldenFall/Multiplayer/Build Linux Dedicated Server", priority = 101)]
         public static void BuildLinuxDedicatedServer()
@@ -68,8 +47,8 @@ namespace AldenFall.Editor
 
         // ---------------------------------------------------------------------
         // Desktop builds — the dev source-of-truth (closest to the Play button)
-        // and the payload we hand to itch.io / Steam later. Same scene, same code
-        // as WebGL, just a faithful standalone target.
+        // and the payload we hand to itch.io / Steam later — the closest thing to the
+        // editor Play button.
         // ---------------------------------------------------------------------
 
         [MenuItem("AldenFall/Multiplayer/Build Mac Desktop", priority = 110)]
@@ -85,6 +64,7 @@ namespace AldenFall.Editor
 
             Directory.CreateDirectory(MacBuildDir);
             TrySetMacUniversal();
+            ForcePlayerSubtarget();
 
             var options = new BuildPlayerOptions
             {
@@ -92,6 +72,7 @@ namespace AldenFall.Editor
                 locationPathName = $"{MacBuildDir}/AldenFall.app",
                 target = BuildTarget.StandaloneOSX,
                 targetGroup = BuildTargetGroup.Standalone,
+                subtarget = 0, // StandaloneBuildSubtarget.Player (not the dedicated server)
                 options = BuildOptions.None
             };
 
@@ -111,6 +92,7 @@ namespace AldenFall.Editor
             }
 
             Directory.CreateDirectory(WinBuildDir);
+            ForcePlayerSubtarget();
 
             var options = new BuildPlayerOptions
             {
@@ -118,6 +100,7 @@ namespace AldenFall.Editor
                 locationPathName = $"{WinBuildDir}/AldenFall.exe",
                 target = BuildTarget.StandaloneWindows64,
                 targetGroup = BuildTargetGroup.Standalone,
+                subtarget = 0, // StandaloneBuildSubtarget.Player (not the dedicated server)
                 options = BuildOptions.None
             };
 
@@ -140,6 +123,17 @@ namespace AldenFall.Editor
         {
             BuildMacDesktop();
             BuildWindowsDesktop();
+        }
+
+        /// <summary>
+        /// Desktop builds target the standalone PLAYER, not a dedicated server. The Linux
+        /// server build switches Unity's standalone subtarget to Server, so a later Mac/
+        /// Windows build otherwise tries to produce a (not-installed) dedicated server and
+        /// fails with "Dedicated Server support for X is not installed". Reset it to Player.
+        /// </summary>
+        private static void ForcePlayerSubtarget()
+        {
+            EditorUserBuildSettings.standaloneBuildSubtarget = StandaloneBuildSubtarget.Player;
         }
 
         /// <summary>Standalone macOS builds want a bundle identifier; fill one in if the project left it blank.</summary>
@@ -183,46 +177,6 @@ namespace AldenFall.Editor
         {
             if (!File.Exists(ScenePath))
                 ArenaBuilder.ImportMeshyAndBuildDemoHeadless();
-        }
-
-        private static void CopyVercelConfig(string buildDir)
-        {
-            const string source = "Deploy/Vercel/vercel.json";
-            string target = Path.Combine(buildDir, "vercel.json");
-            if (File.Exists(source))
-            {
-                File.Copy(source, target, true);
-                Debug.Log($"Copied Vercel config to {target}");
-            }
-        }
-
-        private static void PatchWebGlFullscreen(string buildDir)
-        {
-            string indexPath = Path.Combine(buildDir, "index.html");
-            if (File.Exists(indexPath))
-            {
-                string html = File.ReadAllText(indexPath);
-                html = html.Replace(
-                    "        // Desktop style: Render the game canvas in a window that can be maximized to fullscreen:\n" +
-                    "        canvas.style.width = \"960px\";\n" +
-                    "        canvas.style.height = \"600px\";",
-                    "        // Desktop style: fill the browser viewport.\n" +
-                    "        canvas.style.width = \"100vw\";\n" +
-                    "        canvas.style.height = \"100vh\";");
-                File.WriteAllText(indexPath, html);
-            }
-
-            string stylePath = Path.Combine(buildDir, "TemplateData", "style.css");
-            if (File.Exists(stylePath))
-            {
-                string css = File.ReadAllText(stylePath);
-                css = css.Replace("body { padding: 0; margin: 0 }", "html, body { width: 100%; height: 100%; padding: 0; margin: 0; overflow: hidden; background: #231F20 }");
-                css = css.Replace("#unity-container { position: absolute }", "#unity-container { position: fixed; width: 100%; height: 100% }");
-                css = css.Replace("#unity-container.unity-desktop { left: 50%; top: 50%; transform: translate(-50%, -50%) }", "#unity-container.unity-desktop { left: 0; top: 0; transform: none }");
-                css = css.Replace("#unity-canvas { background: #231F20 }", "#unity-canvas { width: 100%; height: 100%; background: #231F20 }");
-                css = css.Replace("#unity-footer { position: relative }", "#unity-footer { display: none }");
-                File.WriteAllText(stylePath, css);
-            }
         }
 
         private static void LogReport(string label, BuildReport report)

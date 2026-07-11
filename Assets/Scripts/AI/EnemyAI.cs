@@ -74,6 +74,7 @@ namespace AldenFall.AI
 
         [Header("Animation")]
         [SerializeField] private Animator animator;
+        private NetworkAnimator netAnimator;
 
         // State
         private EnemyState currentState = EnemyState.Idle;
@@ -171,6 +172,7 @@ namespace AldenFall.AI
 
             if (animator == null)
                 animator = GetComponentInChildren<Animator>();
+            netAnimator = GetComponent<NetworkAnimator>();
 
             if (agent != null)
             {
@@ -261,7 +263,7 @@ namespace AldenFall.AI
 
             // Stagger react — every character's controller wires its Hit clip to ChargeHit
             if (animator != null)
-                animator.SetTrigger(ChargeHitHash);
+                PlayTrigger(ChargeHitHash);
         }
 
         private void OnStatusRemoved(string id)
@@ -623,7 +625,7 @@ namespace AldenFall.AI
             lastAttackTime = Time.time;
 
             if (animator != null)
-                animator.SetTrigger(AttackHash);
+                PlayTrigger(AttackHash);
 
             Invoke(nameof(DealDamage), attackDuration * 0.5f);
             Invoke(nameof(EndAttack), attackDuration);
@@ -687,7 +689,7 @@ namespace AldenFall.AI
             }
 
             if (animator != null)
-                animator.SetTrigger(JumpAttackHash);
+                PlayTrigger(JumpAttackHash);
         }
 
         private void HandleJumpAttack()
@@ -787,7 +789,7 @@ namespace AldenFall.AI
             }
 
             if (animator != null)
-                animator.SetTrigger(ChargeWindupHash);
+                PlayTrigger(ChargeWindupHash);
         }
 
         private void HandleChargeAttack()
@@ -868,7 +870,7 @@ namespace AldenFall.AI
             if (animator != null)
             {
                 animator.SetBool(ChargingHash, false);
-                animator.SetTrigger(ChargeHitHash);
+                PlayTrigger(ChargeHitHash);
             }
 
             yield return new WaitForSeconds(chargeStunDuration);
@@ -914,7 +916,7 @@ namespace AldenFall.AI
             if (animator != null)
             {
                 animator.SetBool(IsJumpingHash, true);
-                animator.SetTrigger(JumpHash);
+                PlayTrigger(JumpHash);
             }
 
             // Calculate arc height based on horizontal distance
@@ -984,6 +986,15 @@ namespace AldenFall.AI
             animator.SetFloat(SpeedHash, speed, 0.1f, Time.deltaTime);
         }
 
+        // Animation triggers don't auto-replicate through NetworkAnimator (only float/int/bool
+        // params do). Route them through NetworkAnimator so remote clients see attack/death/jump.
+        // EnemyAI runs server-only, so this fires server → all clients (and locally on the host).
+        private void PlayTrigger(int hash)
+        {
+            if (netAnimator != null) netAnimator.SetTrigger(hash);
+            else if (animator != null) animator.SetTrigger(hash);
+        }
+
         private void OnDeath()
         {
             currentState = EnemyState.Dead;
@@ -1004,7 +1015,7 @@ namespace AldenFall.AI
             if (animator != null)
             {
                 animator.SetBool(IsDeadHash, true);
-                animator.SetTrigger(DeathHash);
+                PlayTrigger(DeathHash);
             }
 
             // Disable collider after short delay

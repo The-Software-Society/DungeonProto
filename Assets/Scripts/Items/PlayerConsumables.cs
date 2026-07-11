@@ -18,6 +18,7 @@ namespace AldenFall.Items
 
         private Inventory inventory;
         private Health health;
+        private PlayerCombat combat;
         private StatusSystem statuses;
         private bool eatTriggerChecked;
         private bool hasEatTrigger;
@@ -28,6 +29,7 @@ namespace AldenFall.Items
         {
             inventory = GetComponent<Inventory>();
             health = GetComponent<Health>();
+            combat = GetComponent<PlayerCombat>();
             statuses = GetComponent<StatusSystem>();
         }
 
@@ -54,7 +56,8 @@ namespace AldenFall.Items
             if (inventory == null || inventory.CountOf(itemId) <= 0) return false;
 
             inventory.Remove(itemId);
-            health.Heal(def.HealAmount);
+            if (combat != null) combat.Heal(def.HealAmount);   // server-authoritative heal
+            else health.Heal(def.HealAmount);
             lastLockout = Mathf.Max(0.1f, def.EatLockout);
 
             statuses?.Apply(new StatusEffect

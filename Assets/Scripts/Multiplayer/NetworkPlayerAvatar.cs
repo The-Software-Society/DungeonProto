@@ -178,6 +178,13 @@ namespace AldenFall.Multiplayer
             if (appearance == null)
                 appearance = GetComponent<CharacterAppearance>();
             appearance?.ApplyNetworkSelection(syncedGender, syncedSkinTone, syncedHairStyle, syncedHairColor);
+
+            // The body may have swapped (gender) — re-resolve cached Animators onto the now-active
+            // body so remote movement + cast animations drive the visible model, not a hidden one.
+            animator = GetComponentInChildren<Animator>();
+            GetComponent<Abilities.PlayerAbilities>()?.RefreshAnimator();
+            GetComponent<Combat.PlayerMelee>()?.RefreshAnimator();
+
             if (nameplate != null)
                 nameplate.text = syncedName;
         }

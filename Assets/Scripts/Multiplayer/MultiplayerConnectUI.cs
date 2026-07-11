@@ -85,9 +85,7 @@ namespace AldenFall.Multiplayer
             passwordField.contentType = TMP_InputField.ContentType.Password;
 
             Button(panel, "Next", new Vector2(160, -230), 120, ShowCharacterSelect);
-#if !UNITY_WEBGL
             Button(panel, "Host", new Vector2(300, -230), 100, Host);
-#endif
             statusText = Label(panel, "Status", "Enter the test password, then choose your character.", new Vector2(0, -286), new Vector2(500, 24), 12, new Color(0.72f, 0.68f, 0.78f));
         }
 
@@ -288,10 +286,13 @@ namespace AldenFall.Multiplayer
 
         private static string DefaultServer()
         {
-#if UNITY_WEBGL && !UNITY_EDITOR
-            return RenderServerHost;
-#else
+            // Shipped clients (Mac, Windows) connect to the live server by default —
+            // players never touch this. Only the editor defaults to localhost, for local
+            // Host testing.
+#if UNITY_EDITOR
             return "localhost";
+#else
+            return RenderServerHost;
 #endif
         }
 

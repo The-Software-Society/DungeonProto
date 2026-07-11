@@ -16,8 +16,15 @@ sending a WebGL link.
 1. **Make an itch.io account** and create a new project.
    - Set **Visibility → Draft** (or Restricted) so nothing is public.
    - Kind: **Downloadable**. Note the slug: `https://<user>.itch.io/<game>` → target is `<user>/<game>`.
-2. **Install Butler** (itch's upload CLI):
-   - `brew install butler`  (or get the itch app: https://itch.io/app — it bundles butler)
+2. **Install Butler** (itch's upload CLI). NOTE: `brew install butler` is the WRONG tool
+   (a Mac Cask app), and itch's old `broth.itch.ovh` host is dead — use `broth.itch.zone`:
+   ```bash
+   curl -L -o /tmp/butler.zip https://broth.itch.zone/butler/darwin-arm64/LATEST/archive/default
+   mkdir -p ~/.butler && unzip -o /tmp/butler.zip -d ~/.butler && chmod +x ~/.butler/butler
+   ln -sf ~/.butler/butler "$(brew --prefix)/bin/butler"
+   butler version   # verify
+   ```
+   (Windows/Linux: swap the channel to `windows-amd64` / `linux-amd64`.)
 3. **Log in:** `butler login` (opens a browser, authorizes this machine with your itch API key).
 
 ## Every update (repeatable loop)

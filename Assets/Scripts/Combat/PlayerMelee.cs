@@ -81,6 +81,14 @@ namespace AldenFall.Combat
                 health.OnAttacked.AddListener(OnAttacked);
         }
 
+        /// <summary>Re-resolve the Animator onto the active body after a gender/body swap.</summary>
+        public void RefreshAnimator()
+        {
+            animator = GetComponentInChildren<Animator>();
+            if (animator != null)
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        }
+
         private void OnDestroy()
         {
             if (health != null)

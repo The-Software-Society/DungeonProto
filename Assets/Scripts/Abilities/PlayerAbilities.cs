@@ -83,6 +83,16 @@ namespace AldenFall.Abilities
 
         // Number-key input lives in ActionBar — the only number-key reader.
 
+        /// <summary>Re-resolve the Animator onto the active body. After a gender/body swap on a
+        /// remote avatar the Awake-cached ref points at the now-inactive body, so casts (and
+        /// movement) would drive a hidden Animator.</summary>
+        public void RefreshAnimator()
+        {
+            animator = GetComponentInChildren<Animator>();
+            if (animator != null)
+                animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        }
+
         private void Update()
         {
             HandlePendingCast();
@@ -197,6 +207,16 @@ namespace AldenFall.Abilities
                 case AbilityKind.Taunt: CastTaunt(def); break;
             }
 
+            // Replicate this cast's visual + animation to other clients (cosmetic only —
+            // damage is already server-authoritative, so no double-damage).
+            if (combat != null)
+            {
+                Vector3 castOrigin = firePoint != null ? firePoint.position : transform.position + Vector3.up * 1.4f;
+                Vector3 castAim = target != null ? ((target.position + Vector3.up) - castOrigin).normalized : transform.forward;
+                var targetId = target != null ? target.GetComponentInParent<Mirror.NetworkIdentity>() : null;
+                combat.BroadcastCast(abilityId, castOrigin, castAim, targetId);
+            }
+
             mastery?.AddUse(abilityId);
             return true;
         }
@@ -237,8 +257,6 @@ namespace AldenFall.Abilities
         {
             if (target != null)
                 FaceInstantly(target.position);
-            if (animator != null)
-                animator.SetTrigger(SpecialAttackHash);
 
             Vector3 spawnPos = firePoint != null
                 ? firePoint.position
@@ -253,22 +271,81 @@ namespace AldenFall.Abilities
                 aimDirection = (aimPoint - spawnPos).normalized;
             }
 
-            float damage = CombatMath.SpellDamage(stats, def.BaseDamage)
-                         * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
+            SpawnProjectile(def, target, spawnPos, aimDirection, visualOnly: false);
+        }
+
+        /// <summary>
+        /// Spawns the fireball. Used by the local cast (deals damage) and by remote replay
+        /// (visualOnly = damage-free — the server already applied it). The SpecialAttack cast
+        /// animation plays either way, so remote players see the caster point and the fireball fly.
+        /// </summary>
+        private void SpawnProjectile(AbilityDef def, Transform target, Vector3 spawnPos, Vector3 aimDirection, bool visualOnly)
+        {
+            if (animator != null)
+                animator.SetTrigger(SpecialAttackHash);
 
             var fireball = new GameObject("RuntimeFireball");
             fireball.transform.SetPositionAndRotation(spawnPos, Quaternion.LookRotation(aimDirection));
 
             var projectile = fireball.AddComponent<Projectile>();
-
-            projectile.SetDamage(damage);
             projectile.SetSpeed(fireballSpeed);
-            projectile.SetOnHit(hit =>
+
+            if (visualOnly)
             {
-                skills?.AddXp(SkillType.Magic, damage * 1.2f);
-                ApplyDefStatus(def, hit);
-            });
+                projectile.SetVisualOnly(true);
+                projectile.SetDamage(0f);
+            }
+            else
+            {
+                float damage = CombatMath.SpellDamage(stats, def.BaseDamage)
+                             * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
+                projectile.SetDamage(damage);
+                projectile.SetOnHit(hit =>
+                {
+                    skills?.AddXp(SkillType.Magic, damage * 1.2f);
+                    ApplyDefStatus(def, hit);
+                });
+            }
+
             projectile.Initialize(aimDirection, gameObject, target);
+        }
+
+        /// <summary>
+        /// Cosmetic replay of another player's cast on THIS observer. Damage is already
+        /// server-authoritative, so this only spawns visuals + plays the cast animation.
+        /// Runs on the remote avatar's (disabled) PlayerAbilities via PlayerCombat's Rpc, so it
+        /// must avoid coroutines — coroutine-heavy effects fall back to the swing animation.
+        /// </summary>
+        public void ReplayRemoteCast(string abilityId, Vector3 origin, Vector3 aimDir, Transform target)
+        {
+            var def = AbilityDatabase.Get(abilityId);
+            if (def == null) return;
+
+            switch (def.Kind)
+            {
+                case AbilityKind.Projectile:
+                    SpawnProjectile(def, target, origin,
+                        aimDir.sqrMagnitude > 0.001f ? aimDir : transform.forward, visualOnly: true);
+                    break;
+                case AbilityKind.Nova:
+                    ReplayNovaVisual(def);
+                    break;
+                default:
+                    // Dash / melee / buff: the swing animation carries the read; dashes also
+                    // replicate their movement via NetworkTransform.
+                    if (animator != null)
+                        animator.SetTrigger(AttackHash);
+                    break;
+            }
+        }
+
+        private void ReplayNovaVisual(AbilityDef def)
+        {
+            if (animator != null)
+                animator.SetTrigger(def.Knockback < 0f ? SpecialAttackHash : AttackHash);
+            GroundRingEffect.Create(transform.position, def.Radius,
+                def.MeleeMultiplier > 0f ? new Color(1f, 0.8f, 0.35f) : new Color(0.45f, 0.7f, 1f));
+            HitEffect.CreateNovaImpact(transform.position + Vector3.up);
         }
 
         private void CastNova(AbilityDef def)

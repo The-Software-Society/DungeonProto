@@ -34,16 +34,19 @@ if command -v butler >/dev/null 2>&1; then BUTLER=butler; else
   exit 1
 fi
 
+# Don't ship Unity's Burst debug symbols or macOS finder cruft.
+IGNORE=(--ignore "*_BurstDebugInformation_DoNotShip" --ignore ".DS_Store")
+
 if [[ -d "$MAC_DIR" ]]; then
   echo "== pushing macOS =="
-  "$BUTLER" push "$MAC_DIR" "${TARGET}:mac" --userversion "$VERSION"
+  "$BUTLER" push "$MAC_DIR" "${TARGET}:mac" --userversion "$VERSION" "${IGNORE[@]}"
 else
   echo "skip macOS: $MAC_DIR not found (run the Mac build first)"
 fi
 
 if [[ -d "$WIN_DIR" ]]; then
   echo "== pushing Windows =="
-  "$BUTLER" push "$WIN_DIR" "${TARGET}:windows" --userversion "$VERSION"
+  "$BUTLER" push "$WIN_DIR" "${TARGET}:windows" --userversion "$VERSION" "${IGNORE[@]}"
 else
   echo "skip Windows: $WIN_DIR not found (run the Windows build first)"
 fi

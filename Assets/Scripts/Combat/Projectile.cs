@@ -35,14 +35,15 @@ namespace AldenFall.Combat
         private float homingElapsed;
         private Vector3 ballisticVelocity;
         private bool exploded;
+        private bool visualOnly;   // remote replay: fly + burst visually, but never touch Health
         private System.Action<Health> onHit;
 
         private void Awake()
         {
-            EnsureVisibleProjectile();
-            // Safety net: guarantee despawn even if Update stalls or Explode throws before
-            // it reaches Destroy — otherwise the glowing sphere orphans and never goes away.
+            // Safety net FIRST: guarantee despawn even if EnsureVisibleProjectile (or any later
+            // step) throws — otherwise the glow orphans forever (esp. the prefab magic bolt).
             Destroy(gameObject, maxLifetime + 0.5f);
+            EnsureVisibleProjectile();
         }
 
         public void Initialize(Vector3 fireDirection, GameObject projectileOwner, Transform homingTarget = null)
@@ -60,6 +61,8 @@ namespace AldenFall.Combat
         }
 
         public void SetDamage(float newDamage) => damage = newDamage;
+        /// <summary>Cosmetic replay of another player's projectile: flies + bursts, deals no damage.</summary>
+        public void SetVisualOnly(bool value) => visualOnly = value;
 
         /// <summary>
         /// Custom on-hit hook (status effects, ability XP). When set, the caller
@@ -74,7 +77,10 @@ namespace AldenFall.Combat
 
         private void EnsureVisibleProjectile()
         {
-            if (transform.Find("ProjectileGlow") != null)
+            // The Fireball prefab (magic bolt) already carries its own mesh + trail + light, so
+            // skip the runtime glow when the object is already visible — avoids fragile work
+            // (double TrailRenderer, Shader.Find in stripped builds) that could leave an orphan.
+            if (transform.Find("ProjectileGlow") != null || GetComponentInChildren<Renderer>() != null)
                 return;
 
             var glow = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -210,7 +216,7 @@ namespace AldenFall.Combat
             {
                 // Damage the directly hit entity (Health may be on a parent of the collider).
                 Health directHealth = directHit != null ? directHit.GetComponentInParent<Health>() : null;
-                if (directHealth != null && !IsOwner(directHealth.transform))
+                if (!visualOnly && directHealth != null && !IsOwner(directHealth.transform))
                 {
                     // Projectiles are local visuals; route the hit through the caster's
                     // server relay so damage is server-authoritative. Non-player owners

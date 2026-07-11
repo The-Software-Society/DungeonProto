@@ -1608,9 +1608,9 @@ namespace AldenFall.Editor
 
         private static Mirror.Transport CreatePreferredTransport(GameObject owner)
         {
-            // WebGL needs WebSockets. Mirror's SimpleWebTransport lives in its own
-            // assembly in current releases, so use reflection to avoid binding this
-            // editor script to a transport assembly name that may move.
+            // The Render dedicated server is reached over WebSocket/WSS, so use Mirror's
+            // SimpleWebTransport. It lives in its own assembly in current releases, so use
+            // reflection to avoid binding this editor script to a transport assembly name that may move.
             var candidates = new[]
             {
                 "Mirror.SimpleWeb.SimpleWebTransport, SimpleWebTransport",
@@ -1907,6 +1907,9 @@ namespace AldenFall.Editor
                 var na = mob.AddComponent<Mirror.NetworkAnimator>();
                 na.animator = anim;
                 na.clientAuthority = false;   // server owns the animation state
+                // MUST be ServerToClient or NetworkAnimator.SetTrigger early-returns on the
+                // server (no client owner) and enemy attack/death triggers never replicate.
+                na.syncDirection = Mirror.SyncDirection.ServerToClient;
             }
 
             // Authority gate: disables EnemyAI / NavMeshAgent / BossRageMode on pure clients.

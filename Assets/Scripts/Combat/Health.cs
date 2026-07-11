@@ -235,13 +235,25 @@ namespace AldenFall.Combat
         [ClientRpc]
         private void RpcDamageNumber(Vector3 position, float amount, bool fromPlayer)
         {
-            CombatEvents.RaiseDamage(position, amount, fromPlayer);
+            if (NearLocalPlayer(position))
+                CombatEvents.RaiseDamage(position, amount, fromPlayer);
         }
 
         [ClientRpc]
         private void RpcStatusText(Vector3 position, string text, Color color)
         {
-            CombatEvents.RaiseStatus(position, text, color);
+            if (NearLocalPlayer(position))
+                CombatEvents.RaiseStatus(position, text, color);
+        }
+
+        // ClientRpc has no interest management, so a hit anywhere reaches every client. Only
+        // show floating combat text for fights near the local player — otherwise you'd see
+        // other zones' damage numbers on your screen.
+        private static bool NearLocalPlayer(Vector3 worldPos)
+        {
+            var local = Multiplayer.LocalPlayerLocator.Find();
+            if (local == null) return true; // no local player resolved yet — don't suppress
+            return (local.transform.position - worldPos).sqrMagnitude <= 40f * 40f;
         }
 
         public void SetInvulnerable(bool invulnerable)
