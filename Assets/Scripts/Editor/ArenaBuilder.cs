@@ -357,28 +357,31 @@ namespace AldenFall.Editor
             ColliderBox("ForestSafety_NE", new Vector3(38f, 3f, ForestStartZ + 1.5f), new Vector3(64f, 6f, 3f), container, groundLayer);
             ColliderBox("ForestCatchFloor", new Vector3(0f, -8f, ForestEndZ + forestLen / 2), new Vector3(ForestHalfW * 2f, 1f, forestLen), container, groundLayer);
 
-            // DENSE trees — this is a forest, not a lawn with decorations
+            // DENSE trees — a real forest, not a lawn with decorations. Rotate
+            // through the Meshy tree kit (OakTree/BirchTree/DeadTree/PineTree),
+            // each auto-scaled by PlaceMeshyProp, and fall back to a cheap cube
+            // pine when an fbx hasn't downloaded yet.
             var trunkMat = Mat("TreeTrunk", new Color(0.30f, 0.21f, 0.13f), smoothness: 0.05f);
             var pineMat = Mat("PineLeaf", new Color(0.12f, 0.28f, 0.14f), smoothness: 0.08f);
+            string[] treeKit = { "OakTree", "BirchTree", "DeadTree", "PineTree" };
             int planted = 0;
-            for (int attempt = 0; attempt < 400 && planted < 110; attempt++)
+            for (int attempt = 0; attempt < 640 && planted < 180; attempt++)
             {
                 float x = Mathf.Lerp(-ForestHalfW + 5f, ForestHalfW - 5f, (float)rng.NextDouble());
                 float z = Mathf.Lerp(ForestEndZ + 6f, ForestStartZ - 6f, (float)rng.NextDouble());
-                if (Mathf.Abs(x - ForestPathX(z)) < 7f) continue;    // path stays clear
+                if (Mathf.Abs(x - ForestPathX(z)) < 6f) continue;    // winding path stays clear
                 bool blocked = false;
                 foreach (var c in clearings)
-                    if (Vector2.Distance(new Vector2(x, z), c) < 13f) { blocked = true; break; }
+                    if (Vector2.Distance(new Vector2(x, z), c) < 12f) { blocked = true; break; }
                 if (blocked) continue;
 
                 planted++;
-                float h = 5f + (float)rng.NextDouble() * 4f;
-                var meshyTree = planted <= 36
-                    ? PlaceMeshyProp(container, "PineTree", new Vector3(x, 0f, z),
-                        (float)rng.NextDouble() * 360f, h, groundLayer)
-                    : null;
+                float h = 5.5f + (float)rng.NextDouble() * 5f;
+                var meshyTree = PlaceMeshyProp(container, treeKit[planted % treeKit.Length],
+                    new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f, h, groundLayer);
                 if (meshyTree != null) continue;
 
+                // Cube-pine fallback while the tree fbx is still downloading
                 var trunk = Cube($"Pine{planted}_Trunk", new Vector3(x, h * 0.28f, z),
                     new Vector3(0.8f, h * 0.56f, 0.8f), trunkMat, container);
                 trunk.isStatic = true;
@@ -393,6 +396,37 @@ namespace AldenFall.Editor
                     new Vector3(h * 0.32f, h * 0.3f, h * 0.32f), pineMat, container);
                 canopyHigh.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 45f, 0);
                 canopyHigh.isStatic = true;
+            }
+
+            // Forest-floor dressing — bushes, mossy boulders, old stumps make the
+            // ground read as a lived-in forest rather than bare tiles.
+            string[] floorKit = { "ForestBush", "MossBoulder", "TreeStump" };
+            float[] floorHeights = { 1.1f, 1.4f, 0.9f };
+            var floorRockMat = Mat("ForestFloorRock", new Color(0.3f, 0.32f, 0.26f), smoothness: 0.08f);
+            int scattered = 0;
+            for (int attempt = 0; attempt < 340 && scattered < 72; attempt++)
+            {
+                float x = Mathf.Lerp(-ForestHalfW + 4f, ForestHalfW - 4f, (float)rng.NextDouble());
+                float z = Mathf.Lerp(ForestEndZ + 5f, ForestStartZ - 5f, (float)rng.NextDouble());
+                if (Mathf.Abs(x - ForestPathX(z)) < 5f) continue;
+                bool blocked = false;
+                foreach (var c in clearings)
+                    if (Vector2.Distance(new Vector2(x, z), c) < 9f) { blocked = true; break; }
+                if (blocked) continue;
+
+                scattered++;
+                int k = scattered % floorKit.Length;
+                var prop = PlaceMeshyProp(container, floorKit[k], new Vector3(x, 0f, z),
+                    (float)rng.NextDouble() * 360f, floorHeights[k], groundLayer);
+                if (prop == null)
+                {
+                    // graceful fallback: a small mossy rock if the fbx isn't present
+                    var rock = Cube($"ForestRock{scattered}", new Vector3(x, 0.25f, z),
+                        new Vector3(0.9f, 0.5f, 0.8f), floorRockMat, container);
+                    rock.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0);
+                    rock.isStatic = true;
+                    if (groundLayer >= 0) rock.layer = groundLayer;
+                }
             }
 
             // Glowing mushroom clusters — waypoints in the gloom
@@ -448,26 +482,38 @@ namespace AldenFall.Editor
             giverSO.FindProperty("radius").floatValue = 3.5f;
             giverSO.ApplyModifiedProperties();
 
-            // Body: robed capsule + a "sage" head sphere so he reads as a person.
-            var robeMat = SceneSetup.GetOrCreateMaterialAsset(new Color(0.32f, 0.26f, 0.42f), "AldricRobeMaterial");
-            var skinMat = SceneSetup.GetOrCreateMaterialAsset(new Color(0.82f, 0.66f, 0.52f), "AldricSkinMaterial");
+            // Real Meshy model when it's been imported; otherwise the robed
+            // capsule + "sage" head placeholder stands in.
+            var aldricModel = SceneSetup.InstantiateGeneratedVisual("Aldric", npcObj.transform);
+            if (aldricModel != null)
+            {
+                aldricModel.name = "Body";
+                aldricModel.transform.localPosition = Vector3.zero;   // feet at ground
+                aldricModel.transform.localRotation = Quaternion.identity;
+                if (groundLayer >= 0) SetLayerRecursive(aldricModel, groundLayer);
+            }
+            else
+            {
+                var robeMat = SceneSetup.GetOrCreateMaterialAsset(new Color(0.32f, 0.26f, 0.42f), "AldricRobeMaterial");
+                var skinMat = SceneSetup.GetOrCreateMaterialAsset(new Color(0.82f, 0.66f, 0.52f), "AldricSkinMaterial");
 
-            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-            body.name = "Body";
-            body.transform.SetParent(npcObj.transform);
-            body.transform.localPosition = new Vector3(0f, 1.0f, 0f);
-            body.transform.localScale = new Vector3(0.8f, 1.0f, 0.8f);
-            body.GetComponent<MeshRenderer>().sharedMaterial = robeMat;
-            if (groundLayer >= 0) body.layer = groundLayer;
+                var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                body.name = "Body";
+                body.transform.SetParent(npcObj.transform);
+                body.transform.localPosition = new Vector3(0f, 1.0f, 0f);
+                body.transform.localScale = new Vector3(0.8f, 1.0f, 0.8f);
+                body.GetComponent<MeshRenderer>().sharedMaterial = robeMat;
+                if (groundLayer >= 0) body.layer = groundLayer;
 
-            var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            head.name = "Head";
-            head.transform.SetParent(npcObj.transform);
-            head.transform.localPosition = new Vector3(0f, 2.05f, 0f);
-            head.transform.localScale = Vector3.one * 0.55f;
-            Object.DestroyImmediate(head.GetComponent<SphereCollider>());
-            head.GetComponent<MeshRenderer>().sharedMaterial = skinMat;
-            if (groundLayer >= 0) head.layer = groundLayer;
+                var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                head.name = "Head";
+                head.transform.SetParent(npcObj.transform);
+                head.transform.localPosition = new Vector3(0f, 2.05f, 0f);
+                head.transform.localScale = Vector3.one * 0.55f;
+                Object.DestroyImmediate(head.GetComponent<SphereCollider>());
+                head.GetComponent<MeshRenderer>().sharedMaterial = skinMat;
+                if (groundLayer >= 0) head.layer = groundLayer;
+            }
 
             // Warm marker light so he's easy to spot in the gloomy clearing.
             var lightObj = new GameObject("QuestLight");
@@ -490,10 +536,40 @@ namespace AldenFall.Editor
             var container = Child(root, "FishingAndCooking");
             int interactableLayer = LayerMask.NameToLayer("Interactable");
 
-            // ---- Fishing spot on the shallow east steps of the pond ----
+            // ---- Forest river: a translucent water channel beside the winding
+            // path. The old courtyard pond stays as scenery; skilling now lives
+            // out in a forest clearing (~x22..30, z-148).
+            {
+                var bankMat = Mat("RiverBank", new Color(0.34f, 0.27f, 0.19f), smoothness: 0.05f);
+                var bedMat = Mat("RiverBed", new Color(0.18f, 0.2f, 0.22f), smoothness: 0.3f);
+                var riverWaterMat = Mat("RiverWater", new Color(0.16f, 0.35f, 0.45f, 0.62f),
+                    smoothness: 0.95f, transparent: true, emission: new Color(0.03f, 0.08f, 0.1f));
+
+                Vector3 riverCenter = new Vector3(26f, 0f, -148f);
+                float riverLen = 48f, riverWidth = 7f;
+
+                var bed = Cube("River_Bed", riverCenter + Vector3.down * 0.35f,
+                    new Vector3(riverWidth + 1.4f, 0.7f, riverLen), bedMat, container);
+                bed.isStatic = true;
+                if (groundLayer >= 0) bed.layer = groundLayer;
+
+                var surface = Cube("River_Water", riverCenter + Vector3.up * WaterSurfaceY,
+                    new Vector3(riverWidth, 0.06f, riverLen), riverWaterMat, container);
+                Object.DestroyImmediate(surface.GetComponent<BoxCollider>());
+
+                foreach (float bx in new[] { riverWidth / 2f + 1f, -(riverWidth / 2f + 1f) })
+                {
+                    var bank = Cube("River_Bank", riverCenter + new Vector3(bx, 0.2f, 0f),
+                        new Vector3(1.6f, 0.5f, riverLen), bankMat, container);
+                    bank.isStatic = true;
+                    if (groundLayer >= 0) bank.layer = groundLayer;
+                }
+            }
+
+            // ---- Fishing spot on the west bank of the forest river ----
             var spotObj = new GameObject("FishingSpot");
             spotObj.transform.SetParent(container);
-            spotObj.transform.position = new Vector3(-12.6f, 0f, -26f);
+            spotObj.transform.position = new Vector3(22f, 0f, -148f);
             if (interactableLayer >= 0) spotObj.layer = interactableLayer;
 
             var spot = spotObj.AddComponent<World.FishingSpot>();
@@ -501,7 +577,7 @@ namespace AldenFall.Editor
             spotSO.FindProperty("prompt").stringValue = "Fish";
             spotSO.FindProperty("radius").floatValue = 4f;
             spotSO.FindProperty("bobberAnchor").vector3Value =
-                new Vector3(-17.5f, WaterSurfaceY + 0.05f, -26f); // a couple units into the pond
+                new Vector3(26f, WaterSurfaceY + 0.05f, -148f); // out over the river
             spotSO.ApplyModifiedProperties();
 
             // Little wooden marker so the spot reads at a glance: post + sign
@@ -524,10 +600,10 @@ namespace AldenFall.Editor
             board.GetComponent<MeshRenderer>().sharedMaterial =
                 SceneSetup.GetOrCreateMaterialAsset(new Color(0.5f, 0.36f, 0.2f), "FishSignBoardMaterial");
 
-            // ---- Campfire a few steps from the shore ----
+            // ---- Campfire a few steps back from the river bank ----
             var fireObj = new GameObject("Campfire");
             fireObj.transform.SetParent(container);
-            fireObj.transform.position = new Vector3(-10.5f, 0f, -21.5f);
+            fireObj.transform.position = new Vector3(17.5f, 0f, -143f);
             if (interactableLayer >= 0) fireObj.layer = interactableLayer;
 
             var fire = fireObj.AddComponent<World.Campfire>();
@@ -949,25 +1025,41 @@ namespace AldenFall.Editor
         /// </summary>
         private static void PlaceMeshyProps(Transform root, int groundLayer)
         {
-            // name, position, yaw, target height in meters
+            // The walled courtyard is now the town of Emberfall: buildings ring a
+            // central square (the brazier + TownWell), with market dressing in the
+            // southeast. Buildings sit against the E/W walls facing inward and stay
+            // clear of the N/S gate corridors (x≈0) and the SW pond (x<-14,z<-18).
+            // name, position, yaw (front faces inward), target largest-dim in meters.
             var placements = new (string name, Vector3 pos, float yaw, float height)[]
             {
-                ("WellFountain",  new Vector3(-10f, 0, 14f),  0f,   3.0f),
-                ("MarketStall",   new Vector3(24f, 0, -14f),  200f, 3.2f),
-                ("Statue",        new Vector3(0f, TerraceHeight, 36f), 180f, 3.5f),
-                ("TreasureChest", new Vector3(31f, 0, 2.5f),  245f, 0.9f),
-                ("PineTree",      new Vector3(-55f, 0, -62f), 35f,  6.4f),
+                // --- Buildings around the square ---
+                ("Cottage",        new Vector3(-32f, 0, 22f),   90f,  7.0f),  // NW, faces east
+                ("BlacksmithShop", new Vector3(-32f, 0, 2f),    90f,  7.5f),  // W,  faces east
+                ("TownHouse",      new Vector3(32f, 0, 22f),    270f, 8.0f),  // NE, faces west
+                ("Storehouse",     new Vector3(32f, 0, -18f),   270f, 8.0f),  // SE, faces west
+
+                // --- Town centre ---
+                ("TownWell",       new Vector3(-8f, 0, 13f),    0f,   3.0f),
+
+                // --- Market dressing (southeast, near the crate cluster) ---
+                ("MarketStall",    new Vector3(20f, 0, -14f),   200f, 3.2f),
+                ("MarketBarrel",   new Vector3(23f, 0, -11f),   0f,   1.2f),
+                ("MarketBarrel",   new Vector3(15.5f, 0, -16f), 40f,  1.2f),
+                ("WoodCrate",      new Vector3(18f, 0, -9.5f),  20f,  1.1f),
+                ("WoodCrate",      new Vector3(-14f, 0, 18f),   60f,  1.1f),
+                ("Signpost",       new Vector3(6f, 0, -26f),    200f, 2.2f),  // toward south gate
+                ("Signpost",       new Vector3(-6f, 0, 24f),    10f,  2.2f),  // toward terrace
             };
 
             Transform container = null;
             foreach (var p in placements)
             {
-                if (container == null) container = Child(root, "MeshyProps");
+                if (container == null) container = Child(root, "Town");
                 PlaceMeshyProp(container, p.name, p.pos, p.yaw, p.height, groundLayer);
             }
 
             if (container != null)
-                Debug.Log($"Placed {container.childCount} Meshy props.");
+                Debug.Log($"Placed {container.childCount} Meshy town props.");
         }
 
         /// <summary>
@@ -1811,11 +1903,13 @@ namespace AldenFall.Editor
         {
             // One prefab per dance style — spawners instantiate a shared
             // prefab, so per-goblin choreography means per-style prefabs.
+            // Cluster the fishing party on the west bank of the forest river,
+            // beside the FishingSpot/Campfire (~x22, z-148), so it reads together.
             var troupe = new (AI.DanceStyle style, Vector3 pos)[]
             {
-                (AI.DanceStyle.Modern, new Vector3(-30f, 0f, -16.2f)),
-                (AI.DanceStyle.Robot, new Vector3(-26.5f, 0f, -15.6f)),
-                (AI.DanceStyle.Twerk, new Vector3(-23f, 0f, -16.5f)),
+                (AI.DanceStyle.Modern, new Vector3(16f, 0f, -152f)),
+                (AI.DanceStyle.Robot, new Vector3(18.5f, 0f, -156f)),
+                (AI.DanceStyle.Twerk, new Vector3(14f, 0f, -157f)),
             };
             for (int i = 0; i < troupe.Length; i++)
             {

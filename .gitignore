@@ -95,3 +95,15 @@ bld/
 [Bb]in/
 [Ll]og/
 [Ll]ogs/
+
+# Meshy pipeline
+tools/meshy_state.json
+.meshy_key
+.env.local
+.env
+
+# Social media workspace (large video files)
+Social/
+
+# Generated Meshy 3D models (large, regenerable via tools/meshy_pipeline.py)
+Assets/Models/
