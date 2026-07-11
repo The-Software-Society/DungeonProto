@@ -88,6 +88,9 @@ namespace AldenFall.Cinematics
 
         private void Update()
         {
+            // The weapon-choice panel is a mandatory beat — no skipping past it.
+            if (UI.WeaponChoicePanel.IsOpen) return;
+
             if (IsPlaying && (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Escape)))
             {
                 if (playRoutine != null) StopCoroutine(playRoutine);
@@ -125,6 +128,7 @@ namespace AldenFall.Cinematics
                 case "move": return MoveStep(step);
                 case "face": FaceStep(step); return null;
                 case "wait": return WaitStep(step.seconds);
+                case "choice": return ChoiceStep();
                 default:
                     Debug.LogWarning($"CutsceneDirector: unknown step '{step.type}'");
                     return null;
@@ -232,6 +236,19 @@ namespace AldenFall.Cinematics
         private IEnumerator WaitStep(float seconds)
         {
             yield return new WaitForSeconds(seconds);
+        }
+
+        /// <summary>
+        /// Aldric's gift: raise the starter-weapon panel over the player (the
+        /// director lives on the player object) and hold the scene here until a
+        /// path is picked. The panel grants + equips and persists the choice.
+        /// </summary>
+        private IEnumerator ChoiceStep()
+        {
+            bool chosen = false;
+            UI.WeaponChoicePanel.Present(gameObject, () => chosen = true);
+            while (!chosen)
+                yield return null;
         }
 
         // ==================== CONTROL / RESTORE ====================

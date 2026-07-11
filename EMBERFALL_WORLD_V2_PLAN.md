@@ -70,3 +70,58 @@ the Floor-2 stairway is revealed (sealed; sequel hook). Text cutscenes at each b
 - No invisible walls; swimmable water needs a Water-layer trigger volume (PlayerController swim
   enters at depth ≥1.3m). Server-authoritative damage via Health. ClientRpc has no interest mgmt.
 - Keep Aldric intro + tutorial + rescue + fishing + forge systems working against the new map.
+
+---
+# Phase 2.5 — Jon's walk-through feedback (2026-07-11) + fix plan
+
+Jon walked the deployed V2 world. Verdict: rough first cut — flat tiled box in empty sky, invisible
+walls everywhere, core combat bugs. Full feedback (grouped):
+
+## Core combat / systems bugs (make it PLAYABLE)
+- **XP must be integral to damage, not hardcoded.** Auto-attacking a mob you didn't select gives no
+  XP; if a mob hits you first and you retaliate you get no XP; and a mob that takes NO damage still
+  grants XP on attack (image 25 gate goblin). Fix: XP granted server-side when your attack actually
+  DEALS damage to an enemy Health, attributed to the attacker. No XP-on-swing / XP-on-target-select.
+- **Enemies don't aggro / can't be damaged.** Non-dancing goblins/mobs should all be aggressive.
+  Some mobs never aggro and never take damage (image 25). Fix aggro + damageability for all combat
+  mobs; ensure decorative townsfolk are NOT targetable damage-dummies.
+- **Soot/ember must NOT damage; lava MUST.** Currently dying just standing in the soot area; walked
+  through visible lava with 0 damage (lava hazard mis-placed / not on the visible lava).
+
+## World realism (make it a REAL place, not a floating box)
+- Natural boundaries: **mountains/hills/cliffs enclosing the map**, NOT invisible walls or gray
+  floor→sky emptiness (img 20). No holes / falling out of the world (img 16). Immersive depth.
+- **Gradual biome transitions** — no stark straight line between grass and soot (img 17); lush→
+  soot→ember→lava should blend.
+- **Trees: trunk-only collision.** Invisible tree boxes block walking AND magic projectiles (img 15,
+  22); deep forest unnavigable. Only be blocked if you actually touch the trunk; magic passes through.
+- **Grounded spawns** — mobs floating on invisible floor / in sky (img 23); ground everything.
+- **Realistic lava** — currently a flat yellow square that flickers an orange border on movement.
+  Make it molten/glowing/animated.
+- **Natural water** — river looks man-made and dead-ends (img 19); lean into rivers leading off-map
+  to WATERFALLS at the edges. Lake has man-made stairs (img 21) — use mud/slopes; be able to FISH
+  ANYWHERE in the lake, even while swimming. (Rivers currently not even visible per Jon.)
+
+## Content / design
+- **City too small + empty** — a flat square of randomly-placed things, no structure/depth. Bigger,
+  denser, real districts.
+- **Aldric is NOT in the city.** He's the homeless old man — was someone great, fled to the forest
+  for peace, becomes the player's mentor. Put him in a FOREST glade.
+- **Intro flow:** first load = cutscene meeting Aldric, talk/learn, then CHOOSE first weapon
+  (main magic OR main melee). Player currently spawns in the soot forest with no intro.
+- **Magic depth:** magic only has Fireball + Ember Nova. Add more (another single-target ranged, a
+  ranged AoE, DoT/utility) so a magic-only build has depth; balance vs melee.
+- **More mobs** — forest feels empty.
+- **Dancing goblins belong by the LAKE, not the soot area.** Twerker STILL missing (only Modern
+  "hand pump" + Robot show). Want MANY more goofy fishing-friendly goblins by the lake.
+- **Volcano dungeon unplayable** — one empty room then blocked off; can't explore.
+- Odd/incomplete pockets (img 18); clipping/tweak-through (img 24).
+
+## Phase-2.5 execution (staged; iterate per deploy)
+- **Round 1 (now):** (A) combat integrity [XP-on-damage + aggro + damageability]; (B) world realism
+  [mountain-ring boundaries + no void/holes + gradual biome gradient + trunk-only tree colliders +
+  grounded spawns + realistic lava & correct hazard placement + natural lake-mud banks + rivers→
+  waterfalls + dancing goblins to lake + twerker + more + player spawn + Aldric forest glade + more
+  forest mobs]; (C) magic ability depth; (D) intro cutscene + starter-weapon choice + Aldric hermit.
+  Keep the valley floor flat (mountains ring it) so existing placement stays grounded.
+- **Round 2:** bigger structured city; playable multi-room volcano dungeon; fish-anywhere; polish.

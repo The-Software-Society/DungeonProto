@@ -59,9 +59,17 @@ namespace AldenFall.Editor
             BuildEmberOrcWarcamp(root, groundLayer);
             BuildEmberApproach(root, groundLayer);
             BuildEmberfallVolcano(root, groundLayer);
+            BuildAldricGlade(root, groundLayer);       // player spawn + hermit mentor (N of city)
             BuildEmberfallSystems(root, groundLayer);
-            BuildGlobalSafety(root, groundLayer);      // resized to the new world bounds
+            BuildGlobalSafety(root, groundLayer);      // mountain ring + underfill + catch floor
         }
+
+        // ---- Aldric's forest glade (player spawn) — a lush clearing N of the city ----
+        private static readonly Vector2 GladeCenter = new Vector2(0f, 90f);
+        private const float GladeRadius = 20f;
+
+        private static bool InGlade(float x, float z)
+            => Vector2.Distance(new Vector2(x, z), GladeCenter) < GladeRadius + 3f;
 
         // ==================== REGION PREDICATES ====================
 
@@ -85,6 +93,18 @@ namespace AldenFall.Editor
         private static bool InFeederRiver(float x, float z)
             => z <= 252f && z >= LakeCenter.z + LakeHalf - 6f
                && Mathf.Abs(x - FeederRiverX(z)) < 11f;
+
+        /// <summary>
+        /// How charred/sooty the ground is at (x,z), 0 (lush) → 1 (volcano rim). A WIDE
+        /// gradient toward the south so lush forest blends into the ember approach with no
+        /// stark line (img 17); tapered at the sides so the far E/W forest stays green.
+        /// </summary>
+        private static float SootAmount(float x, float z)
+        {
+            float byZ = Mathf.InverseLerp(30f, ApproachSouthZ, z);          // 0 at z>=30 → 1 at volcano
+            float side = Mathf.Clamp01((Mathf.Abs(x) - (ApproachHalfW + 55f)) / 70f);
+            return Mathf.Clamp01(byZ * (1f - 0.7f * side));
+        }
 
         // ==================== GROUND (forest ring + approach) ====================
 
@@ -116,14 +136,17 @@ namespace AldenFall.Editor
                     float ring = Mathf.Sqrt(cx * cx + cz * cz);
                     if (!approach && ring > ringOuter) continue; // trim the ring to a disc
 
+                    // Gradual lush → soot → ember gradient (no stark diagonal line, img 17):
+                    // interpolate the tile colour across a wide band toward the volcano.
+                    float soot = SootAmount(cx, cz);
                     Material mat;
-                    if (approach)
+                    if (soot > 0.06f)
                     {
-                        // Sooty gradient — the ground darkens as it nears the volcano.
-                        float t = Mathf.InverseLerp(ApproachNorthZ, ApproachSouthZ, cz);
-                        mat = Mat($"Soot{Mathf.RoundToInt(t * 5f)}",
-                            Color.Lerp(new Color(0.26f, 0.24f, 0.18f), new Color(0.12f, 0.09f, 0.08f), t),
-                            smoothness: 0.03f);
+                        Color lush = new Color(0.21f, 0.34f, 0.17f);
+                        Color ash = new Color(0.11f, 0.085f, 0.075f);
+                        int bucket = Mathf.RoundToInt(soot * 6f);
+                        mat = Mat($"EmberBlend{bucket}",
+                            Color.Lerp(lush, ash, bucket / 6f), smoothness: 0.03f);
                     }
                     else
                     {
@@ -159,6 +182,8 @@ namespace AldenFall.Editor
         {
             var trunkMat = Mat("EmberTreeTrunk", new Color(0.30f, 0.21f, 0.13f), smoothness: 0.05f);
             var leafMat = Mat("EmberPineLeaf", new Color(0.13f, 0.29f, 0.15f), smoothness: 0.08f);
+            var charTrunk = Mat("EmberCharTrunk", new Color(0.15f, 0.11f, 0.09f), smoothness: 0.03f);
+            var charLeaf = Mat("EmberCharLeaf", new Color(0.17f, 0.13f, 0.10f), smoothness: 0.03f);
             string[] kit = { "OakTree", "BirchTree", "PineTree", "DeadTree" };
 
             // Camps + POIs the trees must NOT bury.
@@ -169,6 +194,8 @@ namespace AldenFall.Editor
                 new Vector2(-110f, -120f),// orc warcamp SW
                 new Vector2(LakeCenter.x, LakeCenter.z), // lake
                 new Vector2(0f, 195f),    // deep dark woods handled separately
+                GladeCenter,              // Aldric's glade (player spawn)
+                new Vector2(0f, 68f),     // the open path from the glade to the north gate
             };
 
             int planted = 0;
@@ -190,10 +217,35 @@ namespace AldenFall.Editor
 
                 planted++;
                 float h = 6f + (float)rng.NextDouble() * 5f;
-                if (PlaceMeshyProp(container, kit[planted % kit.Length], new Vector3(x, 0f, z),
-                        (float)rng.NextDouble() * 360f, h, groundLayer) != null)
+                // Transitional forest: healthy trees give way to charred/dead trees as the
+                // ground sooties toward the volcano — a gradient, not a seam.
+                float soot = SootAmount(x, z);
+                string species = soot > 0.35f && rng.NextDouble() < soot ? "DeadTree" : kit[planted % kit.Length];
+                if (PlaceMeshyProp(container, species, new Vector3(x, 0f, z),
+                        (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk) != null)
                     continue;
-                PlaceCubePine(container, planted, x, z, h, trunkMat, leafMat, groundLayer);
+                var tm = soot > 0.4f ? charTrunk : trunkMat;
+                var lm = soot > 0.4f ? charLeaf : leafMat;
+                PlaceCubePine(container, planted, x, z, h, tm, lm, groundLayer);
+            }
+
+            // Progressive soot patches across the blend band (flat dark decals, no collider)
+            // so the lush→ember transition reads as scattered scorching, not a hard edge.
+            var patchMat = Mat("SootPatch", new Color(0.12f, 0.10f, 0.09f), smoothness: 0.02f);
+            for (int attempt = 0; attempt < 500; attempt++)
+            {
+                float x = Mathf.Lerp(-140f, 140f, (float)rng.NextDouble());
+                float z = Mathf.Lerp(-150f, 40f, (float)rng.NextDouble());
+                float soot = SootAmount(x, z);
+                if (soot < 0.12f || soot > 0.85f) continue;         // only the transition band
+                if ((float)rng.NextDouble() > soot) continue;        // denser toward the volcano
+                if (InCityFootprint(x, z) || InGlade(x, z)) continue;
+                float s = 2.5f + (float)rng.NextDouble() * 4f;
+                var patch = Cube($"Soot_{attempt}", new Vector3(x, 0.02f, z),
+                    new Vector3(s, 0.04f, s * (0.7f + (float)rng.NextDouble() * 0.6f)), patchMat, container);
+                patch.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f);
+                patch.isStatic = true;
+                Object.DestroyImmediate(patch.GetComponent<BoxCollider>());
             }
         }
 
@@ -209,9 +261,11 @@ namespace AldenFall.Editor
                 new Vector3(h * 0.5f, h * 0.38f, h * 0.5f), leafMat, container);
             low.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 45f, 0);
             low.isStatic = true;
+            Object.DestroyImmediate(low.GetComponent<BoxCollider>());   // walk through canopy
             var high = Cube($"Pine{id}_High", new Vector3(x, h * 0.92f, z),
                 new Vector3(h * 0.32f, h * 0.3f, h * 0.32f), leafMat, container);
             high.isStatic = true;
+            Object.DestroyImmediate(high.GetComponent<BoxCollider>());  // walk through canopy
         }
 
         // ==================== CITY ====================
@@ -301,9 +355,9 @@ namespace AldenFall.Editor
             PlaceTownsfolk(container, new Vector3(28f, 0f, -22f), new Color(0.5f, 0.35f, 0.28f), groundLayer);  // forge
 
             // ---- NPCs ----
-            // Aldric (q_intro giver) — SW quad by the plaza, near the player spawn.
-            BuildQuestGiver(container, new Vector3(5f, 0f, -9f), groundLayer);
-            // Worried Mother (q_rescue giver, npcId "townsperson") — kept at (10,0,-6)
+            // Aldric is NOT in the city — he's the old hermit in the forest glade north of
+            // town (see BuildAldricGlade), where the intro cutscene meets him. Only the
+            // Worried Mother (q_rescue giver, npcId "townsperson") lives in the city — kept at (10,0,-6)
             // so the existing q_rescue_start/complete cutscenes still frame correctly.
             BuildRescueGiver(container, groundLayer);
         }
@@ -479,64 +533,70 @@ namespace AldenFall.Editor
             mod.overrideArea = true;
             mod.area = 1;
 
-            var basinMat = Mat("LakeBasin", new Color(0.18f, 0.22f, 0.24f), smoothness: 0.3f);
-            var waterMat = Mat("LakeWater", new Color(0.15f, 0.34f, 0.44f, 0.62f),
-                smoothness: 0.95f, transparent: true, emission: new Color(0.03f, 0.08f, 0.1f));
+            var mudMat = Mat("LakeMud", new Color(0.26f, 0.20f, 0.13f), smoothness: 0.05f);
+            var basinMat = Mat("LakeBasin", new Color(0.16f, 0.19f, 0.20f), smoothness: 0.25f);
+            // Brighter, more opaque water so the lake + rivers actually READ (Jon saw none).
+            var waterMat = Mat("LakeWater", new Color(0.13f, 0.40f, 0.52f, 0.82f),
+                smoothness: 0.95f, transparent: true, emission: new Color(0.05f, 0.15f, 0.19f));
 
             Vector3 c = LakeCenter;
-            float w = LakeHalf * 2f, depth = WaterSurfaceY - LakeBedY;
+            float w = LakeHalf * 2f, depth = WaterSurfaceY - LakeBedY;   // depth ~2.7m (>1.8 swim)
+            const float openHalf = 30f;                                  // deep swimmable core half-width
 
-            // Bed (solid, Ground layer — a swimmer who touches bottom stands on it).
-            var bed = Cube("Lake_Bed", c + Vector3.up * (LakeBedY - 0.35f), new Vector3(w + 2f, 0.7f, w + 2f), basinMat, container);
+            // Deep bed under the open water (solid, Ground layer — touch bottom and you stand).
+            var bed = Cube("Lake_Bed", c + Vector3.up * (LakeBedY - 0.35f),
+                new Vector3(openHalf * 2f + 4f, 0.7f, openHalf * 2f + 4f), basinMat, container);
             bed.isStatic = true;
             if (groundLayer >= 0) bed.layer = groundLayer;
 
-            // Basin side walls on N/W/NW; the SE side gets wade-in steps toward the city.
-            void SideWall(string n, Vector3 pos, Vector3 size)
+            // Sloped MUD banks all around (no man-made steps, img 21): each side shelves
+            // gently from the surrounding ground (y=0) down to the deep bed. Banks span the
+            // full width so they overlap at the corners (no gaps). Tilt sign puts the OUTER
+            // edge at ground level and the INNER edge at the bed.
+            float run = LakeHalf - openHalf;                  // horizontal shelf run (~14m)
+            float slabLen = Mathf.Sqrt(run * run + depth * depth) + 1.5f;
+            float tilt = Mathf.Atan2(depth, run) * Mathf.Rad2Deg;  // ~10-11°
+            float mid = (openHalf + LakeHalf) / 2f, midY = (LakeBedY + WaterSurfaceY) / 2f;
+            void MudBank(string n, Vector3 pos, Vector3 size, Vector3 euler)
             {
-                var wall = Cube(n, pos, size, basinMat, container);
-                wall.isStatic = true;
-                if (groundLayer >= 0) wall.layer = groundLayer;
+                var b = Cube(n, pos, size, mudMat, container);
+                b.transform.rotation = Quaternion.Euler(euler);
+                b.isStatic = true;
+                if (groundLayer >= 0) b.layer = groundLayer;
             }
-            float wy = LakeBedY / 2f;
-            SideWall("Lake_N", c + new Vector3(0, wy, LakeHalf + 0.25f), new Vector3(w + 1f, depth, 0.5f));
-            SideWall("Lake_W", c + new Vector3(-LakeHalf - 0.25f, wy, 0), new Vector3(0.5f, depth, w + 1f));
-            SideWall("Lake_S", c + new Vector3(0, wy, -LakeHalf - 0.25f), new Vector3(w + 1f, depth, 0.5f));
+            MudBank("Lake_BankE", c + new Vector3(mid, midY, 0f), new Vector3(slabLen, 0.6f, w + 2f), new Vector3(0f, 0f, tilt));
+            MudBank("Lake_BankW", c + new Vector3(-mid, midY, 0f), new Vector3(slabLen, 0.6f, w + 2f), new Vector3(0f, 0f, -tilt));
+            MudBank("Lake_BankN", c + new Vector3(0f, midY, mid), new Vector3(w + 2f, 0.6f, slabLen), new Vector3(-tilt, 0f, 0f));
+            MudBank("Lake_BankS", c + new Vector3(0f, midY, -mid), new Vector3(w + 2f, 0.6f, slabLen), new Vector3(tilt, 0f, 0f));
 
-            // Wade-in steps on the EAST bank (toward the city) — grade the bank down.
-            int steps = 6;
-            for (int i = 0; i < steps; i++)
-            {
-                float top = LakeBedY + (i + 1) * (depth / steps);
-                float h = top - (LakeBedY - 0.4f);
-                var stp = Cube($"Lake_Step{i}",
-                    c + new Vector3(LakeHalf - (steps - i) * 1.4f + 0.7f, top - h / 2f, 0f),
-                    new Vector3(1.4f, h, w * 0.7f), basinMat, container);
-                stp.isStatic = true;
-                if (groundLayer >= 0) stp.layer = groundLayer;
-            }
-
-            // Water trigger volume (Water layer) — swim detection is depth-based.
+            // Water trigger volume (Water layer) — only the DEEP core, so you swim in the
+            // middle and wade the mud shallows. Swim detection is depth-based.
             var vol = new GameObject("Lake_WaterVolume");
             vol.transform.SetParent(container);
             vol.transform.position = c + Vector3.up * ((WaterSurfaceY + LakeBedY) / 2f);
             var vbox = vol.AddComponent<BoxCollider>();
             vbox.isTrigger = true;
-            vbox.size = new Vector3(w, depth, w);
+            vbox.size = new Vector3(openHalf * 2f, depth, openHalf * 2f);
             if (waterLayer >= 0) vol.layer = waterLayer;
 
-            // Translucent surface (collider stripped so players/props pass in).
+            // Translucent surface spans the WHOLE lake (deep core + shallow mud shore) so it
+            // reads as a full body of water. Collider stripped so players/props pass in.
             var surf = Cube("Lake_Surface", c + Vector3.up * WaterSurfaceY, new Vector3(w - 0.4f, 0.06f, w - 0.4f), waterMat, container);
             Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
 
-            // Feeder river flowing in from the north.
-            BuildFeederRiver(container, groundLayer, waterLayer, basinMat, waterMat);
+            // Feeder river winding in from the northern mountains (now with a source waterfall).
+            BuildFeederRiver(container, groundLayer, waterLayer, mudMat, waterMat);
 
-            // Fish schools — visible ambient shoals in the lake + the river.
+            // Two waterfalls: the feeder spills IN from the north mountains; the lake overflows
+            // OUT at its NW corner off the map — both at the enclosing mountain ring.
+            BuildWaterfall(container, new Vector3(FeederRiverX(250f), 0f, 251f), 15f, 12f, 180f, waterMat);
+            BuildLakeOutflow(container, groundLayer, waterLayer, mudMat, waterMat);
+
+            // Fish schools — visible ambient shoals in the deep lake + the feeder river.
             var lakeFish = new GameObject("Lake_FishSchool");
             lakeFish.transform.SetParent(container);
             lakeFish.AddComponent<World.FishSchool>().Configure(
-                c + Vector3.up * (WaterSurfaceY - 0.8f), new Vector3(LakeHalf - 6f, 1.1f, LakeHalf - 6f), 14, WaterSurfaceY);
+                c + Vector3.up * (WaterSurfaceY - 0.8f), new Vector3(openHalf - 4f, 1.1f, openHalf - 4f), 16, WaterSurfaceY);
 
             var riverFish = new GameObject("River_FishSchool");
             riverFish.transform.SetParent(container);
@@ -545,6 +605,66 @@ namespace AldenFall.Editor
 
             // Fishing spot on the dry east bank + campfire a few steps back.
             BuildLakeFishingAndCooking(container, groundLayer, interactableLayer);
+        }
+
+        /// <summary>A vertical falling water sheet + foam spray + mist glow, poured at the
+        /// mountain-ring edge. <paramref name="basePos"/> is the BASE; the sheet rises
+        /// <paramref name="height"/> above it.</summary>
+        private static void BuildWaterfall(Transform container, Vector3 basePos, float height, float width, float yaw, Material waterMat)
+        {
+            var foamMat = Mat("WaterFoam", new Color(0.86f, 0.9f, 0.94f), smoothness: 0.15f,
+                emission: new Color(0.22f, 0.26f, 0.30f));
+            Quaternion rot = Quaternion.Euler(0f, yaw, 0f);
+
+            var sheet = Cube("Fall_Sheet", basePos + Vector3.up * (height / 2f),
+                new Vector3(width, height, 0.6f), waterMat, container);
+            sheet.transform.rotation = rot;
+            Object.DestroyImmediate(sheet.GetComponent<BoxCollider>());
+
+            for (int i = 0; i < 8; i++)
+            {
+                float fx = (float)(rng.NextDouble() - 0.5) * width;
+                float fz = (float)(rng.NextDouble() - 0.5) * 3f;
+                var foam = Sphere($"Fall_Foam{i}",
+                    basePos + rot * new Vector3(fx, 0.3f + (float)rng.NextDouble() * 0.6f, fz),
+                    Vector3.one * (0.8f + (float)rng.NextDouble() * 1.2f), foamMat, container);
+                Object.DestroyImmediate(foam.GetComponent<SphereCollider>());
+            }
+
+            var lightObj = new GameObject("Fall_Light");
+            lightObj.transform.SetParent(container);
+            lightObj.transform.position = basePos + Vector3.up * 2f;
+            var l = lightObj.AddComponent<Light>();
+            l.type = LightType.Point;
+            l.color = new Color(0.6f, 0.75f, 0.85f);
+            l.range = 12f; l.intensity = 1.2f; l.shadows = LightShadows.None;
+        }
+
+        /// <summary>Short outflow channel from the lake's NW corner, spilling off-map as a
+        /// waterfall at the mountain-ring notch.</summary>
+        private static void BuildLakeOutflow(Transform container, int groundLayer, int waterLayer, Material bedMat, Material waterMat)
+        {
+            Vector3 c = LakeCenter;
+            Vector3 dir = new Vector3(-0.707f, 0f, 0.707f);   // NW, toward the ring notch (~135°)
+            Vector3 start = c + dir * (LakeHalf - 2f);
+            Vector3 endEdge = c + dir * (LakeHalf + 22f);
+            Vector3 mid = (start + endEdge) / 2f;
+            float len = Vector3.Distance(start, endEdge) + 2f;
+            float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
+            Quaternion rot = Quaternion.Euler(0f, yaw, 0f);
+
+            var bed = Cube("Outflow_Bed", mid + Vector3.down * 1.2f, new Vector3(10f, 0.6f, len), bedMat, container);
+            bed.transform.rotation = rot; bed.isStatic = true;
+            if (groundLayer >= 0) bed.layer = groundLayer;
+
+            var surf = Cube("Outflow_Surface", mid + Vector3.up * (WaterSurfaceY - 0.12f),
+                new Vector3(9f, 0.06f, len), waterMat, container);
+            surf.transform.rotation = rot;
+            Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
+
+            // The drop: a tall sheet falling from lake level down into the unseen lowlands.
+            Vector3 fallBase = endEdge + dir * 3f + Vector3.down * 18f;
+            BuildWaterfall(container, fallBase, 18f, 10f, yaw, waterMat);
         }
 
         private static void BuildFeederRiver(Transform container, int groundLayer, int waterLayer, Material bedMat, Material waterMat)
@@ -680,7 +800,7 @@ namespace AldenFall.Editor
                 planted++;
                 float h = 7f + (float)rng.NextDouble() * 6f;
                 if (PlaceMeshyProp(container, kit[planted % kit.Length], new Vector3(x, 0f, z),
-                        (float)rng.NextDouble() * 360f, h, groundLayer) != null) continue;
+                        (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk) != null) continue;
                 PlaceCubePine(container, 5000 + planted, x, z, h, trunkMat, leafMat, groundLayer);
             }
 
@@ -772,7 +892,7 @@ namespace AldenFall.Editor
                 if ((float)rng.NextDouble() < t * 0.6f) continue; // thin out nearer the volcano
                 planted++;
                 float h = 5f + (float)rng.NextDouble() * 4f;
-                if (PlaceMeshyProp(container, "DeadTree", new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f, h, groundLayer) != null)
+                if (PlaceMeshyProp(container, "DeadTree", new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk) != null)
                     continue;
                 var trunk = Cube($"CharTree{planted}", new Vector3(x, h * 0.4f, z), new Vector3(0.55f, h * 0.8f, 0.55f), trunkMat, container);
                 trunk.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 8f, (float)rng.NextDouble() * 360f, (float)rng.NextDouble() * 8f);
@@ -782,6 +902,7 @@ namespace AldenFall.Editor
                 {
                     var leaf = Cube($"CharTree{planted}_Leaf", new Vector3(x, h * 0.85f, z), new Vector3(h * 0.4f, h * 0.35f, h * 0.4f), deadLeaf, container);
                     leaf.isStatic = true;
+                    Object.DestroyImmediate(leaf.GetComponent<BoxCollider>());  // canopy walk-through
                 }
             }
 
@@ -814,42 +935,81 @@ namespace AldenFall.Editor
             }
         }
 
-        /// <summary>Emissive lava surface + a trigger volume with a server-side LavaHazard DoT.</summary>
+        /// <summary>
+        /// A molten lava pool: a dark crust basin + raised rocky rim, a bright emissive
+        /// molten surface with glowing cracks, and a trigger volume carrying a server-side
+        /// LavaHazard DoT placed EXACTLY over the visible molten surface (and tall enough
+        /// to catch a walking player). Soot ground carries NO hazard — only lava burns.
+        /// </summary>
         private static void BuildLavaPool(Transform parent, Vector3 center, Vector2 sizeXZ, int groundLayer)
         {
             var container = Child(parent, "LavaPool");
-            var lavaMat = Mat("Lava", new Color(1f, 0.35f, 0.06f), smoothness: 0.3f,
-                emission: new Color(1f, 0.32f, 0.05f) * 3.5f);
-            var crustMat = Mat("LavaCrust", new Color(0.16f, 0.09f, 0.07f), smoothness: 0.05f,
-                emission: new Color(0.4f, 0.1f, 0.02f));
+            var moltenMat = Mat("LavaMolten", new Color(1f, 0.42f, 0.08f), smoothness: 0.55f,
+                emission: new Color(1f, 0.38f, 0.06f) * 4.5f);
+            var crackMat = Mat("LavaCrack", new Color(1f, 0.72f, 0.22f), smoothness: 0.6f,
+                emission: new Color(1f, 0.66f, 0.18f) * 6.5f);
+            var crustMat = Mat("LavaCrust", new Color(0.13f, 0.08f, 0.07f), smoothness: 0.04f,
+                emission: new Color(0.30f, 0.06f, 0.015f));
 
-            // Sunken crust rim (solid) so the pool reads as a basin, not a decal.
-            var rim = Cube("Lava_Crust", center + Vector3.down * 0.15f, new Vector3(sizeXZ.x + 2f, 0.3f, sizeXZ.y + 2f), crustMat, container);
-            rim.isStatic = true;
-            if (groundLayer >= 0) rim.layer = groundLayer;
+            float hx = sizeXZ.x, hz = sizeXZ.y;
 
-            // Glowing surface — collider stripped so the player can wade in and burn.
-            var surf = Cube("Lava_Surface", center + Vector3.up * 0.06f, new Vector3(sizeXZ.x, 0.12f, sizeXZ.y), lavaMat, container);
+            // Dark crust basin: a sunken plate + a raised ring of rocky rim blocks so the
+            // pool reads as molten rock in a basin, not a flat yellow decal.
+            var plate = Cube("Lava_CrustPlate", center + Vector3.down * 0.2f,
+                new Vector3(hx + 3f, 0.4f, hz + 3f), crustMat, container);
+            plate.isStatic = true;
+            if (groundLayer >= 0) plate.layer = groundLayer;
+
+            const int rimN = 14;
+            for (int i = 0; i < rimN; i++)
+            {
+                float a = i / (float)rimN * Mathf.PI * 2f;
+                float rx = (hx / 2f + 0.9f) * Mathf.Cos(a);
+                float rz = (hz / 2f + 0.9f) * Mathf.Sin(a);
+                var rock = Cube($"Lava_Rim{i}",
+                    center + new Vector3(rx, 0.25f + (float)rng.NextDouble() * 0.2f, rz),
+                    new Vector3(1.6f + (float)rng.NextDouble(), 0.7f, 1.6f + (float)rng.NextDouble()), crustMat, container);
+                rock.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 60f, 0);
+                rock.isStatic = true;
+                if (groundLayer >= 0) rock.layer = groundLayer;
+            }
+
+            // Glowing molten surface (collider stripped so the player can wade in and burn).
+            var surf = Cube("Lava_Surface", center + Vector3.up * 0.05f, new Vector3(hx, 0.12f, hz), moltenMat, container);
             Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
 
-            // Trigger volume (default layer) rising ~2m so a standing entity overlaps it.
+            // Brighter molten cracks for an uneven, glowing look.
+            for (int i = 0; i < 4; i++)
+            {
+                float cx = center.x + (float)(rng.NextDouble() - 0.5) * hx * 0.7f;
+                float cz = center.z + (float)(rng.NextDouble() - 0.5) * hz * 0.7f;
+                var crack = Cube($"Lava_Crack{i}", new Vector3(cx, 0.08f, cz),
+                    new Vector3(hx * (0.14f + (float)rng.NextDouble() * 0.2f), 0.06f, 0.5f + (float)rng.NextDouble()),
+                    crackMat, container);
+                crack.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 180f, 0);
+                Object.DestroyImmediate(crack.GetComponent<BoxCollider>());
+            }
+
+            // Hazard trigger volume EXACTLY over the visible molten surface, rising 3.2m so a
+            // standing/walking player is caught. Default layer collides with Player + Enemy.
             var hazardObj = new GameObject("LavaHazard");
             hazardObj.transform.SetParent(container);
-            hazardObj.transform.position = center + Vector3.up * 1f;
+            hazardObj.transform.position = center + Vector3.up * 1.4f;
             var box = hazardObj.AddComponent<BoxCollider>();
             box.isTrigger = true;
-            box.size = new Vector3(sizeXZ.x, 2.2f, sizeXZ.y);
+            box.size = new Vector3(hx, 3.2f, hz);
             hazardObj.AddComponent<World.LavaHazard>().Configure(14f, 0.5f);
 
-            // Ember glow.
+            // Steady bright ember glow (no flicker component — avoids the flickering
+            // orange-border artifact Jon saw; bloom on the emissive sells the molten heat).
             var lightObj = new GameObject("Lava_Light");
             lightObj.transform.SetParent(container);
-            lightObj.transform.position = center + Vector3.up * 1.5f;
+            lightObj.transform.position = center + Vector3.up * 2f;
             var light = lightObj.AddComponent<Light>();
             light.type = LightType.Point;
-            light.color = new Color(1f, 0.4f, 0.12f);
-            light.range = Mathf.Max(sizeXZ.x, sizeXZ.y) * 1.2f;
-            light.intensity = 2.2f;
+            light.color = new Color(1f, 0.45f, 0.13f);
+            light.range = Mathf.Max(hx, hz) * 1.5f;
+            light.intensity = 3f;
             light.shadows = LightShadows.None;
         }
 
@@ -1007,6 +1167,84 @@ namespace AldenFall.Editor
                 new (string id, float chance)[] { ("knight_sword", 1f), ("adept_focus", 1f), ("iron_chestplate", 0.75f) }, groundLayer);
             CreateLootChest(container, new Vector3(0f, 0f, -430f), 0f,
                 new (string id, float chance)[] { ("ember_focus", 1f), ("emberfang", 0.9f), ("knight_sword", 1f) }, groundLayer);
+        }
+
+        // ==================== ALDRIC'S GLADE (player spawn) ====================
+
+        /// <summary>
+        /// A safe, lush forest glade just NORTH of the city (~0,0,90) where the weathered
+        /// old hermit Aldric stands — the player's mentor and q_intro giver. The player
+        /// spawns here (SceneSetup safeSpawnPosition + NetworkStart positions), the intro
+        /// cutscene frames Aldric here, and the city is a short walk south through the gate.
+        /// </summary>
+        private static void BuildAldricGlade(Transform root, int groundLayer)
+        {
+            var container = Child(root, "AldricGlade");
+            Vector3 center = new Vector3(GladeCenter.x, 0f, GladeCenter.y);   // (0,0,90)
+
+            // Lush overgrowth carpeting the clearing.
+            BuildGrassBladeField(container, "GladeGrass",
+                center.x - GladeRadius, center.x + GladeRadius, center.z - GladeRadius, center.z + GladeRadius, 6,
+                new Color(0.34f, 0.56f, 0.26f),
+                (x, z) => Vector2.Distance(new Vector2(x, z), GladeCenter) < GladeRadius);
+
+            // A soft ring of lush trees framing the glade (trunk-only colliders).
+            var trunkMat = Mat("GladeTrunk", new Color(0.32f, 0.22f, 0.14f), smoothness: 0.05f);
+            var leafMat = Mat("GladeLeaf", new Color(0.16f, 0.36f, 0.18f), smoothness: 0.08f);
+            string[] kit = { "OakTree", "BirchTree", "PineTree" };
+            for (int i = 0; i < 12; i++)
+            {
+                float a = i / 12f * Mathf.PI * 2f + 0.3f;
+                float rad = GladeRadius - 1f + (float)rng.NextDouble() * 3f;
+                float x = center.x + Mathf.Cos(a) * rad;
+                float z = center.z + Mathf.Sin(a) * rad;
+                float h = 7f + (float)rng.NextDouble() * 4f;
+                if (PlaceMeshyProp(container, kit[i % kit.Length], new Vector3(x, 0f, z),
+                        (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk) != null) continue;
+                PlaceCubePine(container, 9000 + i, x, z, h, trunkMat, leafMat, groundLayer);
+            }
+
+            // A few mossy boulders for a lived-in hermit clearing.
+            var rockMat = Mat("GladeRock", new Color(0.31f, 0.33f, 0.28f), smoothness: 0.08f);
+            for (int i = 0; i < 5; i++)
+            {
+                float a = (float)rng.NextDouble() * Mathf.PI * 2f;
+                float rad = 4f + (float)rng.NextDouble() * (GladeRadius - 9f);
+                var rock = Sphere($"GladeRock{i}",
+                    center + new Vector3(Mathf.Cos(a) * rad, 0.3f, Mathf.Sin(a) * rad),
+                    new Vector3(1.2f + (float)rng.NextDouble(), 0.8f, 1.1f + (float)rng.NextDouble()), rockMat, container);
+                rock.isStatic = true;
+                if (groundLayer >= 0) rock.layer = groundLayer;
+            }
+
+            // The hermit's hearth — a warm campfire beside Aldric.
+            var fireObj = new GameObject("GladeHearth");
+            fireObj.transform.SetParent(container);
+            fireObj.transform.position = center + new Vector3(-3.5f, 0f, 2.5f);
+            if (PlaceMeshyProp(fireObj.transform, "Campfire", fireObj.transform.position, rng.Next(0, 360), 0.9f, groundLayer) == null)
+            {
+                var stoneMat = Mat("GladeFireStone", new Color(0.35f, 0.33f, 0.31f), smoothness: 0.1f);
+                for (int i = 0; i < 6; i++)
+                {
+                    float ang = i * Mathf.PI / 3f;
+                    var s = Sphere($"GladeStone{i}",
+                        fireObj.transform.position + new Vector3(Mathf.Cos(ang) * 0.55f, 0.1f, Mathf.Sin(ang) * 0.55f),
+                        Vector3.one * 0.28f, stoneMat, container);
+                    Object.DestroyImmediate(s.GetComponent<SphereCollider>());
+                }
+            }
+            var lo = new GameObject("GladeFireLight");
+            lo.transform.SetParent(fireObj.transform);
+            lo.transform.localPosition = Vector3.up * 0.8f;
+            var fl = lo.AddComponent<Light>();
+            fl.type = LightType.Point;
+            fl.color = new Color(1f, 0.6f, 0.3f);
+            fl.intensity = 2.2f; fl.range = 8f; fl.shadows = LightShadows.None;
+            lo.AddComponent<World.TorchFlicker>();
+
+            // Aldric — the weathered robed hermit (q_intro giver), at the glade centre,
+            // facing south toward the arriving player. BuildQuestGiver names him "Aldric".
+            BuildQuestGiver(container, center, groundLayer);
         }
 
         // ==================== PHASE-1 SYSTEMS ====================

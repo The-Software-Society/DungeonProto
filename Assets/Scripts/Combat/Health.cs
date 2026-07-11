@@ -168,8 +168,15 @@ namespace AldenFall.Combat
         /// One damage path for everything. Server-authoritative: runs only on the server,
         /// which mutates the SyncVar and broadcasts the number. canMiss is opt-in (melee
         /// autos and mob attacks): the defender's Defence can turn those into a 0.
+        ///
+        /// XP is INTEGRAL to damage: <paramref name="xpSkill"/> (a <see cref="Progression.SkillType"/>
+        /// cast to int, or -1 for none) plus <paramref name="xpRate"/> let a player attacker earn
+        /// combat XP the instant real damage lands on an enemy here — never on the swing/cast.
+        /// A miss, a dead/invulnerable/undamageable target, or hitting another player all yield
+        /// zero XP because control never reaches the grant, or the mitigated damage is 0.
         /// </summary>
-        public void TakeDamage(float damage, GameObject attacker = null, bool canMiss = false)
+        public void TakeDamage(float damage, GameObject attacker = null, bool canMiss = false,
+            int xpSkill = -1, float xpRate = 0f)
         {
             if (!isServer) return;                                   // server owns all damage
             if (IsDead || damage <= 0 || isInvulnerable) return;
@@ -223,6 +230,20 @@ namespace AldenFall.Combat
             // Floating damage numbers (white = player-dealt, red = taken) on every client.
             bool fromPlayer = attacker != null && CombatRules.IsPlayer(attacker);
             RpcDamageNumber(transform.position + Vector3.up * 1.6f, damage, fromPlayer);
+
+            // Combat XP is minted HERE — the exact instant a player's blow reduces an enemy's
+            // health — so it can never desync from the fight: no damage, no XP; damage, XP;
+            // regardless of who started it or whether the target was manually selected. It is
+            // scaled by the damage ACTUALLY dealt (post-mitigation) and routed to the offensive
+            // skill the attacker chose (melee style / Magic / ability tree). We skip player
+            // targets so friendly fire and PvP can never award XP.
+            if (xpSkill >= 0 && xpRate > 0f && damage > 0f
+                && fromPlayer && !CombatRules.IsPlayer(gameObject))
+            {
+                var attackerCombat = attacker.GetComponent<PlayerCombat>();
+                if (attackerCombat != null)
+                    attackerCombat.ServerGrantCombatXp(xpSkill, damage * xpRate);
+            }
 
             if (IsDead)
             {

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 using AldenFall.Combat;
 using AldenFall.Progression;
 using AldenFall.Stats;
@@ -26,6 +27,8 @@ namespace AldenFall.Abilities
         SelfBuff,    // timed StatBlock buff on the caster
         MultiHit,    // rapid burst of strikes on the current target (flurry)
         Taunt,       // force-aggro every enemy in a radius onto the caster
+        GroundAoe,   // ranged targeted AoE that lands at the target's location (Meteor)
+        Blink,       // instant short-range teleport in the facing direction (mobility)
     }
 
     /// <summary>Static definition of one active ability (code-as-data, like ItemDef).</summary>
@@ -59,6 +62,15 @@ namespace AldenFall.Abilities
         public float StatusTickDamage;
         public StatusFlags StatusFlags;            // e.g. Stunned for Bash
         public float StatusMoveSpeedMultiplier;    // 0 = none; 0.5 = half speed (Hamstring)
+        // On-target debuff stat mods (e.g. Hex shredding Defence/Armor to amp incoming damage).
+        // Routed through StatusSystem → the target's StatBlock, cleared when the status expires.
+        public List<(StatType type, float value)> StatusStatMods = new List<(StatType, float)>();
+
+        // Projectile visual/behaviour overrides. Tint null = the default orange fireball look.
+        public Color? ProjectileTint;
+        public float ProjectileSpeed;      // 0 = use PlayerAbilities.fireballSpeed
+
+        public float ImpactDelay;          // GroundAoe: seconds from cast to the AoE landing
 
         public List<(StatType type, float value)> BuffMods = new List<(StatType, float)>();
         public float BuffDuration;
@@ -278,6 +290,103 @@ namespace AldenFall.Abilities
                 Cooldown = 25f,
                 AppliesStatusId = "invisible",   // the aggro-drop status EnemyAI checks
                 BuffDuration = 6f,
+            });
+
+            // ---- v7: magic depth — a full magic-only kit ----
+            // A single-target filler nuke, a ranged ground AoE, a curse/DoT debuff,
+            // a blink mobility, and a magic ward — so a pure caster has real options.
+
+            // Fast, low-cooldown bolt: less punch than Fireball but spammable and
+            // it CHILLS (a movement slow, no burn) — the caster's kiting tool.
+            Register(new AbilityDef
+            {
+                Id = "frost_bolt",
+                Name = "Frost Bolt",
+                Description = "A darting shard of ice — quick to cast and it chills the target, slowing them.",
+                IconSprite = "icon_bolt",
+                Tree = SkillType.Magic,
+                RequiredWeapon = WeaponClass.Any,
+                Kind = AbilityKind.Projectile,
+                Cooldown = 1.5f,
+                BaseDamage = 11f,
+                Range = 30f,
+                ProjectileTint = new Color(0.45f, 0.75f, 1f, 1f),
+                ProjectileSpeed = 30f,   // noticeably faster than the fireball
+                AppliesStatusId = "chill",
+                StatusDuration = 2.5f,
+                StatusMoveSpeedMultiplier = 0.6f,
+            });
+
+            // Ranged targeted AoE: lands where the target stands after a short
+            // fall, distinct from the self-centred Ember Nova.
+            Register(new AbilityDef
+            {
+                Id = "meteor_strike",
+                Name = "Meteor Strike",
+                Description = "Call down a blazing meteor onto your target, scorching everything nearby.",
+                IconSprite = "icon_flame",
+                Tree = SkillType.Magic,
+                RequiredWeapon = WeaponClass.Focus,
+                Kind = AbilityKind.GroundAoe,
+                Cooldown = 12f,
+                BaseDamage = 28f,
+                Range = 28f,
+                Radius = 5f,
+                ImpactDelay = 0.7f,
+            });
+
+            // Curse: light direct hit, a lingering arcane DoT, and — the point —
+            // it SHREDS the target's Defence/Armor, amplifying all incoming damage.
+            Register(new AbilityDef
+            {
+                Id = "hex",
+                Name = "Hex of Frailty",
+                Description = "Curse the target: it withers over time and its defences crumble, taking more damage.",
+                IconSprite = "icon_veil",
+                Tree = SkillType.Magic,
+                RequiredWeapon = WeaponClass.Focus,
+                Kind = AbilityKind.Projectile,
+                Cooldown = 10f,
+                BaseDamage = 6f,
+                Range = 30f,
+                ProjectileTint = new Color(0.7f, 0.35f, 0.95f, 1f),
+                ProjectileSpeed = 20f,
+                AppliesStatusId = "hex",
+                StatusDuration = 6f,
+                StatusTickInterval = 1f,
+                StatusTickDamage = 3f,
+                StatusStatMods = { (StatType.Defence, -6f), (StatType.Armor, -4f) },
+            });
+
+            // Mobility: instant short teleport in the facing direction. No damage —
+            // the caster's escape / gap-closer so magic isn't rooted in place.
+            Register(new AbilityDef
+            {
+                Id = "blink",
+                Name = "Arcane Blink",
+                Description = "Wink out and reappear a short distance ahead — a caster's escape.",
+                IconSprite = "icon_dash",
+                Tree = SkillType.Magic,
+                RequiredWeapon = WeaponClass.Any,
+                Kind = AbilityKind.Blink,
+                Cooldown = 9f,
+                Range = 8f,
+            });
+
+            // Defensive ward: the caster's answer to Bulwark — a timed Armor/Defence
+            // buff so a mage can turtle a burst instead of only kiting.
+            Register(new AbilityDef
+            {
+                Id = "arcane_ward",
+                Name = "Arcane Ward",
+                Description = "Wreathe yourself in a shield of force: +6 Armor and +8 Defence for 8 seconds.",
+                IconSprite = "icon_shield",
+                Tree = SkillType.Magic,
+                RequiredWeapon = WeaponClass.Focus,
+                Kind = AbilityKind.SelfBuff,
+                Cooldown = 18f,
+                BuffMods = { (StatType.Armor, 6f), (StatType.Defence, 8f) },
+                BuffDuration = 8f,
             });
         }
 

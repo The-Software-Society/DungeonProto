@@ -37,6 +37,11 @@ namespace AldenFall.Combat
         private bool exploded;
         private bool visualOnly;   // remote replay: fly + burst visually, but never touch Health
         private System.Action<Health> onHit;
+        // Combat XP the caster earns when this bolt actually damages an enemy. Granted
+        // server-side inside Health.TakeDamage (via the owner's PlayerCombat), so a bolt that
+        // whiffs or hits nothing awards nothing. Defaults to the Magic tree for plain spells.
+        private int xpSkill = (int)Progression.SkillType.Magic;
+        private float xpRate = 1.2f;
 
         private void Awake()
         {
@@ -65,10 +70,20 @@ namespace AldenFall.Combat
         public void SetVisualOnly(bool value) => visualOnly = value;
 
         /// <summary>
-        /// Custom on-hit hook (status effects, ability XP). When set, the caller
-        /// owns XP grants — the projectile's built-in Magic XP is skipped.
+        /// Custom on-hit hook (status effects). Runs client-side on a successful hit for
+        /// effects like bleed/burn; XP is handled separately server-side via SetXpReward.
         /// </summary>
         public void SetOnHit(System.Action<Health> handler) => onHit = handler;
+
+        /// <summary>
+        /// Which combat skill this bolt trains, and its XP-per-damage rate. The grant happens
+        /// server-side, scaled by the damage actually dealt to the enemy — never on cast.
+        /// </summary>
+        public void SetXpReward(Progression.SkillType skill, float rate)
+        {
+            xpSkill = (int)skill;
+            xpRate = rate;
+        }
         public void SetSpeed(float newSpeed)
         {
             speed = newSpeed;
@@ -223,9 +238,10 @@ namespace AldenFall.Combat
                     // (server-side) apply directly.
                     var ownerCombat = owner != null ? owner.GetComponent<PlayerCombat>() : null;
                     if (ownerCombat != null)
-                        ownerCombat.DealDamage(directHealth, damage);
+                        // Server mints Magic (or the ability's) XP when this bolt bites an enemy.
+                        ownerCombat.DealDamage(directHealth, damage, canMiss: false, xpSkill, xpRate);
                     else
-                        directHealth.TakeDamage(damage, owner);
+                        directHealth.TakeDamage(damage, owner);   // enemy-cast bolt: no player XP
 
                     if (knockbackForce > 0f)
                     {
@@ -238,16 +254,9 @@ namespace AldenFall.Combat
                             directHealth.ApplyKnockback(knockDir, knockbackForce);
                     }
 
-                    if (onHit != null)
-                    {
-                        onHit(directHealth);
-                    }
-                    else if (owner != null)
-                    {
-                        // Landing a spell trains Magic (ability callbacks own their own XP)
-                        var skills = owner.GetComponent<Progression.Skills>();
-                        skills?.AddXp(Progression.SkillType.Magic, damage * 1.2f);
-                    }
+                    // On-hit effects (bleed/burn/etc.) still run client-side; XP was already
+                    // routed server-side through DealDamage above.
+                    onHit?.Invoke(directHealth);
                 }
 
                 HitEffect.CreateFireballImpact(position);

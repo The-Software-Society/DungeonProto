@@ -205,6 +205,8 @@ namespace AldenFall.Abilities
                 case AbilityKind.SelfBuff: CastSelfBuff(def); break;
                 case AbilityKind.MultiHit: StartCoroutine(MultiHitRoutine(def, target)); break;
                 case AbilityKind.Taunt: CastTaunt(def); break;
+                case AbilityKind.GroundAoe: StartCoroutine(GroundAoeRoutine(def, target)); break;
+                case AbilityKind.Blink: CastBlink(def); break;
             }
 
             // Replicate this cast's visual + animation to other clients (cosmetic only —
@@ -288,11 +290,17 @@ namespace AldenFall.Abilities
             if (animator != null)
                 animator.SetTrigger(SpecialAttackHash);
 
-            var fireball = new GameObject("RuntimeFireball");
-            fireball.transform.SetPositionAndRotation(spawnPos, Quaternion.LookRotation(aimDirection));
+            var bolt = new GameObject(def.Id == "fireball" ? "RuntimeFireball" : "RuntimeBolt");
+            bolt.transform.SetPositionAndRotation(spawnPos, Quaternion.LookRotation(aimDirection));
 
-            var projectile = fireball.AddComponent<Projectile>();
-            projectile.SetSpeed(fireballSpeed);
+            // A tint builds a coloured glow BEFORE the Projectile awakes, so its
+            // EnsureVisibleProjectile sees an existing renderer and skips the default
+            // orange look — Frost Bolt reads icy-blue, Hex reads sickly-purple.
+            if (def.ProjectileTint.HasValue)
+                BuildBoltVisual(bolt, def.ProjectileTint.Value);
+
+            var projectile = bolt.AddComponent<Projectile>();
+            projectile.SetSpeed(def.ProjectileSpeed > 0f ? def.ProjectileSpeed : fireballSpeed);
 
             if (visualOnly)
             {
@@ -304,11 +312,10 @@ namespace AldenFall.Abilities
                 float damage = CombatMath.SpellDamage(stats, def.BaseDamage)
                              * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
                 projectile.SetDamage(damage);
-                projectile.SetOnHit(hit =>
-                {
-                    skills?.AddXp(SkillType.Magic, damage * 1.2f);
-                    ApplyDefStatus(def, hit);
-                });
+                // XP is minted server-side when the bolt lands on an enemy (scaled by real
+                // damage), routed to this ability's tree. The client hook only applies status.
+                projectile.SetXpReward(TreeSkill(def), 1.2f);
+                projectile.SetOnHit(hit => ApplyDefStatus(def, hit));
             }
 
             projectile.Initialize(aimDirection, gameObject, target);
@@ -333,6 +340,19 @@ namespace AldenFall.Abilities
                     break;
                 case AbilityKind.Nova:
                     ReplayNovaVisual(def);
+                    break;
+                case AbilityKind.GroundAoe:
+                    // Damage-free meteor: same landing point maths as the local cast.
+                    if (animator != null)
+                        animator.SetTrigger(SpecialAttackHash);
+                    FallingOrbEffect.Create(ResolveGroundPoint(def, target, origin, aimDir),
+                        def.Radius, def.ImpactDelay, MeteorColor);
+                    break;
+                case AbilityKind.Blink:
+                    // Position is replicated by NetworkTransform; just poof at the arrival point.
+                    if (animator != null)
+                        animator.SetTrigger(SpecialAttackHash);
+                    HitEffect.Create(origin + Vector3.up, BlinkColor);
                     break;
                 default:
                     // Dash / melee / buff: the swing animation carries the read; dashes also
@@ -387,7 +407,8 @@ namespace AldenFall.Abilities
                 float damage = (meleeNova
                     ? CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
                     : CombatMath.SpellDamage(stats, def.BaseDamage)) * multiplier;
-                combat?.DealDamage(enemyHealth, damage);
+                // Server grants this ability's XP per enemy actually damaged, scaled by the hit.
+                combat?.DealDamage(enemyHealth, damage, canMiss: false, (int)TreeSkill(def), 1.2f);
                 if (def.Knockback > 0f)
                 {
                     Vector3 knockDir = (enemyHealth.transform.position - transform.position).normalized;
@@ -402,7 +423,6 @@ namespace AldenFall.Abilities
                 }
                 ApplyDefStatus(def, enemyHealth);
                 HitEffect.CreateNovaImpact(enemyHealth.transform.position + Vector3.up);
-                skills?.AddXp(TreeSkill(def), damage * 1.2f);
             }
 
             // Central burst so the cast is always visible even on a whiff.
@@ -426,9 +446,8 @@ namespace AldenFall.Abilities
 
                 float damage = CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
                              * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
-                combat?.DealDamage(targetHealth, damage);
+                combat?.DealDamage(targetHealth, damage, canMiss: false, (int)TreeSkill(def), 1.2f);
                 HitEffect.CreateMeleeImpact(target.position + Vector3.up);
-                skills?.AddXp(TreeSkill(def), damage * 1.2f);
 
                 // The final stab opens the wound (bleed)
                 if (i == hits - 1)
@@ -564,7 +583,7 @@ namespace AldenFall.Abilities
 
             float damage = CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
                          * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
-            combat?.DealDamage(targetHealth, damage);
+            combat?.DealDamage(targetHealth, damage, canMiss: false, (int)TreeSkill(def), 1.2f);
             HitEffect.CreateMeleeImpact(target.position + Vector3.up);
 
             targetHealth.GetComponent<StatusSystem>()?.Apply(new StatusEffect
@@ -575,8 +594,6 @@ namespace AldenFall.Abilities
                 Flags = StatusFlags.Stunned,
                 Source = gameObject,
             });
-
-            skills?.AddXp(TreeSkill(def), damage * 1.2f);
         }
 
         private IEnumerator SingleHitRoutine(AbilityDef def, Transform target)
@@ -595,10 +612,9 @@ namespace AldenFall.Abilities
 
             float damage = CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
                          * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
-            combat?.DealDamage(targetHealth, damage);
+            combat?.DealDamage(targetHealth, damage, canMiss: false, (int)TreeSkill(def), 1.2f);
             HitEffect.CreateMeleeImpact(target.position + Vector3.up);
             ApplyDefStatus(def, targetHealth);
-            skills?.AddXp(TreeSkill(def), damage * 1.2f);
         }
 
         private void CastSelfBuff(AbilityDef def)
@@ -619,6 +635,140 @@ namespace AldenFall.Abilities
             HitEffect.CreateNovaImpact(transform.position + Vector3.up);
         }
 
+        private static readonly Color MeteorColor = new Color(1f, 0.5f, 0.15f, 1f);
+        private static readonly Color BlinkColor = new Color(0.65f, 0.4f, 1f, 1f);
+
+        /// <summary>
+        /// Ranged targeted AoE (Meteor Strike): a meteor falls onto the target's
+        /// location and, after ImpactDelay, blasts everything in Radius. Damage is
+        /// server-authoritative via PlayerCombat; the orb itself is pure visual.
+        /// </summary>
+        private IEnumerator GroundAoeRoutine(AbilityDef def, Transform target)
+        {
+            if (animator != null)
+                animator.SetTrigger(SpecialAttackHash);
+            if (target != null)
+                FaceInstantly(target.position);
+
+            Vector3 point = ResolveGroundPoint(def, target, transform.position, transform.forward);
+            FallingOrbEffect.Create(point, def.Radius, def.ImpactDelay, MeteorColor);
+
+            yield return new WaitForSeconds(def.ImpactDelay);
+
+            var colliders = Physics.OverlapSphere(point + Vector3.up * 0.5f, def.Radius,
+                GameLayers.GetEnemyMask(), QueryTriggerInteraction.Ignore);
+
+            float multiplier = mastery != null ? mastery.DamageMultiplier(def.Id) : 1f;
+            var damaged = new HashSet<Health>();
+            foreach (var col in colliders)
+            {
+                var enemyHealth = col.GetComponentInParent<Health>();
+                if (enemyHealth == null || enemyHealth.gameObject == gameObject) continue;
+                if (!damaged.Add(enemyHealth)) continue;
+
+                float damage = CombatMath.SpellDamage(stats, def.BaseDamage) * multiplier;
+                // Server grants this ability's XP per enemy actually damaged, scaled by the hit.
+                combat?.DealDamage(enemyHealth, damage, canMiss: false, (int)TreeSkill(def), 1.2f);
+                ApplyDefStatus(def, enemyHealth);
+                HitEffect.CreateNovaImpact(enemyHealth.transform.position + Vector3.up);
+            }
+        }
+
+        /// <summary>
+        /// Where a GroundAoe lands: the target's feet if there is one, else a point
+        /// out in front, snapped down onto the world so the meteor hits the floor.
+        /// </summary>
+        private Vector3 ResolveGroundPoint(AbilityDef def, Transform target, Vector3 fallbackOrigin, Vector3 fallbackDir)
+        {
+            Vector3 p = target != null
+                ? target.position
+                : fallbackOrigin + fallbackDir.normalized * (def.Range * 0.6f);
+
+            if (Physics.Raycast(p + Vector3.up * 6f, Vector3.down, out var hit, 14f,
+                    GameLayers.GetWorldMask(), QueryTriggerInteraction.Ignore))
+                p = hit.point;
+            return p;
+        }
+
+        /// <summary>
+        /// Mobility (Arcane Blink): instantly teleport the caster forward up to Range,
+        /// stopping short of any wall. NetworkTransform replicates the new position to
+        /// other clients; the arrival poof is replayed cosmetically via ReplayRemoteCast.
+        /// </summary>
+        private void CastBlink(AbilityDef def)
+        {
+            Vector3 dir = transform.forward;
+            dir.y = 0f;
+            if (dir.sqrMagnitude < 0.01f) dir = Vector3.forward;
+            dir.Normalize();
+
+            float distance = def.Range;
+            Vector3 chest = transform.position + Vector3.up;
+            if (Physics.Raycast(chest, dir, out var wall, distance,
+                    GameLayers.GetWorldMask(), QueryTriggerInteraction.Ignore))
+                distance = Mathf.Max(0f, wall.distance - 1f);
+
+            Vector3 origin = transform.position;
+            Vector3 destination = origin + dir * distance;
+
+            // Toggle the controller so the teleport isn't swallowed by CharacterController.
+            if (controller != null && controller.enabled)
+            {
+                controller.enabled = false;
+                transform.position = destination;
+                controller.enabled = true;
+            }
+            else
+            {
+                transform.position = destination;
+            }
+
+            if (animator != null)
+                animator.SetTrigger(SpecialAttackHash);
+            HitEffect.Create(origin + Vector3.up, BlinkColor);
+            HitEffect.Create(destination + Vector3.up, BlinkColor);
+            skills?.AddXp(SkillType.Magic, 10f);
+        }
+
+        /// <summary>
+        /// Builds a coloured glow + trail on a runtime bolt, mirroring the fireball's
+        /// runtime look but tinted. Named "ProjectileGlow" so Projectile.EnsureVisible
+        /// treats the bolt as already-visible and skips the default orange build.
+        /// </summary>
+        private static void BuildBoltVisual(GameObject bolt, Color core)
+        {
+            var glow = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            glow.name = "ProjectileGlow";
+            glow.transform.SetParent(bolt.transform, false);
+            glow.transform.localPosition = Vector3.zero;
+            glow.transform.localScale = Vector3.one * 0.5f;
+            Destroy(glow.GetComponent<Collider>());
+
+            var renderer = glow.GetComponent<MeshRenderer>();
+            if (renderer != null)
+            {
+                var mat = new Material(Shader.Find("Sprites/Default"));
+                mat.color = core;
+                if (mat.HasProperty("_EmissionColor")) mat.SetColor("_EmissionColor", core * 2f);
+                renderer.material = mat;
+            }
+
+            var light = glow.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = core;
+            light.range = 4f;
+            light.intensity = 2.5f;
+
+            var trail = bolt.AddComponent<TrailRenderer>();
+            trail.time = 0.22f;
+            trail.startWidth = 0.32f;
+            trail.endWidth = 0.02f;
+            trail.material = new Material(Shader.Find("Sprites/Default"));
+            var tail = core; tail.a = 0f;
+            trail.startColor = core;
+            trail.endColor = tail;
+        }
+
         /// <summary>Applies the def's on-hit status (bleed/slow/stun/burn) to a target, if any.</summary>
         private void ApplyDefStatus(AbilityDef def, Component target)
         {
@@ -632,6 +782,9 @@ namespace AldenFall.Abilities
                 TickDamage = def.StatusTickDamage,
                 Flags = def.StatusFlags,
                 MoveSpeedMultiplier = def.StatusMoveSpeedMultiplier,
+                // Debuff stat mods (Hex: negative Defence/Armor = damage amp) routed
+                // through the target's StatBlock, cleared when the status expires.
+                StatMods = def.StatusStatMods != null && def.StatusStatMods.Count > 0 ? def.StatusStatMods : null,
                 Source = gameObject,
             });
         }

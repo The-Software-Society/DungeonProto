@@ -526,9 +526,9 @@ namespace AldenFall.Editor
 
         private static void CreatePlayer()
         {
-            // V2: safe spawn in the Emberfall city plaza (SW of the Ember Fountain at 0,0),
-            // well inside the walls — no mobs spawn in the city.
-            Vector3 safeSpawnPosition = new Vector3(0, 1, -14);
+            // V2.5: safe spawn in Aldric's lush forest glade just NORTH of the city (0,0,90).
+            // The intro meets Aldric here; the city is a short walk south through the north gate.
+            Vector3 safeSpawnPosition = new Vector3(0, 1, 84);
 
             // Check if player already exists - move them instead of skipping
             var existingPlayer = GameObject.FindGameObjectWithTag("Player");

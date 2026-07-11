@@ -16,22 +16,53 @@ namespace AldenFall.Combat
     /// </summary>
     public class PlayerCombat : NetworkBehaviour
     {
-        public void DealDamage(Health target, float damage, bool canMiss = false)
+        /// <summary>
+        /// Relay a player hit to the server. <paramref name="xpSkill"/> (a
+        /// <see cref="Progression.SkillType"/> as int, -1 = none) and <paramref name="xpRate"/>
+        /// travel with the hit so the SERVER can mint combat XP at the moment the damage lands
+        /// on the enemy's <see cref="Health"/> — the single, damage-integral XP source. Nothing
+        /// on the swing/cast side grants XP anymore.
+        /// </summary>
+        public void DealDamage(Health target, float damage, bool canMiss = false,
+            int xpSkill = -1, float xpRate = 0f)
         {
             if (target == null || damage <= 0f) return;
             if (isServer)
-                target.TakeDamage(damage, gameObject, canMiss);
+                target.TakeDamage(damage, gameObject, canMiss, xpSkill, xpRate);
             else if (isLocalPlayer)
-                CmdDealDamage(target.netIdentity, damage, canMiss);
+                CmdDealDamage(target.netIdentity, damage, canMiss, xpSkill, xpRate);
         }
 
         [Command]
-        private void CmdDealDamage(NetworkIdentity target, float damage, bool canMiss)
+        private void CmdDealDamage(NetworkIdentity target, float damage, bool canMiss, int xpSkill, float xpRate)
         {
             if (target == null) return;
             var health = target.GetComponent<Health>();
             if (health != null)
-                health.TakeDamage(damage, gameObject, canMiss);
+                health.TakeDamage(damage, gameObject, canMiss, xpSkill, xpRate);
+        }
+
+        /// <summary>
+        /// Server → this attacker's owning client: award combat XP for damage this player just
+        /// dealt. Called only from <see cref="Health.TakeDamage"/> after real damage lands, so
+        /// XP stays welded to the actual interaction. Skills train on the owning client (same as
+        /// PlayerDefence/PlayerMelee), so a remote attacker gets a TargetRpc; the host's own
+        /// player trains inline. Skill is passed as int to match the codebase's weaver-approved
+        /// primitive-only Command/Rpc signatures.
+        /// </summary>
+        public void ServerGrantCombatXp(int xpSkill, float xp)
+        {
+            if (!isServer || xp <= 0f || xpSkill < 0) return;
+            if (isLocalPlayer)
+                GetComponent<Progression.Skills>()?.AddXp((Progression.SkillType)xpSkill, xp);
+            else
+                TargetGrantCombatXp(xpSkill, xp);
+        }
+
+        [TargetRpc]
+        private void TargetGrantCombatXp(int xpSkill, float xp)
+        {
+            GetComponent<Progression.Skills>()?.AddXp((Progression.SkillType)xpSkill, xp);
         }
 
         // Healing (food, etc.) is server-authoritative like damage — a client calling Health.Heal

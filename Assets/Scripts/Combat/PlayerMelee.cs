@@ -27,7 +27,6 @@ namespace AldenFall.Combat
         [SerializeField] private Animator animator;
 
         private TargetingSystem targeting;
-        private Skills skills;
         private CombatStyleController combatStyle;
         private Stats.StatBlock stats;
         private Health health;
@@ -51,7 +50,6 @@ namespace AldenFall.Combat
         private void Awake()
         {
             targeting = GetComponent<TargetingSystem>();
-            skills = GetComponent<Skills>();
             combatStyle = GetComponent<CombatStyleController>();
             stats = GetComponent<Stats.StatBlock>();
             health = GetComponent<Health>();
@@ -201,15 +199,13 @@ namespace AldenFall.Combat
 
             float damage = Stats.CombatMath.MeleeDamage(stats);
 
-            combat?.DealDamage(targetHealth, damage, canMiss: true);
+            // XP is granted server-side the instant this damage actually lands (Health.TakeDamage),
+            // scaled by the damage dealt and routed to the SELECTED combat style — you level what
+            // you choose. Passing it through the hit means a whiff (Defence miss) or an
+            // undamageable target awards nothing: no phantom XP, ever.
+            var trained = combatStyle != null ? combatStyle.TrainedSkill : SkillType.Attack;
+            combat?.DealDamage(targetHealth, damage, canMiss: true, xpSkill: (int)trained, xpRate: 2.4f);
             HitEffect.CreateMeleeImpact(target.position + Vector3.up);
-
-            // Train ONLY the selected combat style — you level what you choose
-            if (skills != null)
-            {
-                var trained = combatStyle != null ? combatStyle.TrainedSkill : SkillType.Attack;
-                skills.AddXp(trained, damage * 2.4f);
-            }
         }
 
         // ==================== MAGIC AUTO ====================

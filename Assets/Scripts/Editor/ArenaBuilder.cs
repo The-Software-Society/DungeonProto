@@ -206,11 +206,13 @@ namespace AldenFall.Editor
             RenderSettings.ambientEquatorColor = new Color(0.42f, 0.34f, 0.37f);
             RenderSettings.ambientGroundColor = new Color(0.2f, 0.17f, 0.19f);
 
+            // Wide fog band: the near forest stays clear while the encircling mountains fade
+            // into hazy silhouettes on the horizon (depth, never floor-to-sky emptiness).
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.45f, 0.33f, 0.38f);
-            RenderSettings.fogStartDistance = 45f;
-            RenderSettings.fogEndDistance = 170f;
+            RenderSettings.fogColor = new Color(0.5f, 0.42f, 0.46f);
+            RenderSettings.fogStartDistance = 70f;
+            RenderSettings.fogEndDistance = 340f;
         }
 
         private static void CreatePostProcessing()
@@ -276,12 +278,128 @@ namespace AldenFall.Editor
         private static void BuildGlobalSafety(Transform root, int groundLayer)
         {
             var safety = Child(root, "GlobalSafetyColliders");
-            // Catch floor: covers x[-270,270], z[-455,275] (centre (0,-16,-90), 540 x 730).
-            ColliderBox("WorldCatchFloor", new Vector3(0f, -16f, -90f), new Vector3(540f, 1f, 730f), safety, groundLayer);
-            ColliderBox("WorldRail_W", new Vector3(-262f, 6f, -90f), new Vector3(4f, 14f, 730f), safety, groundLayer);
-            ColliderBox("WorldRail_E", new Vector3(262f, 6f, -90f), new Vector3(4f, 14f, 730f), safety, groundLayer);
-            ColliderBox("WorldRail_S", new Vector3(0f, 6f, -452f), new Vector3(540f, 14f, 4f), safety, groundLayer);
-            ColliderBox("WorldRail_N", new Vector3(0f, 6f, 272f), new Vector3(540f, 14f, 4f), safety, groundLayer);
+
+            // (1) CONTINUOUS solid underfill just below the tile tops so there is NEVER a
+            //     void seam to fall through (Jon fell through the city↔ring gap, img 16).
+            //     It is carved only around the NW lake+feeder basins, which sink below it.
+            var underMat = Mat("WorldUnderfill", new Color(0.17f, 0.14f, 0.11f), smoothness: 0.03f);
+            void Fill(string n, float x0, float x1, float z0, float z1)
+            {
+                var c = Cube(n, new Vector3((x0 + x1) / 2f, -0.55f, (z0 + z1) / 2f),
+                    new Vector3(x1 - x0, 0.7f, z1 - z0), underMat, safety);
+                c.isStatic = true;
+                if (groundLayer >= 0) c.layer = groundLayer;
+            }
+            // NW water-exclusion box (lake + feeder): x[-206,-100], z[100,262].
+            Fill("Underfill_S", -262f, 262f, -460f, 100f);   // everything south of the water band
+            Fill("Underfill_NE", -100f, 262f, 100f, 268f);    // north band, east of the water
+            Fill("Underfill_NW", -262f, -206f, 100f, 268f);   // north band, west of the water
+            Fill("Underfill_NN", -206f, -100f, 262f, 268f);   // thin strip north of the water
+
+            // (2) Last-resort catch floor far below — a backstop for anything that clips through.
+            ColliderBox("WorldCatchFloor", new Vector3(0f, -18f, -95f), new Vector3(580f, 1f, 780f), safety, groundLayer);
+
+            // (3) Natural enclosing geography — a continuous ring of mountains walls the
+            //     world (no invisible rails), plus layered ridgelines + distant silhouettes.
+            BuildMountainRing(root, groundLayer);
+        }
+
+        /// <summary>
+        /// A continuous ring of natural mountains/tall hills enclosing the whole play area:
+        /// a solid inner containment wall hugging the forest disc (leaving the south corridor
+        /// mouth open toward the volcano and river notches for waterfalls), solid flank walls
+        /// down the ember-approach sides, then layered mid ridgelines + a hazy distant range
+        /// so the horizon is never gray-floor-to-sky emptiness. Bases overlap the ground.
+        /// </summary>
+        private static void BuildMountainRing(Transform root, int groundLayer)
+        {
+            var container = Child(root, "MountainRing");
+            var rock = Mat("RingRock", new Color(0.30f, 0.28f, 0.29f), smoothness: 0.04f);
+            var rockDark = Mat("RingRockDark", new Color(0.19f, 0.18f, 0.21f), smoothness: 0.04f);
+            var rockFar = Mat("RingRockFar", new Color(0.34f, 0.32f, 0.41f), smoothness: 0.02f);
+            var snow = Mat("RingSnow", new Color(0.85f, 0.88f, 0.95f), smoothness: 0.15f);
+            var rr = new System.Random(20260711);
+            float R() => (float)rr.NextDouble();
+
+            void Massif(string n, float x, float z, float w, float h, Material m, bool collide, bool cap)
+            {
+                var c = Cube(n, new Vector3(x, h / 2f - 2.5f, z), new Vector3(w, h, w), m, container);
+                c.transform.rotation = Quaternion.Euler(0f, R() * 60f, 0f);
+                c.isStatic = true;
+                if (groundLayer >= 0) c.layer = groundLayer;
+                if (!collide) Object.DestroyImmediate(c.GetComponent<BoxCollider>());
+                if (cap)
+                {
+                    var s = Cube(n + "_Snow", new Vector3(x, h - 4.5f, z),
+                        new Vector3(w * 0.52f, w * 0.34f, w * 0.52f), snow, container);
+                    s.transform.rotation = c.transform.rotation;
+                    s.isStatic = true;
+                    Object.DestroyImmediate(s.GetComponent<BoxCollider>());
+                }
+            }
+
+            Vector2 lake = new Vector2(LakeCenter.x, LakeCenter.z);
+
+            // (1) Solid containment wall hugging the forest-disc edge (~252m). Dense +
+            //     overlapping so there is no gap. Open the south corridor mouth (to the
+            //     volcano) and any river channel (those notches become waterfalls). The
+            //     lake neighbourhood is walled separately by its own tall banks.
+            for (int i = 0; i < 150; i++)
+            {
+                float a = i / 150f * Mathf.PI * 2f;
+                float dirX = Mathf.Cos(a), dirZ = Mathf.Sin(a);
+                float rad = 250f + R() * 14f;
+                float x = dirX * rad, z = dirZ * rad;
+                if (z < -28f && Mathf.Abs(x) < 96f) continue;              // south corridor mouth
+                if (Vector2.Distance(new Vector2(x, z), lake) < 80f) continue; // lake walled separately
+                if (InFeederRiver(x, z)) continue;                        // river notch (waterfall)
+                float h = 24f + R() * 32f;
+                Massif($"Ring_{i}", x, z, 30f + R() * 16f, h, i % 2 == 0 ? rock : rockDark, true, h > 44f);
+            }
+
+            // (1b) Lake enclosure — tall rock banks wrapping the lake's outer (NW) arc, with
+            //      a notch at the far corner where the lake overflows into a waterfall.
+            for (int i = 0; i < 26; i++)
+            {
+                float a = Mathf.Lerp(35f, 235f, i / 25f) * Mathf.Deg2Rad; // outward-facing half
+                float x = lake.x + Mathf.Cos(a) * (LakeHalf + 15f);
+                float z = lake.y + Mathf.Sin(a) * (LakeHalf + 15f);
+                // Leave a notch at the NW corner (~135°) for the outflow waterfall.
+                if (Mathf.Abs(Mathf.DeltaAngle(a * Mathf.Rad2Deg, 135f)) < 12f) continue;
+                float h = 26f + R() * 20f;
+                Massif($"LakeWall_{i}", x, z, 24f + R() * 12f, h, i % 2 == 0 ? rock : rockDark, true, h > 40f);
+            }
+
+            // (2) Ember-approach flank walls — the corridor sides get a solid mountain edge.
+            for (float z = -60f; z >= -334f; z -= 15f)
+            {
+                float h = 22f + R() * 20f;
+                Massif($"RingApW_{z}", -(ApproachHalfW + 22f) - R() * 8f, z, 26f + R() * 12f, h, rockDark, true, false);
+                Massif($"RingApE_{z}", (ApproachHalfW + 22f) + R() * 8f, z, 26f + R() * 12f, h, rockDark, true, false);
+            }
+            // South backdrop behind the volcano so the horizon is walled there too.
+            for (float x = -160f; x <= 160f; x += 22f)
+                Massif($"RingS_{x}", x, -474f - R() * 22f, 34f + R() * 16f, 34f + R() * 30f, rockDark, false, false);
+
+            // (3) Layered mid ridgeline (visual only) — a taller second range behind the wall.
+            for (int i = 0; i < 76; i++)
+            {
+                float a = i / 76f * Mathf.PI * 2f + 0.04f;
+                float rad = 306f + R() * 34f;
+                float x = Mathf.Cos(a) * rad, z = Mathf.Sin(a) * rad - 92f;
+                float h = 46f + R() * 48f;
+                Massif($"Ridge_{i}", x, z, 40f + R() * 26f, h, i % 3 == 0 ? rockDark : rock, false, h > 76f);
+            }
+
+            // (4) Distant silhouette range (visual only) — hazy peaks read through the fog.
+            for (int i = 0; i < 60; i++)
+            {
+                float a = i / 60f * Mathf.PI * 2f + 0.09f;
+                float rad = 392f + R() * 58f;
+                float x = Mathf.Cos(a) * rad, z = Mathf.Sin(a) * rad - 92f;
+                float h = 72f + R() * 66f;
+                Massif($"Far_{i}", x, z, 54f + R() * 36f, h, rockFar, false, h > 110f);
+            }
         }
 
         // ==================== MOUNTAIN VISTA (south, beyond the forest) ====================
@@ -1440,8 +1558,17 @@ namespace AldenFall.Editor
             return new Color(0.4f, 0.38f, 0.34f);        // neutral fallback
         }
 
+        /// <summary>How a Meshy prop's collider is fitted.</summary>
+        private enum PropCollision
+        {
+            FitBox,   // tight box around the whole model (buildings, chests, wells)
+            Trunk,    // thin capsule at the base only (trees — walk through canopy, magic passes)
+            None,     // no collider at all (small bushes / decor)
+        }
+
         private static GameObject PlaceMeshyProp(Transform parent, string name,
-            Vector3 pos, float yaw, float height, int groundLayer)
+            Vector3 pos, float yaw, float height, int groundLayer,
+            PropCollision collision = PropCollision.FitBox)
         {
             var asset = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Models/Props/{name}.fbx");
             if (asset == null) return null;
@@ -1511,15 +1638,37 @@ namespace AldenFall.Editor
             Vector3 bottomCenter = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
             instance.transform.position += pos - bottomCenter;
 
-            // Fitted collider on the root (targeting resolves via parents anyway)
+            // Collider fit depends on the prop type. Trees get a THIN trunk-only
+            // capsule so the player walks through canopy/branches and projectiles
+            // pass — you're only blocked touching the trunk. Small bushes get none.
+            // Everything else (buildings/chests/wells) keeps the fitted box.
             bounds = Measure();
-            var box = instance.AddComponent<BoxCollider>();
-            box.center = instance.transform.InverseTransformPoint(bounds.center);
             Vector3 lossy = instance.transform.lossyScale;
-            box.size = new Vector3(
-                bounds.size.x / Mathf.Max(Mathf.Abs(lossy.x), 0.0001f),
-                bounds.size.y / Mathf.Max(Mathf.Abs(lossy.y), 0.0001f),
-                bounds.size.z / Mathf.Max(Mathf.Abs(lossy.z), 0.0001f));
+            if (collision == PropCollision.FitBox)
+            {
+                var box = instance.AddComponent<BoxCollider>();
+                box.center = instance.transform.InverseTransformPoint(bounds.center);
+                box.size = new Vector3(
+                    bounds.size.x / Mathf.Max(Mathf.Abs(lossy.x), 0.0001f),
+                    bounds.size.y / Mathf.Max(Mathf.Abs(lossy.y), 0.0001f),
+                    bounds.size.z / Mathf.Max(Mathf.Abs(lossy.z), 0.0001f));
+            }
+            else if (collision == PropCollision.Trunk)
+            {
+                // A slim vertical capsule hugging the base ~45% of the model — the
+                // trunk. Canopy above it is walk-through and projectile-transparent.
+                var cap = instance.AddComponent<CapsuleCollider>();
+                cap.direction = 1; // Y axis
+                float worldTrunkH = Mathf.Max(0.6f, bounds.size.y * 0.45f);
+                float worldRadius = Mathf.Clamp(
+                    Mathf.Min(bounds.size.x, bounds.size.z) * 0.16f, 0.16f, 0.7f);
+                Vector3 worldCenter = new Vector3(
+                    bounds.center.x, bounds.min.y + worldTrunkH * 0.5f, bounds.center.z);
+                cap.center = instance.transform.InverseTransformPoint(worldCenter);
+                cap.height = worldTrunkH / Mathf.Max(Mathf.Abs(lossy.y), 0.0001f);
+                cap.radius = worldRadius / Mathf.Max(Mathf.Abs(lossy.x), 0.0001f);
+            }
+            // PropCollision.None: leave the prop collider-free.
 
             if (groundLayer >= 0) SetLayerRecursive(instance, groundLayer);
             instance.isStatic = true;
@@ -2129,18 +2278,20 @@ namespace AldenFall.Editor
             if (transport != null)
                 manager.transport = transport;
 
+            // Spawn in Aldric's lush forest glade just NORTH of the city (see BuildAldricGlade
+            // at ~(0,0,90)). The intro cutscene meets Aldric here; the city is a short walk south.
             var starts = new[]
             {
-                new Vector3(0f, 0.5f, -14f),
-                new Vector3(3f, 0.5f, -16f),
-                new Vector3(-3f, 0.5f, -16f),
-                new Vector3(0f, 0.5f, -18f)
+                new Vector3(0f, 0.5f, 84f),
+                new Vector3(3f, 0.5f, 82f),
+                new Vector3(-3f, 0.5f, 82f),
+                new Vector3(0f, 0.5f, 80f)
             };
             for (int i = 0; i < starts.Length; i++)
             {
                 var startObj = new GameObject($"NetworkStart_{i + 1}");
                 startObj.transform.position = starts[i];
-                startObj.transform.rotation = Quaternion.identity;
+                startObj.transform.rotation = Quaternion.Euler(0f, 0f, 0f); // face north toward Aldric
                 startObj.AddComponent<Mirror.NetworkStartPosition>();
             }
 
@@ -2224,6 +2375,10 @@ namespace AldenFall.Editor
             EnsureFolder("Assets/Prefabs");
             networkSpawnPrefabs.Clear();
 
+            // The world geometry is already built (colliders present), so ground queries
+            // resolve — but batch mode may have auto-sync off, so push transforms first.
+            Physics.SyncTransforms();
+
             var defs = Data.MonsterDatabase.LoadAll();
             if (defs.Count == 0)
             {
@@ -2277,21 +2432,36 @@ namespace AldenFall.Editor
         /// </summary>
         private static void CreateDancingGoblins()
         {
-            // One prefab per dance style — spawners instantiate a shared
-            // prefab, so per-goblin choreography means per-style prefabs.
-            // V2: the fishing party dances on the DRY east bank of Emberfall Lake (NW),
-            // beside the FishingSpot/Campfire, on flat ground so none stand in the water.
-            // Lake centre is (-150,0,150); the east shore + fishing spot sit near x -100..-95.
-            var troupe = new (AI.DanceStyle style, Vector3 pos)[]
+            // A lively fishing troupe strung along the SOUTH/EAST dry shore of Emberfall
+            // Lake (the side facing the city), beside the FishingSpot/Campfire.
+            //
+            // TWERKER ROOT CAUSE (finally): the old troupe clustered three goblins within
+            // ~6m at x≈-96..-102, and the Twerker at x=-102 landed ON TOP of the lake's
+            // wade-in step cubes, which live under the EmberfallLake container — a
+            // NavMeshModifier there marks them Not Walkable. Its NavMeshAgent then couldn't
+            // place on the NavMesh and the goblin never appeared, while the two on the
+            // walkable sand did. Fix: no more basin steps (mud banks now), and every goblin
+            // is placed on the flat walkable ground RING well clear of the basin, grounded.
+            var styles = new[] { AI.DanceStyle.Modern, AI.DanceStyle.Twerk, AI.DanceStyle.Robot };
+            var prefabByStyle = new Dictionary<AI.DanceStyle, GameObject>
             {
-                (AI.DanceStyle.Modern, new Vector3(-99f, 0f, 162f)),
-                (AI.DanceStyle.Robot, new Vector3(-96f, 0f, 158f)),
-                (AI.DanceStyle.Twerk, new Vector3(-102f, 0f, 156f)),
+                { AI.DanceStyle.Modern, BuildDancingGoblinPrefab(AI.DanceStyle.Modern) },
+                { AI.DanceStyle.Robot,  BuildDancingGoblinPrefab(AI.DanceStyle.Robot) },
+                { AI.DanceStyle.Twerk,  BuildDancingGoblinPrefab(AI.DanceStyle.Twerk) },
             };
-            for (int i = 0; i < troupe.Length; i++)
+
+            Vector3 lake = LakeCenter;
+            const int count = 9;
+            for (int i = 0; i < count; i++)
             {
-                var prefab = BuildDancingGoblinPrefab(troupe[i].style);
-                CreateSpawner($"dancing_goblin_spawner_{troupe[i].style}", prefab, troupe[i].pos, 30f);
+                float t = i / (float)(count - 1);
+                float deg = Mathf.Lerp(-120f, 30f, t);           // S → SE → E shore (faces the city)
+                float rad = 60f + (i % 2) * 6f;                   // staggered depth, clear of the basin
+                float x = lake.x + Mathf.Cos(deg * Mathf.Deg2Rad) * rad;
+                float z = lake.z + Mathf.Sin(deg * Mathf.Deg2Rad) * rad;
+                var style = styles[i % styles.Length];
+                CreateSpawner($"dancing_goblin_{i}_{style}", prefabByStyle[style],
+                    new Vector3(x, 0f, z), 30f);                  // CreateSpawner grounds y
             }
         }
 
@@ -2594,8 +2764,24 @@ namespace AldenFall.Editor
             return prefab;
         }
 
+        /// <summary>
+        /// Snaps a spawn point down onto the actual ground so nothing floats in the sky /
+        /// on an invisible floor (img 23). Raycasts against the Ground layer; falls back to
+        /// the flat valley (y=0) when nothing is hit. Keeps x/z, only corrects y.
+        /// </summary>
+        private static Vector3 GroundSpawn(Vector3 pos)
+        {
+            int groundLayer = LayerMask.NameToLayer("Ground");
+            int mask = groundLayer >= 0 ? (1 << groundLayer) : ~0;
+            if (Physics.Raycast(new Vector3(pos.x, 250f, pos.z), Vector3.down, out var hit,
+                    500f, mask, QueryTriggerInteraction.Ignore))
+                return new Vector3(pos.x, hit.point.y + 0.05f, pos.z);
+            return new Vector3(pos.x, 0.05f, pos.z);   // flat valley floor
+        }
+
         private static void CreateSpawner(string name, GameObject prefab, Vector3 pos, float respawnDelay)
         {
+            pos = GroundSpawn(pos);
             var spawnerObj = new GameObject(name);
             spawnerObj.transform.position = pos;
             var spawner = spawnerObj.AddComponent<AI.EnemySpawner>();
@@ -2615,6 +2801,7 @@ namespace AldenFall.Editor
 
         private static void CreateCamp(string name, GameObject prefab, Vector3 pos, int population, float radius, float respawnDelay)
         {
+            pos = GroundSpawn(pos);
             var campObj = new GameObject(name);
             campObj.transform.position = pos;
             var camp = campObj.AddComponent<AI.MobCamp>();
