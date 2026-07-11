@@ -272,6 +272,8 @@ namespace AldenFall.Editor
             BuildField(root.transform, groundLayer);
             BuildCave(root.transform, groundLayer);
             BuildForest(root.transform, groundLayer);
+            BuildRescueGiver(root.transform, groundLayer);
+            BuildOrcWarcamp(root.transform, groundLayer);
             BuildGlobalSafety(root.transform, groundLayer);
 
             return root;
@@ -525,6 +527,194 @@ namespace AldenFall.Editor
             light.intensity = 1.6f;
             light.range = 5f;
             light.shadows = LightShadows.None;
+        }
+
+        /// <summary>
+        /// The rescue-quest giver in the town courtyard — a grieving mother whose
+        /// daughter Grukmar has carried off. Interactable like Aldric (no
+        /// NetworkIdentity). npcId "townsperson" matches q_rescue's TalkToNpc
+        /// return step, so handing the quest in here also frees the reunion.
+        /// </summary>
+        private static void BuildRescueGiver(Transform parent, int groundLayer)
+        {
+            int interactableLayer = LayerMask.NameToLayer("Interactable");
+            Vector3 pos = new Vector3(10f, 0f, -6f);   // town courtyard, clear of the pond
+
+            var npcObj = new GameObject("WorriedMother");
+            npcObj.transform.SetParent(parent);
+            npcObj.transform.position = pos;
+            npcObj.transform.rotation = Quaternion.Euler(0f, 200f, 0f);
+            if (interactableLayer >= 0) npcObj.layer = interactableLayer;
+
+            var giver = npcObj.AddComponent<World.QuestGiverNPC>();
+            var giverSO = new SerializedObject(giver);
+            giverSO.FindProperty("npcId").stringValue = "townsperson";
+            giverSO.FindProperty("questId").stringValue = "q_rescue";
+            giverSO.FindProperty("displayName").stringValue = "Worried Mother";
+            giverSO.FindProperty("prompt").stringValue = "Talk to the Worried Mother";
+            giverSO.FindProperty("radius").floatValue = 3.5f;
+            giverSO.ApplyModifiedProperties();
+
+            var model = SceneSetup.InstantiateGeneratedVisual("HeroFemale", npcObj.transform);
+            if (model != null)
+            {
+                model.name = "Body";
+                model.transform.localPosition = Vector3.zero;
+                model.transform.localRotation = Quaternion.identity;
+                if (groundLayer >= 0) SetLayerRecursive(model, groundLayer);
+            }
+            else
+            {
+                var shawlMat = SceneSetup.GetOrCreateMaterialAsset(new Color(0.45f, 0.2f, 0.28f), "MotherShawlMaterial");
+                var skinMat = SceneSetup.GetOrCreateMaterialAsset(new Color(0.85f, 0.68f, 0.55f), "MotherSkinMaterial");
+
+                var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                body.name = "Body";
+                body.transform.SetParent(npcObj.transform);
+                body.transform.localPosition = new Vector3(0f, 0.95f, 0f);
+                body.transform.localScale = new Vector3(0.72f, 0.95f, 0.72f);
+                body.GetComponent<MeshRenderer>().sharedMaterial = shawlMat;
+                if (groundLayer >= 0) body.layer = groundLayer;
+
+                var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                head.name = "Head";
+                head.transform.SetParent(npcObj.transform);
+                head.transform.localPosition = new Vector3(0f, 1.9f, 0f);
+                head.transform.localScale = Vector3.one * 0.5f;
+                Object.DestroyImmediate(head.GetComponent<SphereCollider>());
+                head.GetComponent<MeshRenderer>().sharedMaterial = skinMat;
+                if (groundLayer >= 0) head.layer = groundLayer;
+            }
+
+            var lightObj = new GameObject("QuestLight");
+            lightObj.transform.SetParent(npcObj.transform);
+            lightObj.transform.localPosition = Vector3.up * 2.5f;
+            var light = lightObj.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(0.7f, 0.75f, 0.95f);
+            light.intensity = 1.5f;
+            light.range = 5f;
+            light.shadows = LightShadows.None;
+        }
+
+        /// <summary>
+        /// Grukmar's orc warcamp on the west forest edge (~-45, -165), off the
+        /// main path: totems, a war-fire, a spike-ring, and the caged Daughter
+        /// who is freed (RescueCaptive) when the warlord falls. Grukmar himself +
+        /// his guards are spawned from monsters.json by CreateEnemies.
+        /// </summary>
+        private static void BuildOrcWarcamp(Transform root, int groundLayer)
+        {
+            var container = Child(root, "OrcWarcamp");
+            Vector3 center = new Vector3(-45f, 0f, -165f);
+
+            // Reuse the field orc dressing (totem + bone pile), then add a war-fire.
+            BuildOrcCampDressing(container, center + new Vector3(4f, 0f, 3f));
+            BuildOrcCampDressing(container, center + new Vector3(-6f, 0f, -5f));
+
+            var fireStoneMat = Mat("WarcampStone", new Color(0.3f, 0.28f, 0.28f), smoothness: 0.1f);
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i * Mathf.PI / 3f;
+                var stone = Cube($"WarFireStone{i}",
+                    center + new Vector3(Mathf.Cos(a), 0.15f, Mathf.Sin(a)) * 1.3f,
+                    new Vector3(0.55f, 0.4f, 0.55f), fireStoneMat, container);
+                stone.isStatic = true;
+            }
+            var fireObj = new GameObject("WarFire");
+            fireObj.transform.SetParent(container);
+            fireObj.transform.position = center + Vector3.up * 0.9f;
+            var fireLight = fireObj.AddComponent<Light>();
+            fireLight.type = LightType.Point;
+            fireLight.color = new Color(1f, 0.5f, 0.18f);
+            fireLight.range = 16f;
+            fireLight.shadows = LightShadows.None;
+            fireObj.AddComponent<World.TorchFlicker>().Configure(3.0f, 0.9f, 7f);
+
+            // Spike ring (sharpened stakes) around the camp perimeter.
+            var spikeMat = Mat("WarSpike", new Color(0.28f, 0.2f, 0.13f), smoothness: 0.05f);
+            for (int i = 0; i < 10; i++)
+            {
+                float a = i * Mathf.PI * 2f / 10f;
+                Vector3 sp = center + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 11f;
+                var spike = Cylinder($"WarSpike{i}", sp + Vector3.up * 1.1f,
+                    new Vector3(0.22f, 1.1f, 0.22f), spikeMat, container);
+                spike.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 22f - 11f,
+                    (float)rng.NextDouble() * 360f, (float)rng.NextDouble() * 22f - 11f);
+                spike.isStatic = true;
+                if (groundLayer >= 0) spike.layer = groundLayer;
+            }
+
+            // Lean-to tents (Meshy prop if present, else cube fallback).
+            foreach (var (offset, yaw) in new[] { (new Vector3(6f, 0, 4f), 40f), (new Vector3(-5f, 0, 6f), -30f) })
+            {
+                Vector3 tentPos = center + offset;
+                var tentModel = PlaceMeshyProp(container, "OrcTent", tentPos, yaw, 3f, groundLayer);
+                if (tentModel == null)
+                {
+                    var tentMat = Mat("WarTentCloth", new Color(0.3f, 0.24f, 0.16f), smoothness: 0.05f);
+                    var tent = Cube("OrcTent", tentPos + Vector3.up * 1.2f, new Vector3(3.2f, 2.4f, 2.8f), tentMat, container);
+                    tent.transform.rotation = Quaternion.Euler(0, yaw, 42f);
+                    tent.isStatic = true;
+                }
+            }
+
+            BuildCagedDaughter(container, center + new Vector3(-3f, 0f, -3f), groundLayer);
+        }
+
+        /// <summary>The kidnapped girl in a crude cage; RescueCaptive frees her on Grukmar's death.</summary>
+        private static void BuildCagedDaughter(Transform parent, Vector3 pos, int groundLayer)
+        {
+            var daughterObj = new GameObject("Daughter");
+            daughterObj.transform.SetParent(parent);
+            daughterObj.transform.position = pos;
+            daughterObj.transform.rotation = Quaternion.Euler(0f, 60f, 0f);
+
+            var model = SceneSetup.InstantiateGeneratedVisual("Daughter", daughterObj.transform);
+            if (model != null)
+            {
+                model.name = "Body";
+                model.transform.localPosition = Vector3.zero;
+                model.transform.localRotation = Quaternion.identity;
+                if (groundLayer >= 0) SetLayerRecursive(model, groundLayer);
+            }
+            else
+            {
+                var dressMat = SceneSetup.GetOrCreateMaterialAsset(new Color(0.6f, 0.45f, 0.5f), "DaughterDressMaterial");
+                var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                body.name = "Body";
+                body.transform.SetParent(daughterObj.transform);
+                body.transform.localPosition = new Vector3(0f, 0.55f, 0f);
+                body.transform.localScale = new Vector3(0.55f, 0.6f, 0.55f);   // small: a cowering child
+                Object.DestroyImmediate(body.GetComponent<CapsuleCollider>());
+                body.GetComponent<MeshRenderer>().sharedMaterial = dressMat;
+                if (groundLayer >= 0) body.layer = groundLayer;
+            }
+
+            // Crude cage: four corner posts (leave a gap so she can walk out once freed).
+            var cageMat = Mat("Cage", new Color(0.22f, 0.16f, 0.11f), smoothness: 0.05f);
+            for (int i = 0; i < 4; i++)
+            {
+                float a = i * Mathf.PI / 2f + Mathf.PI / 4f;
+                var post = Cylinder($"CagePost{i}", pos + new Vector3(Mathf.Cos(a), 1.1f, Mathf.Sin(a)) * 1.3f,
+                    new Vector3(0.16f, 1.1f, 0.16f), cageMat, parent);
+                post.isStatic = true;
+                if (groundLayer >= 0) post.layer = groundLayer;
+            }
+
+            // Fearful red captive glow that RescueCaptive warms to gold on rescue.
+            var lightObj = new GameObject("CaptiveLight");
+            lightObj.transform.SetParent(daughterObj.transform);
+            lightObj.transform.localPosition = Vector3.up * 1.8f;
+            var light = lightObj.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(0.85f, 0.25f, 0.2f);
+            light.intensity = 1.1f;
+            light.range = 4.5f;
+            light.shadows = LightShadows.None;
+
+            var captive = daughterObj.AddComponent<World.RescueCaptive>();
+            captive.Configure("grukmar", light);
         }
 
         // ==================== FISHING & COOKING (pond east shore) ====================
@@ -939,6 +1129,46 @@ namespace AldenFall.Editor
             DoorFrame("BossDoor", new Vector3(0f, 0f, 310f), 0f);
             DoorFrame("ArmoryDoor", new Vector3(-20.5f, 0f, 253f), 90f);
             DoorFrame("ReliquaryDoor", new Vector3(21.5f, 0f, 257f), 90f);
+
+            // ---- Sealable doors: a solid Ground-layer slab fills each opening,
+            // blocking passage + LoS + navmesh until the guarded room is cleared,
+            // then SealableDoor hides it. The ENTRY door is left open (it's the
+            // way in — nothing to clear behind it). Doors gate on the mobs in the
+            // room the player has just reached / must clear before passing.
+            var sealMat = Mat("DoorSeal", new Color(0.17f, 0.13f, 0.11f), smoothness: 0.15f,
+                emission: new Color(0.14f, 0.04f, 0.02f));
+            void SealDoor(string name, Vector3 pos, float yaw, Vector3 guardCenter, Vector3 guardSize)
+            {
+                var slab = Cube($"{name}_Seal", pos + Vector3.up * 2.5f,
+                    new Vector3(6.6f, 5f, 0.6f), sealMat, container);
+                slab.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                slab.isStatic = true;
+                if (groundLayer >= 0) slab.layer = groundLayer;
+                var mod = slab.AddComponent<NavMeshModifier>();
+                mod.overrideArea = true;
+                mod.area = 1;   // Not Walkable — carves the doorway out of the bake
+                slab.AddComponent<World.SealableDoor>().Configure(guardCenter, guardSize);
+            }
+
+            // ForkDoor: gated by the entry gauntlet (field bandits + orc brutes in the entry hall).
+            SealDoor("ForkDoor", new Vector3(0f, 0f, 229f), 0f,
+                new Vector3(0f, 4f, 205f), new Vector3(22f, 14f, 52f));
+            // Armory + Reliquary side doors: gated by the fork room's acolytes.
+            SealDoor("ArmoryDoor", new Vector3(-20.5f, 0f, 253f), 90f,
+                new Vector3(0f, 4f, 240f), new Vector3(28f, 14f, 26f));
+            SealDoor("ReliquaryDoor", new Vector3(21.5f, 0f, 257f), 90f,
+                new Vector3(0f, 4f, 240f), new Vector3(28f, 14f, 26f));
+            // BossDoor: gated by the ambush room + final hall — no mage-cheesing the boss.
+            SealDoor("BossDoor", new Vector3(0f, 0f, 310f), 0f,
+                new Vector3(0f, 4f, 289f), new Vector3(30f, 14f, 44f));
+
+            // ---- Line-of-sight baffles: short tall walls just inside a couple of
+            // gates, offset to alternate sides so the player must step in and weave
+            // (a chicane) rather than snipe the room straight through the doorway.
+            Wall("ForkLoS_A", new Vector3(-5f, 3.5f, 233f), new Vector3(8f, 7f, 1.2f));
+            Wall("ForkLoS_B", new Vector3(5f, 3.5f, 235.5f), new Vector3(8f, 7f, 1.2f));
+            Wall("AmbushLoS_A", new Vector3(-6f, 3.5f, 280f), new Vector3(9f, 7f, 1.2f));
+            Wall("AmbushLoS_B", new Vector3(6f, 3.5f, 283f), new Vector3(9f, 7f, 1.2f));
 
             foreach (var p in new[]
             {
@@ -2037,13 +2267,16 @@ namespace AldenFall.Editor
 
         /// <summary>Writes identity + loot table into a MobIdentity's serialized fields.</summary>
         private static void ConfigureIdentity(AI.MobIdentity identity, string displayName,
-            int level, (string id, float chance)[] loot)
+            int level, (string id, float chance)[] loot, string mobIdOverride = null)
         {
             var so = new SerializedObject(identity);
             so.FindProperty("displayName").stringValue = displayName;
             so.FindProperty("combatLevel").intValue = level;
             // Stable slug so KillMob quest objectives can target this mob type.
-            so.FindProperty("MobId").stringValue = displayName.ToLowerInvariant().Replace(' ', '_');
+            // Prefer the JSON id (e.g. "grukmar") so quests target it exactly.
+            so.FindProperty("MobId").stringValue =
+                !string.IsNullOrEmpty(mobIdOverride) ? mobIdOverride
+                : displayName.ToLowerInvariant().Replace(' ', '_');
             var table = so.FindProperty("lootTable");
             table.arraySize = loot.Length;
             for (int i = 0; i < loot.Length; i++)
@@ -2124,6 +2357,29 @@ namespace AldenFall.Editor
                     SceneSetup.GetOrCreateMaterialAsset(def.FallbackColor, $"{def.id}Material");
             }
 
+            // ---- Elite treatment: dire mini-bosses + the warlord read as bigger
+            // and menacing. Scale the whole visual up (generated models ignore
+            // heightMeters, so this is what makes them visibly larger) and add a
+            // low, blood-red glow. heightMeters is already bumped in JSON so the
+            // collider/agent grow to match.
+            float eliteScale = def.id.StartsWith("dire_") ? 1.3f
+                             : def.id == "grukmar" ? 1.5f
+                             : 1f;
+            if (eliteScale > 1f)
+            {
+                visual.transform.localScale = Vector3.one * eliteScale;
+
+                var glowObj = new GameObject("EliteGlow");
+                glowObj.transform.SetParent(mob.transform);
+                glowObj.transform.localPosition = new Vector3(0f, heightMeters * 0.55f, 0f);
+                var glow = glowObj.AddComponent<Light>();
+                glow.type = LightType.Point;
+                glow.color = new Color(0.85f, 0.12f, 0.1f);
+                glow.intensity = 2.2f;
+                glow.range = Mathf.Max(5f, heightMeters * 3.2f);
+                glow.shadows = LightShadows.None;
+            }
+
             var agent = mob.AddComponent<UnityEngine.AI.NavMeshAgent>();
             agent.height = heightMeters;
             agent.radius = radius;
@@ -2175,7 +2431,7 @@ namespace AldenFall.Editor
             var lootTuples = new (string, float)[def.loot.Length];
             for (int i = 0; i < def.loot.Length; i++)
                 lootTuples[i] = (def.loot[i].itemId, def.loot[i].chance);
-            ConfigureIdentity(identity, def.displayName, def.level, lootTuples);
+            ConfigureIdentity(identity, def.displayName, def.level, lootTuples, def.id);
 
             mob.AddComponent<UI.EnemyHealthBar>();
 
@@ -2202,7 +2458,9 @@ namespace AldenFall.Editor
             so.FindProperty("respawnDelay").floatValue = respawnDelay;
             so.FindProperty("spawnOnStart").boolValue = true;
             var respawnProp = so.FindProperty("respawnAfterDeath");
-            if (respawnProp != null) respawnProp.boolValue = pos.z < 180f; // dungeon (z>180) is clearable — no infinite respawn
+            // Dungeon (z>180) is clearable; a huge respawn delay (999999 in JSON)
+            // marks a one-and-done quest boss (e.g. Grukmar) that never returns.
+            if (respawnProp != null) respawnProp.boolValue = pos.z < 180f && respawnDelay < 100000f;
             so.ApplyModifiedProperties();
         }
 
@@ -2217,7 +2475,9 @@ namespace AldenFall.Editor
             so.FindProperty("radius").floatValue = radius;
             so.FindProperty("respawnDelay").floatValue = respawnDelay;
             var respawnProp = so.FindProperty("respawnAfterDeath");
-            if (respawnProp != null) respawnProp.boolValue = pos.z < 180f; // dungeon (z>180) is clearable — no infinite respawn
+            // Dungeon (z>180) is clearable; a huge respawn delay (999999 in JSON)
+            // marks a one-and-done camp (never returns).
+            if (respawnProp != null) respawnProp.boolValue = pos.z < 180f && respawnDelay < 100000f;
             so.ApplyModifiedProperties();
         }
 

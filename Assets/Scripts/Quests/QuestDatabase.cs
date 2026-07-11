@@ -89,22 +89,26 @@ namespace AldenFall.Quests
                 PrereqQuestId = "q_learn_fish",
             });
 
-            // ---- Stub for a later content pass (grukmar mob not yet placed) ----
+            // ---- Rescue quest: given by a town NPC (the "Worried Mother"), whose
+            // daughter Grukmar the warlord has dragged off to his forest warcamp.
             Register(new QuestDef
             {
                 Id = "q_rescue",
-                Name = "The Warden's Debt",
-                Description = "A townsperson was dragged off by the brute Grukmar. Cut him down and bring word back.",
+                Name = "A Mother's Plea",
+                Description = "Grukmar the Warlord has stolen a girl away to his forest warcamp. Cut him down, free her, and bring word back to her mother in town.",
                 Objectives =
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.KillMob, TargetId = "grukmar", Count = 1,
-                        Description = "Slay Grukmar" },
+                        Description = "Slay Grukmar the Warlord" },
                     new ObjectiveDef { Kind = ObjectiveKind.TalkToNpc, TargetId = "townsperson", Count = 1,
-                        Description = "Return to the freed townsperson" },
+                        Description = "Return to the girl's mother in town" },
                 },
-                GoldReward = 50,
-                GiverNpcId = "aldric",
+                GoldReward = 150,
+                Rewards = { ("knight_sword", 1) },
+                GiverNpcId = "townsperson",
                 PrereqQuestId = "q_learn_eat",
+                StartCutscene = "q_rescue_start",
+                CompleteCutscene = "q_rescue_complete",
             });
         }
 

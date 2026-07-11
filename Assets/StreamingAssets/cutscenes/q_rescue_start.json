@@ -1,0 +1,19 @@
+{
+  "id": "q_rescue_start",
+  "letterbox": true,
+  "steps": [
+    { "type": "fade", "target": 1, "seconds": 0 },
+    { "type": "camera", "pos": [10, 4.5, -13], "lookAt": [10, 1.4, -6], "seconds": 0 },
+    { "type": "fade", "target": 0, "seconds": 1.2, "blocking": false },
+    { "type": "subtitle", "text": "The woman clutches your sleeve, her eyes red from weeping.", "seconds": 3.6, "blocking": false },
+    { "type": "camera", "pos": [7.5, 2.0, -9.5], "lookAt": [10, 1.5, -6], "seconds": 4.0 },
+    { "type": "subtitle", "text": "Mother:  Please — they took my girl. Grukmar the Warlord and his brutes, out of the forest.", "seconds": 4.6, "blocking": false },
+    { "type": "wait", "seconds": 0.3 },
+    { "type": "subtitle", "text": "Mother:  His warcamp lies west, past the deep pines. No one who walks in comes back.", "seconds": 4.4, "blocking": false },
+    { "type": "camera", "pos": [11.5, 2.2, -9], "lookAt": [10, 1.4, -6], "seconds": 4.0 },
+    { "type": "subtitle", "text": "Mother:  Cut him down. Bring her home to me. I will give you all I have.", "seconds": 4.4, "blocking": false },
+    { "type": "wait", "seconds": 0.6 },
+    { "type": "fade", "target": 1, "seconds": 1.0 },
+    { "type": "fade", "target": 0, "seconds": 0.8 }
+  ]
+}
