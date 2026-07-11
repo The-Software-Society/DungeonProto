@@ -55,7 +55,7 @@ namespace AldenFall.Player
         public bool StartCooking(Campfire fire)
         {
             if (IsCooking) return false;
-            if (inventory == null || inventory.CountOf("raw_fish") <= 0)
+            if (inventory == null || FirstRawFish() == null)
             {
                 CombatEvents.RaiseStatus(transform.position + Vector3.up * 2f,
                     "Nothing raw to cook", UI.UITheme.TextDim);
@@ -93,20 +93,31 @@ namespace AldenFall.Player
                 StopCooking();
         }
 
+        private static readonly string[] RawFish = { "raw_fish", "raw_trout", "raw_bass", "raw_carp" };
+
+        private string FirstRawFish()
+        {
+            foreach (var id in RawFish)
+                if (inventory != null && inventory.CountOf(id) > 0) return id;
+            return null;
+        }
+
         private IEnumerator CookLoop()
         {
-            while (inventory.CountOf("raw_fish") > 0)
+            string raw;
+            while ((raw = FirstRawFish()) != null)
             {
                 yield return new WaitForSeconds(cookSeconds);
 
-                if (inventory.CountOf("raw_fish") <= 0) break;
-                inventory.Remove("raw_fish");
+                if (inventory.CountOf(raw) <= 0) continue;   // eaten/moved mid-cook — re-pick
+                var def = ItemDatabase.Get(raw);
+                string cooked = def != null && !string.IsNullOrEmpty(def.CookedResult) ? def.CookedResult : "cooked_fish";
+                inventory.Remove(raw);
 
                 int level = skills != null ? skills.Level(SkillType.Cooking) : 1;
                 bool burnt = rng.NextDouble() < BurnChance(level);
 
-                // GiveOrDrop: with a full bag the result lands on the ground
-                // instead of silently vanishing.
+                // GiveOrDrop: with a full bag the result lands on the ground instead of vanishing.
                 if (burnt)
                 {
                     bool bagged = LootDrop.GiveOrDrop(inventory, "burnt_fish", transform);
@@ -116,10 +127,12 @@ namespace AldenFall.Player
                 }
                 else
                 {
-                    bool bagged = LootDrop.GiveOrDrop(inventory, "cooked_fish", transform);
+                    bool bagged = LootDrop.GiveOrDrop(inventory, cooked, transform);
                     skills?.AddXp(SkillType.Cooking, xpPerCook);
+                    var cdef = ItemDatabase.Get(cooked);
+                    string label = cdef != null ? cdef.Name + "!" : "Cooked!";
                     CombatEvents.RaiseStatus(transform.position + Vector3.up * 2f,
-                        bagged ? "Cooked fish!" : "Cooked! (bag full — dropped)", UI.UITheme.Gold);
+                        bagged ? label : label + " (bag full — dropped)", UI.UITheme.Gold);
                 }
             }
 

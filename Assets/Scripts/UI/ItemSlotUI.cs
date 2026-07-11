@@ -21,6 +21,7 @@ namespace AldenFall.UI
         public Image icon;
         public GameObject equippedBadge;
         public TMP_Text countText;   // stack count, hidden at <= 1
+        public TMP_Text plusText;    // upgrade tier "+X", hidden at +0
 
         private string itemId;
         private System.Action<string> onClick;
@@ -62,6 +63,18 @@ namespace AldenFall.UI
                 Color c = has ? ItemPlus.PlusColor(def, ItemPlus.PlusOf(id)) : UITheme.SlotBorder;
                 c.a = has ? 0.55f : UITheme.SlotBorder.a;
                 border.color = c;
+            }
+
+            if (plusText != null)
+            {
+                int plus = ItemPlus.PlusOf(id);
+                bool showPlus = has && plus > 0;
+                plusText.gameObject.SetActive(showPlus);
+                if (showPlus)
+                {
+                    plusText.text = "+" + plus;
+                    plusText.color = ItemPlus.PlusColor(def, plus);
+                }
             }
 
             if (equippedBadge != null)

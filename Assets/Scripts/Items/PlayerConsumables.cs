@@ -72,8 +72,12 @@ namespace AldenFall.Items
             CombatEvents.RaiseStatus(transform.position + Vector3.up * 2f,
                 $"+{def.HealAmount:0}", UI.UITheme.HpGreen);
             PlayEatAnimation();
+            OnAte?.Invoke(itemId);   // quest/tutorial hook (EatFood objectives)
             return true;
         }
+
+        /// <summary>Raised when food is successfully eaten. Arg = item id.</summary>
+        public event System.Action<string> OnAte;
 
         private void PlayEatAnimation()
         {

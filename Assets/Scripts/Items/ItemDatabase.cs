@@ -37,8 +37,19 @@ namespace AldenFall.Items
         public int MaxStack = 1;    // >1 = stacks in one bag slot (fish, materials)
         public float HealAmount;    // >0 = edible
         public float EatLockout;    // seconds of combat lockout after eating
+        public string CookedResult; // raw food → this id when cooked (fishing/cooking chain)
+        public int Value;           // base vendor/gold value; 0 = derive from Rarity
 
         public bool IsConsumable => HealAmount > 0f;
+
+        /// <summary>Gold value for vendor pricing. Falls back to a rarity default when Value is unset.</summary>
+        public int SellValue => Value > 0 ? Value : Rarity switch
+        {
+            ItemRarity.Uncommon => 40,
+            ItemRarity.Rare => 120,
+            ItemRarity.Epic => 400,
+            _ => 15,
+        };
 
         public float Bonus(StatType type)
         {
@@ -247,13 +258,14 @@ namespace AldenFall.Items
             Register(new ItemDef
             {
                 Id = "raw_fish",
-                Name = "Raw Fish",
-                Description = "Fresh from the courtyard pond. Needs a campfire.",
+                Name = "Raw Minnow",
+                Description = "A small fresh minnow from the river. Needs a campfire.",
                 Slot = EquipSlot.None,
                 Rarity = ItemRarity.Common,
                 MaxStack = 50,
                 ModelProp = "Fish",
                 Tint = new Color(0.72f, 0.8f, 0.9f),
+                CookedResult = "cooked_fish",
             });
             Register(new ItemDef
             {
@@ -279,6 +291,14 @@ namespace AldenFall.Items
                 ModelProp = "Fish",
                 Tint = new Color(0.22f, 0.2f, 0.18f),
             });
+
+            // Higher fishing tiers — level-gated in FishingController; more healing when cooked.
+            Register(new ItemDef { Id = "raw_trout", Name = "Raw Trout", Description = "A river trout, still wriggling.", MaxStack = 50, ModelProp = "Fish", Tint = new Color(0.6f, 0.75f, 0.7f), CookedResult = "cooked_trout" });
+            Register(new ItemDef { Id = "cooked_trout", Name = "Cooked Trout", Description = "Flaky and hearty. Restores solid health.", MaxStack = 50, HealAmount = 40f, EatLockout = 2.0f, ModelProp = "Fish", Tint = new Color(0.95f, 0.66f, 0.4f) });
+            Register(new ItemDef { Id = "raw_bass", Name = "Raw Bass", Description = "A fat river bass.", MaxStack = 50, ModelProp = "Fish", Tint = new Color(0.5f, 0.6f, 0.45f), CookedResult = "cooked_bass" });
+            Register(new ItemDef { Id = "cooked_bass", Name = "Cooked Bass", Description = "Rich and filling. Restores a lot of health.", Rarity = ItemRarity.Uncommon, MaxStack = 50, HealAmount = 60f, EatLockout = 2.3f, ModelProp = "Fish", Tint = new Color(0.9f, 0.6f, 0.32f) });
+            Register(new ItemDef { Id = "raw_carp", Name = "Raw Golden Carp", Description = "A rare golden carp, prized by cooks.", Rarity = ItemRarity.Rare, MaxStack = 50, ModelProp = "Fish", Tint = new Color(0.85f, 0.72f, 0.35f), CookedResult = "cooked_carp" });
+            Register(new ItemDef { Id = "cooked_carp", Name = "Golden Carp Feast", Description = "A feast fit for a hero. Restores massive health.", Rarity = ItemRarity.Rare, MaxStack = 50, HealAmount = 95f, EatLockout = 2.6f, ModelProp = "Fish", Tint = new Color(1f, 0.78f, 0.3f) });
         }
 
         private static void Register(ItemDef def) => items[def.Id] = def;

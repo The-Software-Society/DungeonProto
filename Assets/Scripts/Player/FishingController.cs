@@ -140,7 +140,8 @@ namespace AldenFall.Player
 
                 if (Random.value <= catchChance)
                 {
-                    if (!inventory.Add(caughtItem))
+                    string caught = PickCatch();
+                    if (!inventory.Add(caught))
                     {
                         CombatEvents.RaiseStatus(transform.position + Vector3.up * 2f,
                             "Your bag is full", UI.UITheme.TextDim);
@@ -148,6 +149,7 @@ namespace AldenFall.Player
                     }
                     skills?.AddXp(SkillType.Fishing, xpPerFish);
                     SplashBobber();
+                    OnFishCaught?.Invoke(caught);
                 }
             }
 
@@ -157,6 +159,20 @@ namespace AldenFall.Player
                 Destroy(bobber);
                 bobber = null;
             }
+        }
+
+        /// <summary>Fired when a fish is caught (tutorial/quest hook). Arg = caught item id.</summary>
+        public event System.Action<string> OnFishCaught;
+
+        /// <summary>Level-gated catch: higher Fishing level unlocks + weights rarer fish.</summary>
+        private string PickCatch()
+        {
+            int lvl = skills != null ? skills.Level(SkillType.Fishing) : 1;
+            float r = Random.value;
+            if (lvl >= 20 && r < 0.12f) return "raw_carp";
+            if (lvl >= 10 && r < 0.30f) return "raw_bass";
+            if (lvl >= 5 && r < 0.55f) return "raw_trout";
+            return "raw_fish";
         }
 
         // ---------- bobber (primitive until a real model earns its place) ----------

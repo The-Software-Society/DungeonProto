@@ -218,8 +218,12 @@ namespace AldenFall.Abilities
             }
 
             mastery?.AddUse(abilityId);
+            OnAbilityUsed?.Invoke(abilityId);   // quest/tutorial hook (UseAbility objectives)
             return true;
         }
+
+        /// <summary>Raised on a successful ability activation. Arg = ability id.</summary>
+        public event System.Action<string> OnAbilityUsed;
 
         /// <summary>
         /// Cooldown after skill-level reduction: Attack level shortens melee

@@ -12,6 +12,9 @@ namespace AldenFall.Player
         [SerializeField] private float rotationSpeed = 14f;
         [SerializeField] private float gravity = -25f;
         [SerializeField] private float jumpHeight = 4f;
+        [SerializeField] private int maxJumps = 2;                // ground jump + one mid-air jump
+        [SerializeField] private float doubleJumpHeight = 3.2f;   // the air jump, a touch lower
+        private int jumpsUsed;
 
         [Header("Dodge Roll")]
         [SerializeField] private float dodgeDistance = 5.2f;
@@ -200,6 +203,7 @@ namespace AldenFall.Player
             if (isGrounded && velocity.y < 0)
             {
                 velocity.y = -2f; // Small downward force to keep grounded
+                jumpsUsed = 0;    // refresh the double-jump on landing
             }
         }
 
@@ -415,13 +419,16 @@ namespace AldenFall.Player
 
         private void HandleJump()
         {
-            if (Input.GetButtonDown("Jump") && isGrounded)
-            {
-                velocity.y = Mathf.Sqrt(jumpHeight * -2f * gravity);
+            if (!Input.GetButtonDown("Jump")) return;
+            if (jumpsUsed >= maxJumps) return;
+            if (jumpsUsed == 0 && !isGrounded) return;   // the first jump must start from the ground
 
-                if (animator != null)
-                    animator.SetTrigger(JumpHash);
-            }
+            float h = jumpsUsed == 0 ? jumpHeight : doubleJumpHeight;
+            velocity.y = Mathf.Sqrt(h * -2f * gravity);  // reset (not add) → consistent second jump
+            jumpsUsed++;
+
+            if (animator != null)
+                animator.SetTrigger(JumpHash);
         }
 
         private void HandleDoubleTapDodge()

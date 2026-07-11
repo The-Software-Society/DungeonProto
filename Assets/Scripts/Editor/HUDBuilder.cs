@@ -654,6 +654,12 @@ namespace AldenFall.Editor
             ui.countText.alignment = TextAlignmentOptions.BottomRight;
             ui.countText.gameObject.SetActive(false);
 
+            // Upgrade tier "+X", top-left, tinted by tier, hidden at +0
+            ui.plusText = Text(slot, "Plus", "", 13, UITheme.TextGold, FontStyles.Bold);
+            Anchor(ui.plusText.rectTransform, new Vector2(0, 1), new Vector2(15, -12), new Vector2(30, 16));
+            ui.plusText.alignment = TextAlignmentOptions.TopLeft;
+            ui.plusText.gameObject.SetActive(false);
+
             // GraphicRaycaster needs a raycast target covering the slot
             ui.background.raycastTarget = true;
 
@@ -758,7 +764,12 @@ namespace AldenFall.Editor
             Stretch(holderRect);
             var tooltip = holder.AddComponent<TooltipUI>();
 
-            var panel = Panel(holderRect, "TooltipPanel", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(280, 118));
+            // Two columns: hovered item (left) + currently-equipped counterpart
+            // (right, shown only for equippable items). Left column keeps its
+            // original ~252px width; the compare column occupies the right half.
+            const float leftRight = -294f; // ends the left column near x=266 in a 560 panel
+
+            var panel = Panel(holderRect, "TooltipPanel", new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(560, 118));
             panel.pivot = new Vector2(0f, 1f);
             tooltip.panel = panel;
 
@@ -768,21 +779,56 @@ namespace AldenFall.Editor
             tooltip.nameText = Text(panel, "Name", "", 16, UITheme.TextMain, FontStyles.Bold);
             var nRect = tooltip.nameText.rectTransform;
             nRect.anchorMin = new Vector2(0, 1); nRect.anchorMax = new Vector2(1, 1);
-            nRect.offsetMin = new Vector2(14, -34); nRect.offsetMax = new Vector2(-14, -8);
+            nRect.offsetMin = new Vector2(14, -34); nRect.offsetMax = new Vector2(leftRight, -8);
             tooltip.nameText.alignment = TextAlignmentOptions.MidlineLeft;
 
             tooltip.statText = Text(panel, "Stats", "", 12, UITheme.TextGold, FontStyles.Normal);
             var sRect = tooltip.statText.rectTransform;
             sRect.anchorMin = new Vector2(0, 1); sRect.anchorMax = new Vector2(1, 1);
-            sRect.offsetMin = new Vector2(14, -56); sRect.offsetMax = new Vector2(-14, -34);
+            sRect.offsetMin = new Vector2(14, -56); sRect.offsetMax = new Vector2(leftRight, -34);
             tooltip.statText.alignment = TextAlignmentOptions.MidlineLeft;
 
             tooltip.descText = Text(panel, "Desc", "", 12, UITheme.TextDim, FontStyles.Normal);
             var dRect = tooltip.descText.rectTransform;
             dRect.anchorMin = new Vector2(0, 0); dRect.anchorMax = new Vector2(1, 1);
-            dRect.offsetMin = new Vector2(14, 10); dRect.offsetMax = new Vector2(-14, -58);
+            dRect.offsetMin = new Vector2(14, 10); dRect.offsetMax = new Vector2(leftRight, -58);
             tooltip.descText.alignment = TextAlignmentOptions.TopLeft;
             tooltip.descText.textWrappingMode = TextWrappingModes.Normal;
+
+            // ---- comparison column (right) ----
+            var compare = Panel(panel, "Compare", new Vector2(0, 0), Vector2.zero, Vector2.zero);
+            compare.anchorMin = new Vector2(0, 0); compare.anchorMax = new Vector2(1, 1);
+            compare.offsetMin = new Vector2(286, 10); compare.offsetMax = new Vector2(-14, -8);
+            tooltip.compareRoot = compare.gameObject;
+
+            // Divider between the two columns
+            var divider = Image(panel, "Divider", null, new Color(1f, 1f, 1f, 0.10f), stretch: false);
+            var dvRect = divider.rectTransform;
+            dvRect.anchorMin = new Vector2(0, 0); dvRect.anchorMax = new Vector2(0, 1);
+            dvRect.pivot = new Vector2(0.5f, 0.5f);
+            dvRect.offsetMin = new Vector2(278, 12); dvRect.offsetMax = new Vector2(280, -12);
+            dvRect.anchoredPosition = new Vector2(dvRect.anchoredPosition.x, 0);
+
+            tooltip.compareHeader = Text(compare, "CompareHeader", "Equipped", 11, UITheme.TextDim, FontStyles.Bold);
+            var chRect = tooltip.compareHeader.rectTransform;
+            chRect.anchorMin = new Vector2(0, 1); chRect.anchorMax = new Vector2(1, 1);
+            chRect.offsetMin = new Vector2(0, -18); chRect.offsetMax = new Vector2(0, 0);
+            tooltip.compareHeader.alignment = TextAlignmentOptions.MidlineLeft;
+            tooltip.compareHeader.characterSpacing = 3;
+
+            tooltip.compareName = Text(compare, "CompareName", "", 15, UITheme.TextMain, FontStyles.Bold);
+            var cnRect = tooltip.compareName.rectTransform;
+            cnRect.anchorMin = new Vector2(0, 1); cnRect.anchorMax = new Vector2(1, 1);
+            cnRect.offsetMin = new Vector2(0, -44); cnRect.offsetMax = new Vector2(0, -20);
+            tooltip.compareName.alignment = TextAlignmentOptions.MidlineLeft;
+
+            tooltip.compareStat = Text(compare, "CompareStat", "", 12, UITheme.TextGold, FontStyles.Normal);
+            var csRect = tooltip.compareStat.rectTransform;
+            csRect.anchorMin = new Vector2(0, 1); csRect.anchorMax = new Vector2(1, 1);
+            csRect.offsetMin = new Vector2(0, -66); csRect.offsetMax = new Vector2(0, -44);
+            tooltip.compareStat.alignment = TextAlignmentOptions.MidlineLeft;
+
+            compare.gameObject.SetActive(false);
         }
 
         private static void BuildHints(Transform root)

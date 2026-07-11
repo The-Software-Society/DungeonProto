@@ -419,6 +419,66 @@ namespace AldenFall.Editor
             // Camp dressing for the two nearest goblin camps
             BuildBanditCampDressing(container, new Vector3(-18f, 0, -78f));
             BuildBanditCampDressing(container, new Vector3(28f, 0, -174f));
+
+            // Aldric — the tutorial quest-giver, standing in the spawn clearing
+            BuildQuestGiver(container, new Vector3(4f, 0f, -110f), groundLayer);
+        }
+
+        /// <summary>
+        /// A plain (non-networked) quest-giving NPC — an Interactable like the
+        /// fishing spot, so it needs no NetworkIdentity. A simple robed capsule
+        /// stands in until a Meshy character earns the slot.
+        /// </summary>
+        private static void BuildQuestGiver(Transform parent, Vector3 pos, int groundLayer)
+        {
+            int interactableLayer = LayerMask.NameToLayer("Interactable");
+
+            var npcObj = new GameObject("Aldric");
+            npcObj.transform.SetParent(parent);
+            npcObj.transform.position = pos;
+            npcObj.transform.rotation = Quaternion.Euler(0f, 180f, 0f); // face the spawn point (south)
+            if (interactableLayer >= 0) npcObj.layer = interactableLayer;
+
+            var giver = npcObj.AddComponent<World.QuestGiverNPC>();
+            var giverSO = new SerializedObject(giver);
+            giverSO.FindProperty("npcId").stringValue = "aldric";
+            giverSO.FindProperty("questId").stringValue = "q_intro";
+            giverSO.FindProperty("displayName").stringValue = "Aldric";
+            giverSO.FindProperty("prompt").stringValue = "Talk to Aldric";
+            giverSO.FindProperty("radius").floatValue = 3.5f;
+            giverSO.ApplyModifiedProperties();
+
+            // Body: robed capsule + a "sage" head sphere so he reads as a person.
+            var robeMat = SceneSetup.GetOrCreateMaterialAsset(new Color(0.32f, 0.26f, 0.42f), "AldricRobeMaterial");
+            var skinMat = SceneSetup.GetOrCreateMaterialAsset(new Color(0.82f, 0.66f, 0.52f), "AldricSkinMaterial");
+
+            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            body.name = "Body";
+            body.transform.SetParent(npcObj.transform);
+            body.transform.localPosition = new Vector3(0f, 1.0f, 0f);
+            body.transform.localScale = new Vector3(0.8f, 1.0f, 0.8f);
+            body.GetComponent<MeshRenderer>().sharedMaterial = robeMat;
+            if (groundLayer >= 0) body.layer = groundLayer;
+
+            var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            head.name = "Head";
+            head.transform.SetParent(npcObj.transform);
+            head.transform.localPosition = new Vector3(0f, 2.05f, 0f);
+            head.transform.localScale = Vector3.one * 0.55f;
+            Object.DestroyImmediate(head.GetComponent<SphereCollider>());
+            head.GetComponent<MeshRenderer>().sharedMaterial = skinMat;
+            if (groundLayer >= 0) head.layer = groundLayer;
+
+            // Warm marker light so he's easy to spot in the gloomy clearing.
+            var lightObj = new GameObject("QuestLight");
+            lightObj.transform.SetParent(npcObj.transform);
+            lightObj.transform.localPosition = Vector3.up * 2.6f;
+            var light = lightObj.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(0.95f, 0.8f, 0.5f);
+            light.intensity = 1.6f;
+            light.range = 5f;
+            light.shadows = LightShadows.None;
         }
 
         // ==================== FISHING & COOKING (pond east shore) ====================
@@ -1475,6 +1535,21 @@ namespace AldenFall.Editor
             camObj.transform.position = bounds.center + dir * (bounds.size.magnitude + 2f);
             camObj.transform.LookAt(bounds.center);
 
+            // Icons were rendering as near-black silhouettes (no light in the icon scene).
+            // Add a key + fill light so each item reads clearly.
+            var keyObj = new GameObject("IconKeyLight");
+            var key = keyObj.AddComponent<Light>();
+            key.type = LightType.Directional;
+            key.intensity = 1.6f;
+            key.color = new Color(1f, 0.98f, 0.92f);
+            keyObj.transform.rotation = Quaternion.Euler(35f, -140f, 0f);
+            var fillObj = new GameObject("IconFillLight");
+            var fill = fillObj.AddComponent<Light>();
+            fill.type = LightType.Directional;
+            fill.intensity = 0.55f;
+            fill.color = new Color(0.72f, 0.8f, 0.95f);
+            fillObj.transform.rotation = Quaternion.Euler(12f, 40f, 0f);
+
             var rt = new RenderTexture(256, 256, 24, RenderTextureFormat.ARGB32);
             cam.targetTexture = rt;
             cam.Render();
@@ -1491,6 +1566,8 @@ namespace AldenFall.Editor
             Object.DestroyImmediate(rt);
             Object.DestroyImmediate(tex);
             Object.DestroyImmediate(camObj);
+            Object.DestroyImmediate(keyObj);
+            Object.DestroyImmediate(fillObj);
             Object.DestroyImmediate(instance);
 
             AssetDatabase.ImportAsset(outputPath);
@@ -1871,6 +1948,8 @@ namespace AldenFall.Editor
             var so = new SerializedObject(identity);
             so.FindProperty("displayName").stringValue = displayName;
             so.FindProperty("combatLevel").intValue = level;
+            // Stable slug so KillMob quest objectives can target this mob type.
+            so.FindProperty("MobId").stringValue = displayName.ToLowerInvariant().Replace(' ', '_');
             var table = so.FindProperty("lootTable");
             table.arraySize = loot.Length;
             for (int i = 0; i < loot.Length; i++)
@@ -2029,7 +2108,7 @@ namespace AldenFall.Editor
             so.FindProperty("respawnDelay").floatValue = respawnDelay;
             so.FindProperty("spawnOnStart").boolValue = true;
             var respawnProp = so.FindProperty("respawnAfterDeath");
-            if (respawnProp != null) respawnProp.boolValue = pos.z < 230f;
+            if (respawnProp != null) respawnProp.boolValue = pos.z < 180f; // dungeon (z>180) is clearable — no infinite respawn
             so.ApplyModifiedProperties();
         }
 
@@ -2044,7 +2123,7 @@ namespace AldenFall.Editor
             so.FindProperty("radius").floatValue = radius;
             so.FindProperty("respawnDelay").floatValue = respawnDelay;
             var respawnProp = so.FindProperty("respawnAfterDeath");
-            if (respawnProp != null) respawnProp.boolValue = pos.z < 230f;
+            if (respawnProp != null) respawnProp.boolValue = pos.z < 180f; // dungeon (z>180) is clearable — no infinite respawn
             so.ApplyModifiedProperties();
         }
 

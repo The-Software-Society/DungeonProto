@@ -10,7 +10,9 @@ namespace AldenFall.AI
         {
             "ember_acolyte",
             "stone_sentinel",
-            "cave_troll_boss"
+            "cave_troll_boss",
+            "field_bandit",   // dungeon-entrance guards — reset on re-entry (no longer infinite-respawn)
+            "orc_brute"
         };
 
         private void Start()

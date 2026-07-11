@@ -1,0 +1,546 @@
+{
+  "monsters": [
+    {
+      "id": "goblin_scrapper",
+      "displayName": "Goblin Scrapper",
+      "level": 2,
+      "character": "Goblin",
+      "heightMeters": 1.4,
+      "fallbackColor": "#4C7A3F",
+      "stats": {
+        "maxHealth": 43,
+        "attack": 2,
+        "strength": 2,
+        "defence": 1,
+        "magic": 1,
+        "weaponPower": 1,
+        "armor": 0
+      },
+      "movement": {
+        "walkSpeed": 3.5,
+        "runSpeed": 6.0
+      },
+      "combat": {
+        "attackRange": 2.5,
+        "detectionRange": 14,
+        "attackCooldown": 1.5,
+        "basicKnockback": 0,
+        "jumpAttack": {
+          "enabled": true,
+          "cooldown": 5,
+          "knockback": 0,
+          "chance": 0.3
+        },
+        "chargeAttack": {
+          "enabled": true,
+          "cooldown": 8,
+          "knockback": 0,
+          "chance": 0.3
+        }
+      },
+      "statuses": [],
+      "abilities": [],
+      "loot": [
+        {
+          "itemId": "leather_cap",
+          "chance": 0.1
+        },
+        {
+          "itemId": "leather_legs",
+          "chance": 0.1
+        }
+      ],
+      "spawns": [
+        {
+          "kind": "camp",
+          "x": -18,
+          "y": 0,
+          "z": -78,
+          "respawn": 16,
+          "count": 1,
+          "radius": 5
+        },
+        {
+          "kind": "camp",
+          "x": 22,
+          "y": 0,
+          "z": -112,
+          "respawn": 16,
+          "count": 2,
+          "radius": 6
+        },
+        {
+          "kind": "camp",
+          "x": -26,
+          "y": 0,
+          "z": -146,
+          "respawn": 16,
+          "count": 3,
+          "radius": 7
+        },
+        {
+          "kind": "camp",
+          "x": 28,
+          "y": 0,
+          "z": -174,
+          "respawn": 18,
+          "count": 4,
+          "radius": 8
+        }
+      ]
+    },
+    {
+      "id": "ember_acolyte",
+      "displayName": "Ember Acolyte",
+      "level": 11,
+      "character": "EmberAcolyte",
+      "heightMeters": 1.8,
+      "fallbackColor": "#6D3030",
+      "stats": {
+        "maxHealth": 118,
+        "attack": 11,
+        "strength": 10,
+        "defence": 8,
+        "magic": 8,
+        "weaponPower": 7,
+        "armor": 2
+      },
+      "movement": {
+        "walkSpeed": 3.0,
+        "runSpeed": 5.2
+      },
+      "combat": {
+        "attackRange": 2.4,
+        "detectionRange": 17,
+        "attackCooldown": 1.35,
+        "basicKnockback": 0,
+        "jumpAttack": {
+          "enabled": true,
+          "cooldown": 5,
+          "knockback": 0,
+          "chance": 0.25
+        },
+        "chargeAttack": {
+          "enabled": false,
+          "cooldown": 8,
+          "knockback": 0,
+          "chance": 0
+        }
+      },
+      "statuses": [],
+      "abilities": [],
+      "loot": [
+        {
+          "itemId": "adept_focus",
+          "chance": 0.34
+        },
+        {
+          "itemId": "knight_sword",
+          "chance": 0.2
+        },
+        {
+          "itemId": "iron_chestplate",
+          "chance": 0.2
+        },
+        {
+          "itemId": "iron_legs",
+          "chance": 0.16
+        }
+      ],
+      "spawns": [
+        {
+          "kind": "camp",
+          "x": -4,
+          "y": 0,
+          "z": 238,
+          "respawn": 999999,
+          "count": 2,
+          "radius": 5
+        },
+        {
+          "kind": "camp",
+          "x": 0,
+          "y": 0,
+          "z": 286,
+          "respawn": 999999,
+          "count": 3,
+          "radius": 6
+        },
+        {
+          "kind": "camp",
+          "x": -34,
+          "y": 0,
+          "z": 250,
+          "respawn": 999999,
+          "count": 2,
+          "radius": 4
+        },
+        {
+          "kind": "camp",
+          "x": 36,
+          "y": 0,
+          "z": 254,
+          "respawn": 999999,
+          "count": 2,
+          "radius": 4
+        }
+      ]
+    },
+    {
+      "id": "stone_sentinel",
+      "displayName": "Stone Sentinel",
+      "level": 14,
+      "character": "StoneSentinel",
+      "heightMeters": 2.35,
+      "fallbackColor": "#59585E",
+      "stats": {
+        "maxHealth": 185,
+        "attack": 13,
+        "strength": 14,
+        "defence": 11,
+        "magic": 1,
+        "weaponPower": 8,
+        "armor": 4
+      },
+      "movement": {
+        "walkSpeed": 2.6,
+        "runSpeed": 4.4
+      },
+      "combat": {
+        "attackRange": 3.0,
+        "detectionRange": 15,
+        "attackCooldown": 1.6,
+        "basicKnockback": 0,
+        "jumpAttack": {
+          "enabled": false,
+          "cooldown": 5,
+          "knockback": 0,
+          "chance": 0
+        },
+        "chargeAttack": {
+          "enabled": true,
+          "cooldown": 9,
+          "knockback": 0,
+          "chance": 0.22
+        }
+      },
+      "statuses": [],
+      "abilities": [],
+      "loot": [
+        {
+          "itemId": "iron_helm",
+          "chance": 0.28
+        },
+        {
+          "itemId": "iron_legs",
+          "chance": 0.26
+        },
+        {
+          "itemId": "knight_sword",
+          "chance": 0.24
+        },
+        {
+          "itemId": "adept_focus",
+          "chance": 0.18
+        }
+      ],
+      "spawns": [
+        {
+          "kind": "camp",
+          "x": -34,
+          "y": 0,
+          "z": 253,
+          "respawn": 999999,
+          "count": 2,
+          "radius": 4
+        },
+        {
+          "kind": "camp",
+          "x": 36,
+          "y": 0,
+          "z": 257,
+          "respawn": 999999,
+          "count": 2,
+          "radius": 4
+        },
+        {
+          "kind": "camp",
+          "x": 0,
+          "y": 0,
+          "z": 306,
+          "respawn": 999999,
+          "count": 2,
+          "radius": 5
+        }
+      ]
+    },
+    {
+      "id": "field_bandit",
+      "displayName": "Field Bandit",
+      "level": 5,
+      "character": "Bandit",
+      "heightMeters": 1.75,
+      "fallbackColor": "#4C4759",
+      "stats": {
+        "maxHealth": 55,
+        "attack": 5,
+        "strength": 5,
+        "defence": 3.75,
+        "magic": 1,
+        "weaponPower": 3,
+        "armor": 0
+      },
+      "movement": {
+        "walkSpeed": 3.2,
+        "runSpeed": 5.5
+      },
+      "combat": {
+        "attackRange": 2.3,
+        "detectionRange": 18,
+        "attackCooldown": 1.5,
+        "basicKnockback": 0,
+        "jumpAttack": {
+          "enabled": true,
+          "cooldown": 5,
+          "knockback": 0,
+          "chance": 0.3
+        },
+        "chargeAttack": {
+          "enabled": true,
+          "cooldown": 8,
+          "knockback": 0,
+          "chance": 0.3
+        }
+      },
+      "statuses": [],
+      "abilities": [],
+      "loot": [
+        {
+          "itemId": "raider_saber",
+          "chance": 0.22
+        },
+        {
+          "itemId": "bandit_cape",
+          "chance": 0.18
+        },
+        {
+          "itemId": "apprentice_focus",
+          "chance": 0.15
+        }
+      ],
+      "spawns": [
+        {
+          "kind": "camp",
+          "x": -26,
+          "y": 0,
+          "z": 75,
+          "respawn": 14,
+          "count": 4,
+          "radius": 10
+        },
+        {
+          "kind": "camp",
+          "x": 34,
+          "y": 0,
+          "z": 64,
+          "respawn": 14,
+          "count": 5,
+          "radius": 10
+        },
+        {
+          "kind": "camp",
+          "x": -46,
+          "y": 0,
+          "z": 120,
+          "respawn": 14,
+          "count": 4,
+          "radius": 10
+        },
+        {
+          "kind": "camp",
+          "x": 44,
+          "y": 0,
+          "z": 135,
+          "respawn": 14,
+          "count": 3,
+          "radius": 9
+        },
+        {
+          "kind": "spawner",
+          "x": -8,
+          "y": 0.1,
+          "z": 186,
+          "respawn": 20
+        },
+        {
+          "kind": "spawner",
+          "x": 7,
+          "y": 0.1,
+          "z": 190,
+          "respawn": 20
+        }
+      ]
+    },
+    {
+      "id": "orc_brute",
+      "displayName": "Orc Brute",
+      "level": 8,
+      "character": "OrcBrute",
+      "heightMeters": 2.1,
+      "fallbackColor": "#59734C",
+      "stats": {
+        "maxHealth": 71,
+        "attack": 8,
+        "strength": 8,
+        "defence": 6,
+        "magic": 1,
+        "weaponPower": 6,
+        "armor": 0
+      },
+      "movement": {
+        "walkSpeed": 2.8,
+        "runSpeed": 5.0
+      },
+      "combat": {
+        "attackRange": 2.7,
+        "detectionRange": 16,
+        "attackCooldown": 1.5,
+        "basicKnockback": 0,
+        "jumpAttack": {
+          "enabled": true,
+          "cooldown": 5,
+          "knockback": 0,
+          "chance": 0.3
+        },
+        "chargeAttack": {
+          "enabled": true,
+          "cooldown": 8,
+          "knockback": 0,
+          "chance": 0.3
+        }
+      },
+      "statuses": [],
+      "abilities": [],
+      "loot": [
+        {
+          "itemId": "iron_chestplate",
+          "chance": 0.18
+        },
+        {
+          "itemId": "iron_helm",
+          "chance": 0.15
+        },
+        {
+          "itemId": "iron_legs",
+          "chance": 0.12
+        },
+        {
+          "itemId": "knight_sword",
+          "chance": 0.12
+        },
+        {
+          "itemId": "adept_focus",
+          "chance": 0.12
+        }
+      ],
+      "spawns": [
+        {
+          "kind": "camp",
+          "x": 26,
+          "y": 0,
+          "z": 100,
+          "respawn": 14,
+          "count": 4,
+          "radius": 10
+        },
+        {
+          "kind": "camp",
+          "x": -42,
+          "y": 0,
+          "z": 150,
+          "respawn": 14,
+          "count": 4,
+          "radius": 10
+        },
+        {
+          "kind": "camp",
+          "x": 50,
+          "y": 0,
+          "z": 88,
+          "respawn": 14,
+          "count": 3,
+          "radius": 8
+        },
+        {
+          "kind": "camp",
+          "x": 0,
+          "y": 0.1,
+          "z": 198,
+          "respawn": 25,
+          "count": 3,
+          "radius": 6
+        }
+      ]
+    },
+    {
+      "id": "cave_troll_boss",
+      "displayName": "Grukk, Cave Troll",
+      "level": 18,
+      "character": "CaveTroll",
+      "heightMeters": 3.2,
+      "fallbackColor": "#665C4C",
+      "stats": {
+        "maxHealth": 480,
+        "attack": 18,
+        "strength": 18,
+        "defence": 13.5,
+        "magic": 1,
+        "weaponPower": 10,
+        "armor": 0
+      },
+      "movement": {
+        "walkSpeed": 2.4,
+        "runSpeed": 4.4
+      },
+      "combat": {
+        "attackRange": 3.4,
+        "detectionRange": 20,
+        "attackCooldown": 1.5,
+        "basicKnockback": 0,
+        "jumpAttack": {
+          "enabled": true,
+          "cooldown": 5,
+          "knockback": 10,
+          "chance": 0.3
+        },
+        "chargeAttack": {
+          "enabled": true,
+          "cooldown": 8,
+          "knockback": 14,
+          "chance": 0.3
+        }
+      },
+      "statuses": [],
+      "abilities": [],
+      "loot": [
+        {
+          "itemId": "emberfang",
+          "chance": 1.0
+        },
+        {
+          "itemId": "ember_focus",
+          "chance": 1.0
+        }
+      ],
+      "spawns": [
+        {
+          "kind": "spawner",
+          "x": 0,
+          "y": 0.1,
+          "z": 326,
+          "respawn": 999999
+        }
+      ]
+    }
+  ]
+}

@@ -16,6 +16,12 @@ namespace AldenFall.UI
         public TMP_Text descText;
         public Image border;
 
+        // Comparison column: the currently-equipped counterpart of the hovered item.
+        public GameObject compareRoot;
+        public TMP_Text compareHeader;   // "Equipped" label
+        public TMP_Text compareName;
+        public TMP_Text compareStat;
+
         private CanvasGroup group;
         private RectTransform canvasRect;
 
@@ -55,17 +61,15 @@ namespace AldenFall.UI
                 border.color = c;
             }
 
+            if (compareRoot != null) compareRoot.SetActive(false);
+
             group.alpha = 1f;
             Reposition();
         }
 
-        public void Show(ItemDef item, bool equipped, int plus = 0)
+        /// <summary>Formats an item's scaled bonuses into one "   "-joined stat line.</summary>
+        private static string StatLine(ItemDef item, int plus)
         {
-            if (item == null) return;
-
-            nameText.text = $"{ItemPlus.DisplayName(item, plus)}  <size=11><color=#8A8494>{ItemDatabase.SlotName(item.Slot)}</color></size>";
-            nameText.color = ItemPlus.PlusColor(item, plus);
-
             var parts = new System.Collections.Generic.List<string>();
             foreach (var (type, value) in ItemPlus.ScaledBonuses(item, plus))
             {
@@ -83,7 +87,17 @@ namespace AldenFall.UI
             }
             if (item.IsConsumable)
                 parts.Add($"heals {item.HealAmount:0} hp");
-            string stats = string.Join("   ", parts);
+            return string.Join("   ", parts);
+        }
+
+        public void Show(ItemDef item, bool equipped, int plus = 0)
+        {
+            if (item == null) return;
+
+            nameText.text = $"{ItemPlus.DisplayName(item, plus)}  <size=11><color=#8A8494>{ItemDatabase.SlotName(item.Slot)}</color></size>";
+            nameText.color = ItemPlus.PlusColor(item, plus);
+
+            string stats = StatLine(item, plus);
             statText.text = equipped ? $"{stats}   <color=#E8B872>[equipped]</color>" : stats;
 
             string action = equipped ? "Click to unequip" : "Click to equip";
@@ -98,8 +112,49 @@ namespace AldenFall.UI
                 border.color = c;
             }
 
+            ShowComparison(item, equipped);
+
             group.alpha = 1f;
             Reposition();
+        }
+
+        /// <summary>
+        /// Fills the second column with the item currently worn in the hovered
+        /// item's slot, so the player can weigh a swap. Hidden when the hovered
+        /// item is itself equipped, occupies no slot, or nothing is worn there.
+        /// </summary>
+        private void ShowComparison(ItemDef item, bool equipped)
+        {
+            if (compareRoot == null) return;
+
+            bool show = false;
+            if (item.Slot != EquipSlot.None && !equipped)
+            {
+                var playerObj = Multiplayer.LocalPlayerLocator.Find();
+                var eq = playerObj != null ? playerObj.GetComponent<Equipment>() : null;
+                var equippedDef = eq != null ? eq.GetEquippedDef(item.Slot) : null;
+                string equippedId = eq != null ? eq.GetEquipped(item.Slot) : null;
+
+                if (equippedDef != null && equippedId != null)
+                {
+                    int equippedPlus = ItemPlus.PlusOf(equippedId);
+                    if (compareHeader != null)
+                    {
+                        compareHeader.text = "Equipped";
+                        compareHeader.color = UITheme.TextDim;
+                    }
+                    if (compareName != null)
+                    {
+                        compareName.text = ItemPlus.DisplayName(equippedDef, equippedPlus);
+                        compareName.color = ItemPlus.PlusColor(equippedDef, equippedPlus);
+                    }
+                    if (compareStat != null)
+                        compareStat.text = StatLine(equippedDef, equippedPlus);
+                    show = true;
+                }
+            }
+
+            compareRoot.SetActive(show);
         }
 
         public void Hide()

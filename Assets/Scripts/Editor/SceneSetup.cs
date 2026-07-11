@@ -347,12 +347,16 @@ namespace AldenFall.Editor
             player.AddComponent<Stats.PlayerStatBridge>();
             player.AddComponent<Items.Inventory>();
             player.AddComponent<Items.Equipment>();
+            player.AddComponent<Items.Wallet>();          // gold purse (economy)
+            player.AddComponent<Quests.QuestLog>();        // per-player quest tracking
             player.AddComponent<Items.StarterLoadout>();
             player.AddComponent<Combat.PlayerMelee>();
             player.AddComponent<Combat.PlayerCombat>();   // server-auth damage relay (NetworkBehaviour → baked in prefab)
             player.AddComponent<Combat.PlayerDefence>();
             player.AddComponent<Combat.CombatStyleController>();
             player.AddComponent<UI.DebugCheatPanel>();   // F9 testing cheatsheet
+            player.AddComponent<UI.QuestTrackerHUD>();    // quest tracker + gold readout
+            player.AddComponent<UI.ForgePanel>();         // F7 gear-upgrade forge
             player.AddComponent<Player.CharacterAppearance>();      // v6 customization baseline
             player.AddComponent<UI.CharacterCustomizationUI>();     // F10 appearance panel
             player.AddComponent<Cinematics.CutsceneDirector>();     // v7.2 cutscene engine
