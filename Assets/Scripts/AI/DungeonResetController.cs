@@ -8,11 +8,11 @@ namespace AldenFall.AI
         [SerializeField] private float resetDelay = 3.4f;
         [SerializeField] private string[] dungeonNamePrefixes =
         {
+            // V2: only the Emberfall Volcano mobs are dungeon mobs. field_bandit/orc_brute are
+            // now forest-ring mobs (they respawn on their own) so they are NOT reset here.
             "ember_acolyte",
             "stone_sentinel",
             "cave_troll_boss",
-            "field_bandit",   // dungeon-entrance guards — reset on re-entry (no longer infinite-respawn)
-            "orc_brute"
         };
 
         private void Start()
@@ -37,13 +37,17 @@ namespace AldenFall.AI
             var wallMat = RuntimeDungeonMaterial("RuntimeDungeonWall", new Color(0.10f, 0.09f, 0.11f));
             var floorMat = RuntimeDungeonMaterial("RuntimeDungeonFloor", new Color(0.14f, 0.13f, 0.15f));
 
-            Slab(root.transform, "DungeonEnvelope_Floor", new Vector3(0f, -0.55f, 262f), new Vector3(104f, 1f, 170f), floorMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_Ceiling", new Vector3(0f, 8.5f, 262f), new Vector3(104f, 1f, 170f), wallMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_West", new Vector3(-52f, 4f, 262f), new Vector3(2f, 9f, 170f), wallMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_East", new Vector3(52f, 4f, 262f), new Vector3(2f, 9f, 170f), wallMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_North", new Vector3(0f, 4f, 347f), new Vector3(104f, 9f, 2f), wallMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_SouthL", new Vector3(-31f, 4f, 177f), new Vector3(42f, 9f, 2f), wallMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_SouthR", new Vector3(31f, 4f, 177f), new Vector3(42f, 9f, 2f), wallMat, groundLayer);
+            // V2: the dungeon is the Emberfall Volcano to the SOUTH — interior x[-56,56],
+            // z[-450,-318] with the entrance mouth (12m gap) on the north face. This safety
+            // envelope mirrors the built volcano walls so a death-reset can never drop the
+            // player into the void; the north wall is split around the entrance.
+            Slab(root.transform, "DungeonEnvelope_Floor", new Vector3(0f, -0.55f, -384f), new Vector3(112f, 1f, 132f), floorMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_Ceiling", new Vector3(0f, 8.5f, -384f), new Vector3(112f, 1f, 132f), wallMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_West", new Vector3(-56f, 4f, -384f), new Vector3(2f, 9f, 132f), wallMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_East", new Vector3(56f, 4f, -384f), new Vector3(2f, 9f, 132f), wallMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_South", new Vector3(0f, 4f, -450f), new Vector3(112f, 9f, 2f), wallMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_NorthL", new Vector3(-31f, 4f, -318f), new Vector3(50f, 9f, 2f), wallMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_NorthR", new Vector3(31f, 4f, -318f), new Vector3(50f, 9f, 2f), wallMat, groundLayer);
         }
 
         private static void Slab(Transform parent, string name, Vector3 position, Vector3 scale, Material material, int layer)

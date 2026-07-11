@@ -526,9 +526,9 @@ namespace AldenFall.Editor
 
         private static void CreatePlayer()
         {
-            // Safe spawn position - inside city on cobblestone road, south of enemy
-            // Enemy at Z=-35, player at Z=-50 = 15 units apart (inside 25-unit detection range but visible)
-            Vector3 safeSpawnPosition = new Vector3(0, 1, -50);
+            // V2: safe spawn in the Emberfall city plaza (SW of the Ember Fountain at 0,0),
+            // well inside the walls — no mobs spawn in the city.
+            Vector3 safeSpawnPosition = new Vector3(0, 1, -14);
 
             // Check if player already exists - move them instead of skipping
             var existingPlayer = GameObject.FindGameObjectWithTag("Player");

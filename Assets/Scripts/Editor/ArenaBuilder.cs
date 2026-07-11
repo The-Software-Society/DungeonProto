@@ -19,7 +19,7 @@ namespace AldenFall.Editor
     /// Menu:     AldenFall > Build Emberfall Demo
     /// Headless: Unity -batchmode -executeMethod AldenFall.Editor.ArenaBuilder.BuildDemoHeadless
     /// </summary>
-    public static class ArenaBuilder
+    public static partial class ArenaBuilder
     {
         private const string ScenePath = "Assets/Scenes/EmberfallDemo.unity";
         private const string MaterialDir = "Assets/Materials/Emberfall";
@@ -260,37 +260,28 @@ namespace AldenFall.Editor
             var root = new GameObject("Emberfall_Arena");
             int groundLayer = LayerMask.NameToLayer("Ground");
 
-            BuildFloor(root.transform, groundLayer);
-            BuildPond(root.transform, groundLayer);
-            BuildTerrace(root.transform, groundLayer);
-            BuildWalls(root.transform, groundLayer);
-            BuildBrazierPlaza(root.transform);
-            BuildTorchRing(root.transform);
-            BuildProps(root.transform, groundLayer);
-            PlaceMeshyProps(root.transform, groundLayer);
-            BuildFishingAndCooking(root.transform, groundLayer);
-            BuildField(root.transform, groundLayer);
-            BuildCave(root.transform, groundLayer);
-            BuildForest(root.transform, groundLayer);
-            BuildRescueGiver(root.transform, groundLayer);
-            BuildOrcWarcamp(root.transform, groundLayer);
-            BuildMountain(root.transform, groundLayer);
-            BuildGlobalSafety(root.transform, groundLayer);
+            // V2: the fresh radial Emberfall world (city centre + forest ring + lake/camps +
+            // ember approach + volcano dungeon). Implemented in ArenaBuilderEmberfall.cs; it
+            // reuses every helper below and wires the Phase-1 world systems.
+            BuildEmberfallWorld(root.transform, groundLayer);
 
             return root;
         }
 
+        /// <summary>
+        /// World-bounds safety: a catch floor under everything + perimeter rails enclosing
+        /// roughly x[-260,260], z[-450,270] (city + forest ring + ember approach + volcano).
+        /// Nothing can fall into the void; there are NO invisible walls inside the play space.
+        /// </summary>
         private static void BuildGlobalSafety(Transform root, int groundLayer)
         {
-            // v8: catch floor + rails extended south to -350 to enclose the deeper
-            // forest (ForestEndZ -260) and the mountain vista behind it. The south
-            // rail moved from -196 to -352 so it no longer walls off the new forest.
             var safety = Child(root, "GlobalSafetyColliders");
-            ColliderBox("WorldCatchFloor", new Vector3(0f, -14f, 1f), new Vector3(160f, 1f, 702f), safety, groundLayer);
-            ColliderBox("WorldRail_W", new Vector3(-74f, 4f, 1f), new Vector3(4f, 8f, 702f), safety, groundLayer);
-            ColliderBox("WorldRail_E", new Vector3(74f, 4f, 1f), new Vector3(4f, 8f, 702f), safety, groundLayer);
-            ColliderBox("WorldRail_S", new Vector3(0f, 4f, -352f), new Vector3(160f, 8f, 4f), safety, groundLayer);
-            ColliderBox("WorldRail_N", new Vector3(0f, 4f, 348f), new Vector3(160f, 8f, 4f), safety, groundLayer);
+            // Catch floor: covers x[-270,270], z[-455,275] (centre (0,-16,-90), 540 x 730).
+            ColliderBox("WorldCatchFloor", new Vector3(0f, -16f, -90f), new Vector3(540f, 1f, 730f), safety, groundLayer);
+            ColliderBox("WorldRail_W", new Vector3(-262f, 6f, -90f), new Vector3(4f, 14f, 730f), safety, groundLayer);
+            ColliderBox("WorldRail_E", new Vector3(262f, 6f, -90f), new Vector3(4f, 14f, 730f), safety, groundLayer);
+            ColliderBox("WorldRail_S", new Vector3(0f, 6f, -452f), new Vector3(540f, 14f, 4f), safety, groundLayer);
+            ColliderBox("WorldRail_N", new Vector3(0f, 6f, 272f), new Vector3(540f, 14f, 4f), safety, groundLayer);
         }
 
         // ==================== MOUNTAIN VISTA (south, beyond the forest) ====================
@@ -2070,8 +2061,8 @@ namespace AldenFall.Editor
         private static GameObject CreatePlayer()
         {
             var player = SceneSetup.CreatePlayerObject();
-            // v7: wake up in the forest clearing, facing the path north
-            player.transform.position = new Vector3(0, 0.5f, -115f);
+            // V2: spawn in the Emberfall city plaza (SW of the Ember Fountain), facing north.
+            player.transform.position = new Vector3(0f, 0.5f, -14f);
             player.transform.rotation = Quaternion.identity;
             return player;
         }
@@ -2117,7 +2108,7 @@ namespace AldenFall.Editor
                 tpcSO.ApplyModifiedProperties();
             }
 
-            Vector3 focus = player != null ? player.transform.position : new Vector3(0, 0.5f, -115f);
+            Vector3 focus = player != null ? player.transform.position : new Vector3(0f, 0.5f, -14f);
             // Start behind the expected spawn. NetworkPlayerAvatar retargets this
             // camera as soon as the local player is spawned.
             camObj.transform.position = focus + new Vector3(0, 5f, -8f);
@@ -2140,10 +2131,10 @@ namespace AldenFall.Editor
 
             var starts = new[]
             {
-                new Vector3(0f, 0.5f, -115f),
-                new Vector3(2.4f, 0.5f, -116.5f),
-                new Vector3(-2.4f, 0.5f, -116.5f),
-                new Vector3(0f, 0.5f, -119f)
+                new Vector3(0f, 0.5f, -14f),
+                new Vector3(3f, 0.5f, -16f),
+                new Vector3(-3f, 0.5f, -16f),
+                new Vector3(0f, 0.5f, -18f)
             };
             for (int i = 0; i < starts.Length; i++)
             {
@@ -2288,14 +2279,14 @@ namespace AldenFall.Editor
         {
             // One prefab per dance style — spawners instantiate a shared
             // prefab, so per-goblin choreography means per-style prefabs.
-            // Cluster the fishing party on the DRY west bank of the forest river,
-            // beside the FishingSpot/Campfire (~x9-14), on flat path-side ground so
-            // none of them stand in the water. Spaced ~3.5m apart, no overlaps.
+            // V2: the fishing party dances on the DRY east bank of Emberfall Lake (NW),
+            // beside the FishingSpot/Campfire, on flat ground so none stand in the water.
+            // Lake centre is (-150,0,150); the east shore + fishing spot sit near x -100..-95.
             var troupe = new (AI.DanceStyle style, Vector3 pos)[]
             {
-                (AI.DanceStyle.Modern, new Vector3(11f, 0f, -153f)),
-                (AI.DanceStyle.Robot, new Vector3(13f, 0f, -156f)),
-                (AI.DanceStyle.Twerk, new Vector3(10f, 0f, -159f)),
+                (AI.DanceStyle.Modern, new Vector3(-99f, 0f, 162f)),
+                (AI.DanceStyle.Robot, new Vector3(-96f, 0f, 158f)),
+                (AI.DanceStyle.Twerk, new Vector3(-102f, 0f, 156f)),
             };
             for (int i = 0; i < troupe.Length; i++)
             {
@@ -2614,9 +2605,11 @@ namespace AldenFall.Editor
             so.FindProperty("respawnDelay").floatValue = respawnDelay;
             so.FindProperty("spawnOnStart").boolValue = true;
             var respawnProp = so.FindProperty("respawnAfterDeath");
-            // Dungeon (z>180) is clearable; a huge respawn delay (999999 in JSON)
-            // marks a one-and-done quest boss (e.g. Grukmar) that never returns.
-            if (respawnProp != null) respawnProp.boolValue = pos.z < 180f && respawnDelay < 100000f;
+            // V2: the volcano dungeon lies to the SOUTH (z < -300) and is clearable — its mobs
+            // never respawn. Everything north of that (city + forest ring + ember approach)
+            // respawns. A huge respawn delay (999999 in JSON) additionally marks a one-and-done
+            // quest boss (Grukmar, the Floor Boss) that never returns wherever it stands.
+            if (respawnProp != null) respawnProp.boolValue = pos.z > -300f && respawnDelay < 100000f;
             so.ApplyModifiedProperties();
         }
 
@@ -2631,9 +2624,9 @@ namespace AldenFall.Editor
             so.FindProperty("radius").floatValue = radius;
             so.FindProperty("respawnDelay").floatValue = respawnDelay;
             var respawnProp = so.FindProperty("respawnAfterDeath");
-            // Dungeon (z>180) is clearable; a huge respawn delay (999999 in JSON)
-            // marks a one-and-done camp (never returns).
-            if (respawnProp != null) respawnProp.boolValue = pos.z < 180f && respawnDelay < 100000f;
+            // V2: the volcano dungeon (z < -300) is clearable — its camps never respawn.
+            // Forest-ring camps north of that respawn; a 999999 delay marks one-and-done.
+            if (respawnProp != null) respawnProp.boolValue = pos.z > -300f && respawnDelay < 100000f;
             so.ApplyModifiedProperties();
         }
 
