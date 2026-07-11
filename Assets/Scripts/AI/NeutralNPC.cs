@@ -198,9 +198,12 @@ namespace AldenFall.AI
         {
             float t = Time.time * 13f + seed; // roughly double-time tempo
 
-            // Crouched and leaned WAY forward, bouncing from the hips
+            // Leaned WAY forward, bouncing from the hips. NOTE: the visual pivot
+            // is at the feet, so a negative Y offset drives the mesh THROUGH the
+            // terrain and the goblin vanishes. Keep Y clamped at/above ground —
+            // the crouch reads from the deep forward lean, not from sinking.
             float bounce = Mathf.Abs(Mathf.Sin(t)) * 0.09f;
-            visual.localPosition = new Vector3(0f, -0.16f + bounce, -0.06f);
+            visual.localPosition = new Vector3(0f, bounce, -0.06f);
             visual.localRotation = baseRotation
                 * Quaternion.Euler(38f + Mathf.Sin(t) * 7f, Mathf.Sin(t * 0.23f) * 14f, 0f);
         }

@@ -46,6 +46,8 @@ namespace AldenFall.UI
 
         [Header("Toasts")]
         public RectTransform toastRoot;
+        private const int MaxToasts = 4;              // cap the visible pickup stack
+        private readonly List<GameObject> activeToasts = new List<GameObject>();
 
         [Header("Interaction")]
         public GameObject promptChip;      // "E — Fish" pill above the action bar
@@ -325,6 +327,17 @@ namespace AldenFall.UI
         {
             var obj = new GameObject("PickupToast");
             obj.transform.SetParent(toastRoot, false);
+
+            // Cap the visible stack so bulk pickups can't wall off the screen:
+            // retire the oldest toasts immediately once we're over the limit.
+            activeToasts.Add(obj);
+            while (activeToasts.Count > MaxToasts)
+            {
+                var oldest = activeToasts[0];
+                activeToasts.RemoveAt(0);
+                if (oldest != null) Destroy(oldest);
+            }
+
             var text = obj.AddComponent<TextMeshProUGUI>();
             text.text = $"<color=#{ColorUtility.ToHtmlStringRGB(def.RarityColor)}>{def.Name}</color> acquired";
             text.fontSize = 18;
@@ -346,10 +359,11 @@ namespace AldenFall.UI
             while (elapsed < 0.4f)
             {
                 elapsed += Time.deltaTime;
-                if (text == null) yield break;
+                if (text == null) yield break;   // culled early by the cap
                 text.alpha = 1f - elapsed / 0.4f;
                 yield return null;
             }
+            activeToasts.Remove(obj);
             if (text != null) Destroy(text.gameObject);
         }
     }

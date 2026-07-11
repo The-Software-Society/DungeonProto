@@ -196,7 +196,17 @@ namespace AldenFall.Combat
             }
 
             lastDamageTime = Time.time;
-            OnRawDamaged?.Invoke(damage);
+
+            // Raw-damage hook drives Defence XP. For a networked player it must fire on
+            // the OWNING CLIENT: that's where the player picks their combat style and
+            // where the trained level is read + replicated back to the server (via
+            // PlayerStatBridge) for authoritative mitigation. Enemies and the host's own
+            // player (isLocalPlayer here on the server) train inline.
+            if (CombatRules.IsPlayer(gameObject) && !isLocalPlayer)
+                TargetTrainDefence(damage);
+            else
+                OnRawDamaged?.Invoke(damage);
+
             if (attacker != null)
                 OnAttacked?.Invoke(attacker);
 
@@ -230,6 +240,14 @@ namespace AldenFall.Combat
             OnHealthChanged?.Invoke(newValue, maxHealth);
             if (newValue < oldValue) OnDamaged?.Invoke(oldValue - newValue);
             else if (newValue > oldValue) OnHealed?.Invoke(newValue - oldValue);
+        }
+
+        // Defence trains on the owning client so the level the player sees is the one
+        // replicated to the server for mitigation. PlayerDefence listens to OnRawDamaged.
+        [TargetRpc]
+        private void TargetTrainDefence(float rawDamage)
+        {
+            OnRawDamaged?.Invoke(rawDamage);
         }
 
         [ClientRpc]

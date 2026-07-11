@@ -25,6 +25,7 @@ namespace AldenFall.Quests
         public Vector3 Location;       // ReachLocation only
         public float Radius = 3f;      // ReachLocation only
         public string Description;
+        public string LocationHint = "";  // optional "where to go" direction shown in the quest log
     }
 
     /// <summary>

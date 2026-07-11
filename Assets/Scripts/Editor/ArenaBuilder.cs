@@ -274,6 +274,7 @@ namespace AldenFall.Editor
             BuildForest(root.transform, groundLayer);
             BuildRescueGiver(root.transform, groundLayer);
             BuildOrcWarcamp(root.transform, groundLayer);
+            BuildMountain(root.transform, groundLayer);
             BuildGlobalSafety(root.transform, groundLayer);
 
             return root;
@@ -281,12 +282,69 @@ namespace AldenFall.Editor
 
         private static void BuildGlobalSafety(Transform root, int groundLayer)
         {
+            // v8: catch floor + rails extended south to -350 to enclose the deeper
+            // forest (ForestEndZ -260) and the mountain vista behind it. The south
+            // rail moved from -196 to -352 so it no longer walls off the new forest.
             var safety = Child(root, "GlobalSafetyColliders");
-            ColliderBox("WorldCatchFloor", new Vector3(0f, -14f, 72f), new Vector3(160f, 1f, 560f), safety, groundLayer);
-            ColliderBox("WorldRail_W", new Vector3(-74f, 4f, 72f), new Vector3(4f, 8f, 560f), safety, groundLayer);
-            ColliderBox("WorldRail_E", new Vector3(74f, 4f, 72f), new Vector3(4f, 8f, 560f), safety, groundLayer);
-            ColliderBox("WorldRail_S", new Vector3(0f, 4f, -196f), new Vector3(160f, 8f, 4f), safety, groundLayer);
+            ColliderBox("WorldCatchFloor", new Vector3(0f, -14f, 1f), new Vector3(160f, 1f, 702f), safety, groundLayer);
+            ColliderBox("WorldRail_W", new Vector3(-74f, 4f, 1f), new Vector3(4f, 8f, 702f), safety, groundLayer);
+            ColliderBox("WorldRail_E", new Vector3(74f, 4f, 1f), new Vector3(4f, 8f, 702f), safety, groundLayer);
+            ColliderBox("WorldRail_S", new Vector3(0f, 4f, -352f), new Vector3(160f, 8f, 4f), safety, groundLayer);
             ColliderBox("WorldRail_N", new Vector3(0f, 4f, 348f), new Vector3(160f, 8f, 4f), safety, groundLayer);
+        }
+
+        // ==================== MOUNTAIN VISTA (south, beyond the forest) ====================
+        // Past the forest's south wall gap the winding river spills toward a
+        // dramatic mountain massing on the horizon, so the forest visibly leads
+        // somewhere bigger. A rough ramp climbs a foothill to a small summit
+        // ledge with a torch-lit reward chest (GuildWars-vista style).
+        private static void BuildMountain(Transform root, int groundLayer)
+        {
+            var container = Child(root, "Mountain");
+            var rock = Mat("MountainRock", new Color(0.34f, 0.31f, 0.30f), smoothness: 0.04f);
+            var rockD = Mat("MountainRockDark", new Color(0.24f, 0.22f, 0.23f), smoothness: 0.04f);
+            var snow = Mat("MountainSnow", new Color(0.9f, 0.92f, 0.97f), smoothness: 0.2f);
+
+            void Rock(string n, Vector3 pos, Vector3 size, float yaw, Material m)
+            {
+                var c = Cube(n, pos, size, m, container);
+                c.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                c.isStatic = true;
+                if (groundLayer >= 0) c.layer = groundLayer;
+            }
+
+            // Dry apron linking the forest's south gap to the mountain foot.
+            Rock("Mtn_Apron", new Vector3(38f, -0.25f, -276f), new Vector3(74f, 0.5f, 34f), 0f, rock);
+
+            // Foothills blend the flat apron up into the peaks.
+            Rock("Mtn_Foot0", new Vector3(20f, 7f, -298f), new Vector3(70f, 16f, 26f), 6f, rock);
+            Rock("Mtn_Foot1", new Vector3(-6f, 6f, -300f), new Vector3(44f, 14f, 24f), 14f, rockD);
+            Rock("Mtn_Foot2", new Vector3(52f, 6f, -299f), new Vector3(40f, 14f, 24f), -12f, rockD);
+
+            // Three peaks of rising height — the horizon backdrop over the 12m wall.
+            Rock("Mtn_PeakE", new Vector3(58f, 19f, -320f), new Vector3(40f, 40f, 40f), 32f, rock);
+            Rock("Mtn_PeakC", new Vector3(28f, 24f, -326f), new Vector3(50f, 50f, 50f), 18f, rock);
+            Rock("Mtn_PeakW", new Vector3(-12f, 31f, -338f), new Vector3(56f, 64f, 56f), -16f, rockD);
+
+            // Snow caps.
+            Rock("Mtn_SnowE", new Vector3(58f, 40f, -320f), new Vector3(22f, 8f, 22f), 32f, snow);
+            Rock("Mtn_SnowC", new Vector3(28f, 50f, -326f), new Vector3(28f, 9f, 28f), 18f, snow);
+            Rock("Mtn_SnowW", new Vector3(-12f, 64f, -338f), new Vector3(32f, 10f, 32f), -16f, snow);
+
+            // ---- Bonus climb: a walkable ramp (well under the slope limit) rises
+            // from the apron to a summit ledge with a torch-lit reward chest. ----
+            const float rampRise = 4.5f, rampRun = 14f;
+            var ramp = Cube("Mtn_Ramp", new Vector3(20f, rampRise / 2f, -292f),
+                new Vector3(6.5f, 0.8f, Mathf.Sqrt(rampRise * rampRise + rampRun * rampRun)), rock, container);
+            ramp.transform.rotation = Quaternion.LookRotation(new Vector3(0f, rampRise, -rampRun).normalized);
+            ramp.isStatic = true;
+            if (groundLayer >= 0) ramp.layer = groundLayer;
+
+            Rock("Mtn_Ledge", new Vector3(20f, rampRise, -300f), new Vector3(11f, 1f, 10f), 0f, rock);
+
+            CreateTorch(container, new Vector3(16f, rampRise + 0.5f, -301f), 0.8f);
+            CreateLootChest(container, new Vector3(22f, rampRise + 0.5f, -301f), 200f,
+                new (string id, float chance)[] { ("knight_sword", 1f), ("iron_chestplate", 0.75f) }, groundLayer);
         }
 
         // ==================== FOREST ZONE (v7 starting area) ====================
@@ -296,6 +354,25 @@ namespace AldenFall.Editor
 
         /// <summary>The path's x position at a given z — one gentle S-curve.</summary>
         private static float ForestPathX(float z) => Mathf.Sin((z + 43.5f) / 24f) * 12f;
+
+        // ---- Forest river (winding, deep, swimmable). Shared by BuildForest
+        // (carves the floor + keeps trees/props out of the channel) and
+        // BuildFishingAndCooking (builds the bed, water volume + shore steps).
+        // The river winds down the EAST side of the forest and out the south
+        // wall gap toward the mountain, so the fishing party's WEST bank stays dry.
+        private const float RiverSourceZ = -116f;   // north source, up among the trees
+        private const float RiverMouthZ = -260f;    // south mouth, at the wall gap
+        private const float RiverHalfW = 7f;        // half the open-water width (~14m)
+        private const float RiverBankHalf = 12.5f;  // half-width incl. the sloped shore steps
+        private const float RiverBedY = -2.0f;      // bed top: depth = WaterSurfaceY-RiverBedY = 2.1m
+
+        /// <summary>Winding centerline X of the forest river at a given z.</summary>
+        private static float RiverCenterX(float z) => 33f + 6f * Mathf.Sin((z + 116f) / 30f);
+
+        /// <summary>True if (x,z) sits inside the river's carved footprint (water + shore).</summary>
+        private static bool IsOverRiver(float x, float z)
+            => z <= RiverSourceZ + 4f && z >= RiverMouthZ - 4f
+               && Mathf.Abs(x - RiverCenterX(z)) < RiverBankHalf;
 
         private static void BuildForest(Transform root, int groundLayer)
         {
@@ -311,18 +388,23 @@ namespace AldenFall.Editor
             var dirtMat = Mat("ForestDirt", new Color(0.38f, 0.30f, 0.22f), smoothness: 0.05f);
 
             // Keep-clear zones: goblin camps (match monsters.json!) + spawn clearing
+            // + Grukmar's warcamp (-45,-165) so the dense forest doesn't bury the
+            // rescue objective — the player must be able to SEE the camp to find him.
             var clearings = new Vector2[]
             {
                 new Vector2(-18f, -78f), new Vector2(22f, -112f),
                 new Vector2(-26f, -146f), new Vector2(28f, -174f),
                 new Vector2(0f, -115f),   // player spawn clearing
+                new Vector2(-45f, -165f), // Grukmar's warcamp (rescue quest boss)
             };
 
             for (float x = -ForestHalfW; x < ForestHalfW; x += TileSize)
             {
                 for (float z = ForestEndZ; z < ForestStartZ; z += TileSize)
                 {
-                    bool isPath = Mathf.Abs(x + TileSize / 2 - ForestPathX(z + TileSize / 2)) < 4.5f;
+                    float cx = x + TileSize / 2, cz = z + TileSize / 2;
+                    if (IsOverRiver(cx, cz)) continue; // leave the river channel open (carved)
+                    bool isPath = Mathf.Abs(cx - ForestPathX(cz)) < 4.5f;
                     var mat = isPath ? dirtMat : grassTints[rng.Next(grassTints.Length)];
                     var tile = Cube($"Forest_{x}_{z}",
                         new Vector3(x + TileSize / 2, -0.25f, z + TileSize / 2),
@@ -338,6 +420,7 @@ namespace AldenFall.Editor
                 (x, z) =>
                 {
                     if (Mathf.Abs(x - ForestPathX(z)) < 5.3f) return false;
+                    if (IsOverRiver(x, z)) return false;
                     foreach (var c in clearings)
                         if (Vector2.Distance(new Vector2(x, z), c) < 13f) return false;
                     return true;
@@ -354,7 +437,10 @@ namespace AldenFall.Editor
             float forestLen = ForestStartZ - ForestEndZ;
             Cliff("ForestCliff_W", new Vector3(-ForestHalfW - 2f, 6f, ForestEndZ + forestLen / 2), new Vector3(4f, 12f, forestLen + 8f));
             Cliff("ForestCliff_E", new Vector3(ForestHalfW + 2f, 6f, ForestEndZ + forestLen / 2), new Vector3(4f, 12f, forestLen + 8f));
-            Cliff("ForestCliff_S", new Vector3(0, 6f, ForestEndZ - 2f), new Vector3(ForestHalfW * 2 + 8f, 12f, 4f));
+            // South wall split around an 18m river-mouth gap (x30..48) so the
+            // winding river can spill out toward the mountain vista beyond.
+            Cliff("ForestCliff_SW", new Vector3(-22f, 6f, ForestEndZ - 2f), new Vector3(104f, 12f, 4f));
+            Cliff("ForestCliff_SE", new Vector3(61f, 6f, ForestEndZ - 2f), new Vector3(26f, 12f, 4f));
             ColliderBox("ForestSafety_NW", new Vector3(-38f, 3f, ForestStartZ + 1.5f), new Vector3(64f, 6f, 3f), container, groundLayer);
             ColliderBox("ForestSafety_NE", new Vector3(38f, 3f, ForestStartZ + 1.5f), new Vector3(64f, 6f, 3f), container, groundLayer);
             ColliderBox("ForestCatchFloor", new Vector3(0f, -8f, ForestEndZ + forestLen / 2), new Vector3(ForestHalfW * 2f, 1f, forestLen), container, groundLayer);
@@ -367,11 +453,12 @@ namespace AldenFall.Editor
             var pineMat = Mat("PineLeaf", new Color(0.12f, 0.28f, 0.14f), smoothness: 0.08f);
             string[] treeKit = { "OakTree", "BirchTree", "DeadTree", "PineTree" };
             int planted = 0;
-            for (int attempt = 0; attempt < 640 && planted < 180; attempt++)
+            for (int attempt = 0; attempt < 950 && planted < 265; attempt++)
             {
                 float x = Mathf.Lerp(-ForestHalfW + 5f, ForestHalfW - 5f, (float)rng.NextDouble());
                 float z = Mathf.Lerp(ForestEndZ + 6f, ForestStartZ - 6f, (float)rng.NextDouble());
                 if (Mathf.Abs(x - ForestPathX(z)) < 6f) continue;    // winding path stays clear
+                if (IsOverRiver(x, z)) continue;                     // no trees in the river
                 bool blocked = false;
                 foreach (var c in clearings)
                     if (Vector2.Distance(new Vector2(x, z), c) < 12f) { blocked = true; break; }
@@ -406,11 +493,12 @@ namespace AldenFall.Editor
             float[] floorHeights = { 1.1f, 1.4f, 0.9f };
             var floorRockMat = Mat("ForestFloorRock", new Color(0.3f, 0.32f, 0.26f), smoothness: 0.08f);
             int scattered = 0;
-            for (int attempt = 0; attempt < 340 && scattered < 72; attempt++)
+            for (int attempt = 0; attempt < 500 && scattered < 106; attempt++)
             {
                 float x = Mathf.Lerp(-ForestHalfW + 4f, ForestHalfW - 4f, (float)rng.NextDouble());
                 float z = Mathf.Lerp(ForestEndZ + 5f, ForestStartZ - 5f, (float)rng.NextDouble());
                 if (Mathf.Abs(x - ForestPathX(z)) < 5f) continue;
+                if (IsOverRiver(x, z)) continue;                     // keep the channel clear
                 bool blocked = false;
                 foreach (var c in clearings)
                     if (Vector2.Distance(new Vector2(x, z), c) < 9f) { blocked = true; break; }
@@ -726,40 +814,84 @@ namespace AldenFall.Editor
             var container = Child(root, "FishingAndCooking");
             int interactableLayer = LayerMask.NameToLayer("Interactable");
 
-            // ---- Forest river: a translucent water channel beside the winding
-            // path. The old courtyard pond stays as scenery; skilling now lives
-            // out in a forest clearing (~x22..30, z-148).
+            // ---- Forest river: a REAL, swimmable river. A translucent surface
+            // (no collider) floats over a deep carved bed; a Water-layer trigger
+            // volume is what the swim system actually reads; walk-in shore steps
+            // let the player wade DOWN from the bank instead of hitting a wall.
+            // It winds down the east side and out the south wall gap toward the
+            // mountain (BuildForest carves the matching hole in the floor tiles).
             {
-                var bankMat = Mat("RiverBank", new Color(0.34f, 0.27f, 0.19f), smoothness: 0.05f);
-                var bedMat = Mat("RiverBed", new Color(0.18f, 0.2f, 0.22f), smoothness: 0.3f);
+                int waterLayer = LayerMask.NameToLayer("Water");
+                var bedMat = Mat("RiverBed", new Color(0.16f, 0.19f, 0.2f), smoothness: 0.25f);
+                var shoreMat = Mat("RiverShore", new Color(0.3f, 0.26f, 0.19f), smoothness: 0.05f);
                 var riverWaterMat = Mat("RiverWater", new Color(0.16f, 0.35f, 0.45f, 0.62f),
                     smoothness: 0.95f, transparent: true, emission: new Color(0.03f, 0.08f, 0.1f));
 
-                Vector3 riverCenter = new Vector3(26f, 0f, -148f);
-                float riverLen = 48f, riverWidth = 7f;
+                float colTop = WaterSurfaceY;              // 0.1
+                float colH = colTop - RiverBedY;           // 2.1 (>= swimEnterDepth 1.3)
+                float colCy = (colTop + RiverBedY) / 2f;   // -0.95
+                float[] stepTops = { -1.3f, -0.55f };      // inner (deep) -> outer (shallow)
+                float[] stepInnerEdge = { RiverHalfW, RiverHalfW + 2.5f };
+                const float stepW = 2.5f, stepBottomY = RiverBedY - 0.4f, seg = 6f;
 
-                var bed = Cube("River_Bed", riverCenter + Vector3.down * 0.35f,
-                    new Vector3(riverWidth + 1.4f, 0.7f, riverLen), bedMat, container);
-                bed.isStatic = true;
-                if (groundLayer >= 0) bed.layer = groundLayer;
-
-                var surface = Cube("River_Water", riverCenter + Vector3.up * WaterSurfaceY,
-                    new Vector3(riverWidth, 0.06f, riverLen), riverWaterMat, container);
-                Object.DestroyImmediate(surface.GetComponent<BoxCollider>());
-
-                foreach (float bx in new[] { riverWidth / 2f + 1f, -(riverWidth / 2f + 1f) })
+                for (float z = RiverSourceZ; z > RiverMouthZ - 0.1f; z -= seg)
                 {
-                    var bank = Cube("River_Bank", riverCenter + new Vector3(bx, 0.2f, 0f),
-                        new Vector3(1.6f, 0.5f, riverLen), bankMat, container);
-                    bank.isStatic = true;
-                    if (groundLayer >= 0) bank.layer = groundLayer;
+                    float zA = z, zB = Mathf.Max(z - seg, RiverMouthZ);
+                    float xA = RiverCenterX(zA), xB = RiverCenterX(zB);
+                    Vector3 mid = new Vector3((xA + xB) / 2f, 0f, (zA + zB) / 2f);
+                    float dx = xB - xA, dz = zB - zA;
+                    float segLen = Mathf.Sqrt(dx * dx + dz * dz) + 1.6f;   // overlap the seams
+                    float yawDeg = Mathf.Atan2(dx, dz) * Mathf.Rad2Deg;
+                    Quaternion rot = Quaternion.Euler(0f, yawDeg, 0f);
+                    float yawRad = yawDeg * Mathf.Deg2Rad;
+                    Vector3 rightDir = new Vector3(Mathf.Cos(yawRad), 0f, -Mathf.Sin(yawRad));
+
+                    // Bed (solid, Ground layer) — supports a swimmer who touches bottom.
+                    var bed = Cube("River_Bed", mid + Vector3.up * (RiverBedY - 0.35f),
+                        new Vector3(RiverHalfW * 2f + 1f, 0.7f, segLen), bedMat, container);
+                    bed.transform.rotation = rot;
+                    bed.isStatic = true;
+                    if (groundLayer >= 0) bed.layer = groundLayer;
+
+                    // Water trigger volume (Water layer) — top sits exactly at the
+                    // surface; the swim system measures depth below bounds.max.y.
+                    var vol = new GameObject("River_WaterVolume");
+                    vol.transform.SetParent(container);
+                    vol.transform.position = mid + Vector3.up * colCy;
+                    vol.transform.rotation = rot;
+                    var vbox = vol.AddComponent<BoxCollider>();
+                    vbox.isTrigger = true;
+                    vbox.size = new Vector3(RiverHalfW * 2f, colH, segLen);
+                    if (waterLayer >= 0) vol.layer = waterLayer;
+
+                    // Translucent surface visual (no collider — players/props pass in).
+                    var surf = Cube("River_Water", mid + Vector3.up * WaterSurfaceY,
+                        new Vector3(RiverHalfW * 2f - 0.4f, 0.06f, segLen), riverWaterMat, container);
+                    surf.transform.rotation = rot;
+                    Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
+
+                    // Walk-in shore steps on each bank (Ground layer): two ledges
+                    // (~0.55 then ~0.75 drop) grade the bank down into the water.
+                    for (int side = -1; side <= 1; side += 2)
+                        for (int s = 0; s < stepTops.Length; s++)
+                        {
+                            float top = stepTops[s];
+                            float h = top - stepBottomY;
+                            float off = stepInnerEdge[s] + stepW / 2f;
+                            var stp = Cube("River_Shore",
+                                mid + rightDir * (off * side) + Vector3.up * (top - h / 2f),
+                                new Vector3(stepW, h, segLen), shoreMat, container);
+                            stp.transform.rotation = rot;
+                            stp.isStatic = true;
+                            if (groundLayer >= 0) stp.layer = groundLayer;
+                        }
                 }
             }
 
-            // ---- Fishing spot on the west bank of the forest river ----
+            // ---- Fishing spot on the dry west bank of the forest river ----
             var spotObj = new GameObject("FishingSpot");
             spotObj.transform.SetParent(container);
-            spotObj.transform.position = new Vector3(22f, 0f, -148f);
+            spotObj.transform.position = new Vector3(14f, 0f, -148f);
             if (interactableLayer >= 0) spotObj.layer = interactableLayer;
 
             var spot = spotObj.AddComponent<World.FishingSpot>();
@@ -767,7 +899,7 @@ namespace AldenFall.Editor
             spotSO.FindProperty("prompt").stringValue = "Fish";
             spotSO.FindProperty("radius").floatValue = 4f;
             spotSO.FindProperty("bobberAnchor").vector3Value =
-                new Vector3(26f, WaterSurfaceY + 0.05f, -148f); // out over the river
+                new Vector3(RiverCenterX(-148f), WaterSurfaceY + 0.05f, -148f); // out over open water
             spotSO.ApplyModifiedProperties();
 
             // Little wooden marker so the spot reads at a glance: post + sign
@@ -793,7 +925,7 @@ namespace AldenFall.Editor
             // ---- Campfire a few steps back from the river bank ----
             var fireObj = new GameObject("Campfire");
             fireObj.transform.SetParent(container);
-            fireObj.transform.position = new Vector3(17.5f, 0f, -143f);
+            fireObj.transform.position = new Vector3(9f, 0f, -145f);
             if (interactableLayer >= 0) fireObj.layer = interactableLayer;
 
             var fire = fireObj.AddComponent<World.Campfire>();
@@ -855,7 +987,7 @@ namespace AldenFall.Editor
 
         // v7 forest (south of the courtyard) — the new starting zone
         private const float ForestStartZ = -43.5f; // just past the south wall
-        private const float ForestEndZ = -190f;
+        private const float ForestEndZ = -260f;     // v8: deeper forest leading to the mountain
         private const float ForestHalfW = 70f;
 
         private static void BuildField(Transform root, int groundLayer)
@@ -1297,6 +1429,26 @@ namespace AldenFall.Editor
         /// size, composed rotation, bottom-center anchoring, and a fitted
         /// collider. Returns null when the model doesn't exist yet.
         /// </summary>
+        // Plausible flat color for a Meshy prop whose base-color texture didn't
+        // download — keyed by what the name reads as, so a bush is green, a stump
+        // is wood-brown, a boulder is stone, a house is timber. Order matters:
+        // "dead"/"stump" are checked before the generic "tree" so bare props stay brown.
+        private static Color PropFallbackColor(string name)
+        {
+            string n = name.ToLowerInvariant();
+            if (n.Contains("bush") || n.Contains("grass") || n.Contains("hedge") || n.Contains("shrub") || n.Contains("leaf"))
+                return new Color(0.17f, 0.33f, 0.15f);   // foliage green
+            if (n.Contains("dead") || n.Contains("stump") || n.Contains("log") || n.Contains("trunk") || n.Contains("branch"))
+                return new Color(0.31f, 0.22f, 0.14f);   // dry wood brown
+            if (n.Contains("tree") || n.Contains("pine") || n.Contains("oak") || n.Contains("birch") || n.Contains("fir"))
+                return new Color(0.21f, 0.35f, 0.17f);   // canopy green
+            if (n.Contains("boulder") || n.Contains("rock") || n.Contains("moss") || n.Contains("stone") || n.Contains("well") || n.Contains("cliff"))
+                return new Color(0.33f, 0.34f, 0.31f);   // mossy stone
+            if (n.Contains("house") || n.Contains("hut") || n.Contains("cottage") || n.Contains("stall") || n.Contains("shop") || n.Contains("home") || n.Contains("hall") || n.Contains("store"))
+                return new Color(0.48f, 0.38f, 0.26f);   // timber / plaster
+            return new Color(0.4f, 0.38f, 0.34f);        // neutral fallback
+        }
+
         private static GameObject PlaceMeshyProp(Transform parent, string name,
             Vector3 pos, float yaw, float height, int groundLayer)
         {
@@ -1307,14 +1459,17 @@ namespace AldenFall.Editor
             instance.name = name;
             instance.transform.SetParent(parent);
 
-            // Apply the base-color texture extracted from the GLB twin
+            // Apply the base-color texture extracted from the GLB twin. When the
+            // texture never downloaded (fbx present, _baseColor.png absent) the
+            // model keeps Unity's default WHITE material and reads as a bald
+            // silhouette — so paint a plausible flat color instead. This keeps the
+            // world looking right regardless of which Meshy textures actually landed.
             var propMat = MeshyCharacterImporter.BuildTexturedMaterial(
                 name, $"Assets/Models/Props/{name}_baseColor");
-            if (propMat != null)
-            {
-                foreach (var r in instance.GetComponentsInChildren<Renderer>())
-                    r.sharedMaterial = propMat;
-            }
+            if (propMat == null)
+                propMat = Mat($"PropFallback_{name}", PropFallbackColor(name), smoothness: 0.06f);
+            foreach (var r in instance.GetComponentsInChildren<Renderer>())
+                r.sharedMaterial = propMat;
 
             // Renderer.bounds can be stale immediately after transform edits in
             // batch mode — measure via mesh bounds through the current matrix,
@@ -2133,13 +2288,14 @@ namespace AldenFall.Editor
         {
             // One prefab per dance style — spawners instantiate a shared
             // prefab, so per-goblin choreography means per-style prefabs.
-            // Cluster the fishing party on the west bank of the forest river,
-            // beside the FishingSpot/Campfire (~x22, z-148), so it reads together.
+            // Cluster the fishing party on the DRY west bank of the forest river,
+            // beside the FishingSpot/Campfire (~x9-14), on flat path-side ground so
+            // none of them stand in the water. Spaced ~3.5m apart, no overlaps.
             var troupe = new (AI.DanceStyle style, Vector3 pos)[]
             {
-                (AI.DanceStyle.Modern, new Vector3(16f, 0f, -152f)),
-                (AI.DanceStyle.Robot, new Vector3(18.5f, 0f, -156f)),
-                (AI.DanceStyle.Twerk, new Vector3(14f, 0f, -157f)),
+                (AI.DanceStyle.Modern, new Vector3(11f, 0f, -153f)),
+                (AI.DanceStyle.Robot, new Vector3(13f, 0f, -156f)),
+                (AI.DanceStyle.Twerk, new Vector3(10f, 0f, -159f)),
             };
             for (int i = 0; i < troupe.Length; i++)
             {

@@ -25,10 +25,12 @@ namespace AldenFall.UI
         public List<ItemSlotUI> bagSlots = new List<ItemSlotUI>();
         public TMP_Text countText;
         public TMP_Text bonusText;
+        public TMP_Text goldText;
 
         private Inventory inventory;
         private Equipment equipment;
         private StatBlock stats;
+        private Wallet wallet;
         private GameObject boundPlayer;
 
         private void Start()
@@ -58,9 +60,11 @@ namespace AldenFall.UI
             inventory = player.GetComponent<Inventory>();
             equipment = player.GetComponent<Equipment>();
             stats = player.GetComponent<StatBlock>();
+            wallet = player.GetComponent<Wallet>();
 
             if (inventory != null) inventory.OnChanged.AddListener(Refresh);
             if (equipment != null) equipment.OnEquipmentChanged.AddListener(Refresh);
+            if (wallet != null) wallet.OnChanged.AddListener(OnGoldChanged);
             Refresh();
         }
 
@@ -68,10 +72,21 @@ namespace AldenFall.UI
         {
             if (inventory != null) inventory.OnChanged.RemoveListener(Refresh);
             if (equipment != null) equipment.OnEquipmentChanged.RemoveListener(Refresh);
+            if (wallet != null) wallet.OnChanged.RemoveListener(OnGoldChanged);
             inventory = null;
             equipment = null;
             stats = null;
+            wallet = null;
             boundPlayer = null;
+        }
+
+        private void OnGoldChanged(int _) => RefreshGold();
+
+        private void RefreshGold()
+        {
+            if (goldText == null) return;
+            int gold = wallet != null ? wallet.Gold : 0;
+            goldText.text = $"<color=#F2CC8C><b>Gold:</b> {gold}</color>";
         }
 
         public void Refresh()
@@ -95,6 +110,7 @@ namespace AldenFall.UI
             if (countText != null)
                 countText.text = $"{slots.Count} / {Inventory.Capacity}";
 
+            RefreshGold();
             RefreshBonuses();
         }
 

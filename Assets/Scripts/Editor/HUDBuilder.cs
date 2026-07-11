@@ -338,6 +338,15 @@ namespace AldenFall.Editor
             countRect.offsetMin = new Vector2(0, -46); countRect.offsetMax = new Vector2(-24, -16);
             charUI.countText.alignment = TextAlignmentOptions.MidlineRight;
 
+            // Gold readout (moved off the quest tracker) — sits under the header, left column.
+            charUI.goldText = Text(panel, "Gold", "<color=#F2CC8C><b>Gold:</b> 0</color>", 15,
+                UITheme.TextGold, FontStyles.Bold);
+            var goldRect = charUI.goldText.rectTransform;
+            goldRect.anchorMin = new Vector2(0, 1); goldRect.anchorMax = new Vector2(0.7f, 1);
+            goldRect.offsetMin = new Vector2(24, -70); goldRect.offsetMax = new Vector2(0, -48);
+            charUI.goldText.alignment = TextAlignmentOptions.MidlineLeft;
+            charUI.goldText.richText = true;
+
             // ---- Paper doll (left column, top→bottom: helm/cape/chest/legs/weapon/focus) ----
             var dollSlots = new (Items.EquipSlot slot, string label, float y)[]
             {

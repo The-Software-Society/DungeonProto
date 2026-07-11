@@ -40,7 +40,8 @@ namespace AldenFall.Quests
                 Objectives =
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.TalkToNpc, TargetId = "aldric", Count = 1,
-                        Description = "Speak with Aldric" },
+                        Description = "Speak with Aldric",
+                        LocationHint = "Aldric waits by the spawn clearing" },
                 },
                 GoldReward = 10,
                 GiverNpcId = "aldric",
@@ -54,7 +55,8 @@ namespace AldenFall.Quests
                 Objectives =
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.UseAbility, TargetId = "", Count = 1,
-                        Description = "Use any ability (keys 1-5)" },
+                        Description = "Use any ability (keys 1-5)",
+                        LocationHint = "Out in the field, press keys 1-5" },
                 },
                 GoldReward = 15,
                 PrereqQuestId = "q_intro",
@@ -68,7 +70,8 @@ namespace AldenFall.Quests
                 Objectives =
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.CatchFish, TargetId = "", Count = 1,
-                        Description = "Catch a fish at the pond" },
+                        Description = "Catch a fish at the pond",
+                        LocationHint = "Take the pole to the pond nearby" },
                 },
                 GoldReward = 15,
                 PrereqQuestId = "q_learn_skill",
@@ -82,7 +85,8 @@ namespace AldenFall.Quests
                 Objectives =
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.EatFood, TargetId = "", Count = 1,
-                        Description = "Eat any cooked food" },
+                        Description = "Eat any cooked food",
+                        LocationHint = "Cook your catch at the campfire, then eat it" },
                 },
                 GoldReward = 20,
                 Rewards = { ("cooked_fish", 3) },
@@ -99,9 +103,11 @@ namespace AldenFall.Quests
                 Objectives =
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.KillMob, TargetId = "grukmar", Count = 1,
-                        Description = "Slay Grukmar the Warlord" },
+                        Description = "Slay Grukmar the Warlord",
+                        LocationHint = "Head to the forest warcamp" },
                     new ObjectiveDef { Kind = ObjectiveKind.TalkToNpc, TargetId = "townsperson", Count = 1,
-                        Description = "Return to the girl's mother in town" },
+                        Description = "Return to the girl's mother in town",
+                        LocationHint = "Return to the girl's mother in town" },
                 },
                 GoldReward = 150,
                 Rewards = { ("knight_sword", 1) },

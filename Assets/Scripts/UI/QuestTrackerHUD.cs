@@ -2,32 +2,40 @@ using System.Text;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using AldenFall.Items;
 using AldenFall.Quests;
 
 namespace AldenFall.UI
 {
     /// <summary>
-    /// A self-contained quest tracker + gold readout, built at runtime on its own
-    /// canvas (like DebugCheatPanel) so it never touches the authored HUD. Lives
-    /// on the player; reads the sibling QuestLog + Wallet and redraws on change.
+    /// Quest UI, built at runtime on its own canvas (like DebugCheatPanel) so it
+    /// never touches the authored HUD. Two surfaces:
+    ///   • a compact always-on tracker (top-right) that summarises ACTIVE quests
+    ///     and the current objective + where to go;
+    ///   • a full quest log toggled with <b>Q</b> that lists ACTIVE quests (every
+    ///     objective + a direction hint) and COMPLETED history.
+    /// Lives on the player; reads the sibling QuestLog and redraws on change.
+    /// Gold now lives in the inventory/character panel, not here.
     /// </summary>
     public class QuestTrackerHUD : MonoBehaviour
     {
         private QuestLog log;
-        private Wallet wallet;
-        private TMP_Text body;
+        private TMP_Text body;          // compact always-on tracker
+        private GameObject logPanel;    // full Q-toggled log
+        private TMP_Text logBody;
 
         private void Start()
         {
+            // Only the local player drives quest UI + input (remote avatars must not).
+            var identity = GetComponent<Mirror.NetworkIdentity>();
+            if (identity != null && !identity.isLocalPlayer) { enabled = false; return; }
+
             log = GetComponent<QuestLog>();
-            wallet = GetComponent<Wallet>();
             if (log == null) { enabled = false; return; }
 
             Build();
+            BuildLogPanel();
 
             log.OnQuestChanged.AddListener(Refresh);
-            if (wallet != null) wallet.OnChanged.AddListener(_ => Refresh());
             Refresh();
         }
 
@@ -36,10 +44,29 @@ namespace AldenFall.UI
             if (log != null) log.OnQuestChanged.RemoveListener(Refresh);
         }
 
+        private void Update()
+        {
+            if (InputFocusGuard.IsTyping) return;
+            if (Input.GetKeyDown(KeyCode.Q))
+                ToggleLog();
+        }
+
+        private void ToggleLog()
+        {
+            if (logPanel == null) return;
+            bool show = !logPanel.activeSelf;
+            logPanel.SetActive(show);
+            if (show) RefreshLog();
+        }
+
+        // ==================== BUILD ====================
+
+        private Canvas canvas;
+
         private void Build()
         {
             var canvasObj = new GameObject("QuestTrackerCanvas");
-            var canvas = canvasObj.AddComponent<Canvas>();
+            canvas = canvasObj.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 120;
             var scaler = canvasObj.AddComponent<CanvasScaler>();
@@ -51,7 +78,7 @@ namespace AldenFall.UI
             panel.anchorMin = panel.anchorMax = new Vector2(1f, 1f);
             panel.pivot = new Vector2(1f, 1f);
             panel.anchoredPosition = new Vector2(-24f, -150f);
-            panel.sizeDelta = new Vector2(360f, 260f);
+            panel.sizeDelta = new Vector2(360f, 240f);
 
             var bg = panel.gameObject.AddComponent<Image>();
             bg.color = UITheme.PanelBg;
@@ -69,39 +96,161 @@ namespace AldenFall.UI
             body.enableWordWrapping = true;
         }
 
+        private void BuildLogPanel()
+        {
+            if (canvas == null) return;
+
+            logPanel = new GameObject("QuestLogPanel");
+            var rect = logPanel.AddComponent<RectTransform>();
+            rect.SetParent(canvas.transform, false);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = Vector2.zero;
+            rect.sizeDelta = new Vector2(720f, 640f);
+
+            var bg = logPanel.AddComponent<Image>();
+            bg.color = new Color(0.05f, 0.045f, 0.075f, 0.97f);
+
+            var header = new GameObject("Header").AddComponent<RectTransform>();
+            header.SetParent(rect, false);
+            header.anchorMin = new Vector2(0f, 1f); header.anchorMax = new Vector2(1f, 1f);
+            header.pivot = new Vector2(0.5f, 1f);
+            header.offsetMin = new Vector2(28f, -52f); header.offsetMax = new Vector2(-28f, -16f);
+            var headerText = header.gameObject.AddComponent<TextMeshProUGUI>();
+            headerText.text = "QUEST LOG";
+            headerText.fontSize = 22;
+            headerText.fontStyle = FontStyles.Bold;
+            headerText.characterSpacing = 6;
+            headerText.color = UITheme.TextGold;
+            headerText.alignment = TextAlignmentOptions.MidlineLeft;
+            headerText.raycastTarget = false;
+
+            var hint = new GameObject("Hint").AddComponent<RectTransform>();
+            hint.SetParent(rect, false);
+            hint.anchorMin = new Vector2(0f, 1f); hint.anchorMax = new Vector2(1f, 1f);
+            hint.pivot = new Vector2(0.5f, 1f);
+            hint.offsetMin = new Vector2(28f, -52f); hint.offsetMax = new Vector2(-28f, -16f);
+            var hintText = hint.gameObject.AddComponent<TextMeshProUGUI>();
+            hintText.text = "press Q to close";
+            hintText.fontSize = 13;
+            hintText.fontStyle = FontStyles.Italic;
+            hintText.color = UITheme.TextDim;
+            hintText.alignment = TextAlignmentOptions.MidlineRight;
+            hintText.raycastTarget = false;
+
+            var textObj = new GameObject("LogBody").AddComponent<RectTransform>();
+            textObj.SetParent(rect, false);
+            textObj.anchorMin = Vector2.zero; textObj.anchorMax = Vector2.one;
+            textObj.offsetMin = new Vector2(28f, 24f); textObj.offsetMax = new Vector2(-28f, -64f);
+            logBody = textObj.gameObject.AddComponent<TextMeshProUGUI>();
+            logBody.fontSize = 16;
+            logBody.color = UITheme.TextMain;
+            logBody.alignment = TextAlignmentOptions.TopLeft;
+            logBody.raycastTarget = false;
+            logBody.enableWordWrapping = true;
+
+            logPanel.SetActive(false);
+        }
+
+        // ==================== COMPACT TRACKER ====================
+
         private void Refresh() => Refresh(0);
 
         private void Refresh(int _)
         {
-            if (body == null) return;
+            if (body != null)
+            {
+                var sb = new StringBuilder();
+                sb.Append("<size=13><color=#A69BB0>QUESTS</color>   <color=#8A8494>[Q] log</color></size>\n");
 
-            var sb = new StringBuilder();
-            int gold = wallet != null ? wallet.Gold : 0;
-            sb.Append($"<color=#F2CC8C><b>Gold:</b> {gold}</color>\n");
-            sb.Append("<size=13><color=#A69BB0>QUESTS</color></size>\n");
+                bool any = false;
+                foreach (var def in QuestDatabase.All)
+                {
+                    var status = log.StatusOf(def.Id);
+                    if (status != QuestStatus.Active && status != QuestStatus.Complete) continue;
+                    any = true;
 
-            bool any = false;
+                    string tag = status == QuestStatus.Complete ? " <color=#5ED68C>(ready)</color>" : "";
+                    sb.Append($"\n<b>{def.Name}</b>{tag}\n");
+
+                    int cur = CurrentObjective(def);
+                    if (cur >= 0)
+                    {
+                        var obj = def.Objectives[cur];
+                        sb.Append($"  <color=#C8C2CE>{obj.Description}</color>\n");
+                        if (!string.IsNullOrEmpty(obj.LocationHint))
+                            sb.Append($"  <color=#8FB8E8>→ {obj.LocationHint}</color>\n");
+                    }
+                }
+                if (!any) sb.Append("\n<color=#8A8494>No active quests. Seek out Aldric.</color>");
+
+                body.text = sb.ToString();
+            }
+
+            // Keep the open log fresh as objectives tick over.
+            if (logPanel != null && logPanel.activeSelf) RefreshLog();
+        }
+
+        /// <summary>Index of the first unfinished objective, or -1 if all are done.</summary>
+        private int CurrentObjective(QuestDef def)
+        {
+            for (int i = 0; i < def.Objectives.Count; i++)
+                if (log.ProgressOf(def.Id, i) < def.Objectives[i].Count) return i;
+            return -1;
+        }
+
+        // ==================== FULL LOG ====================
+
+        private void RefreshLog()
+        {
+            if (logBody == null) return;
+
+            var active = new StringBuilder();
+            var done = new StringBuilder();
+            int activeCount = 0, doneCount = 0;
+
             foreach (var def in QuestDatabase.All)
             {
                 var status = log.StatusOf(def.Id);
-                if (status != QuestStatus.Active && status != QuestStatus.Complete) continue;
-                any = true;
 
-                string tag = status == QuestStatus.Complete ? " <color=#5ED68C>(ready)</color>" : "";
-                sb.Append($"\n<b>{def.Name}</b>{tag}\n");
-                for (int i = 0; i < def.Objectives.Count; i++)
+                if (status == QuestStatus.Active || status == QuestStatus.Complete)
                 {
-                    var obj = def.Objectives[i];
-                    int have = log.ProgressOf(def.Id, i);
-                    bool done = have >= obj.Count;
-                    string mark = done ? "<color=#5ED68C>[x]</color>" : "[ ]";
-                    string count = obj.Count > 1 ? $"  {Mathf.Min(have, obj.Count)}/{obj.Count}" : "";
-                    sb.Append($"  {mark} <color=#C8C2CE>{obj.Description}{count}</color>\n");
+                    activeCount++;
+                    string tag = status == QuestStatus.Complete ? " <color=#5ED68C>(ready to hand in)</color>" : "";
+                    active.Append($"<b>{def.Name}</b>{tag}\n");
+                    if (!string.IsNullOrEmpty(def.Description))
+                        active.Append($"<size=13><color=#9A93A4>{def.Description}</color></size>\n");
+
+                    int cur = CurrentObjective(def);
+                    for (int i = 0; i < def.Objectives.Count; i++)
+                    {
+                        var obj = def.Objectives[i];
+                        int have = log.ProgressOf(def.Id, i);
+                        bool objDone = have >= obj.Count;
+                        string mark = objDone ? "<color=#5ED68C>[x]</color>" : "[ ]";
+                        string count = obj.Count > 1 ? $"  {Mathf.Min(have, obj.Count)}/{obj.Count}" : "";
+                        active.Append($"  {mark} <color=#C8C2CE>{obj.Description}{count}</color>\n");
+                        // Direction hint on the current objective so the player knows where to go.
+                        if (i == cur && !string.IsNullOrEmpty(obj.LocationHint))
+                            active.Append($"      <color=#8FB8E8>→ {obj.LocationHint}</color>\n");
+                    }
+                    active.Append("\n");
+                }
+                else if (status == QuestStatus.TurnedIn)
+                {
+                    doneCount++;
+                    done.Append($"<color=#7FA88C>[x] {def.Name}</color>\n");
                 }
             }
-            if (!any) sb.Append("\n<color=#8A8494>No active quests. Seek out Aldric.</color>");
 
-            body.text = sb.ToString();
+            var sb = new StringBuilder();
+            sb.Append("<size=15><color=#F2CC8C><b>ACTIVE</b></color></size>\n\n");
+            sb.Append(activeCount > 0 ? active.ToString()
+                                      : "<color=#8A8494>No active quests. Seek out Aldric in the clearing.</color>\n\n");
+            sb.Append("<size=15><color=#A69BB0><b>COMPLETED</b></color></size>\n\n");
+            sb.Append(doneCount > 0 ? done.ToString()
+                                    : "<color=#8A8494>None yet.</color>");
+
+            logBody.text = sb.ToString();
         }
     }
 }
