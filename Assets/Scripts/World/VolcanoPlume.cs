@@ -11,8 +11,8 @@ namespace AldenFall.World
     /// </summary>
     public class VolcanoPlume : MonoBehaviour
     {
-        [SerializeField] private float smokeRateCalm = 14f;
-        [SerializeField] private float smokeRateErupting = 60f;
+        [SerializeField] private float smokeRateCalm = 40f;
+        [SerializeField] private float smokeRateErupting = 140f;
         [SerializeField] private float emberRateCalm = 4f;
         [SerializeField] private float emberRateErupting = 40f;
 
@@ -21,12 +21,15 @@ namespace AldenFall.World
 
         private void Start()
         {
+            // Small, faint, numerous: Sprites/Default renders untextured QUADS, so big
+            // opaque smoke particles read as floating grey boxes (QA regression). Many
+            // small translucent quads blend into a soft column instead.
             smokePS = BuildColumn("PlumeSmoke",
-                color: new Color(0.16f, 0.12f, 0.11f, 0.85f),
-                sizeMin: 6f, sizeMax: 14f,
+                color: new Color(0.14f, 0.11f, 0.10f, 0.38f),
+                sizeMin: 2.2f, sizeMax: 4.5f,
                 riseMin: 3.5f, riseMax: 6f,
-                lifetime: 26f,
-                radius: 7f);
+                lifetime: 22f,
+                radius: 6f);
 
             emberPS = BuildColumn("PlumeEmbers",
                 color: new Color(1f, 0.5f, 0.12f),
@@ -118,7 +121,7 @@ namespace AldenFall.World
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
-            renderer.maxParticleSize = 0.35f;   // smoke may loom, but never fill the screen
+            renderer.maxParticleSize = 0.06f;   // distant column, never blocky foreground quads
 
             ps.Play();
             return ps;
