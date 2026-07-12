@@ -9,16 +9,18 @@ using AldenFall.Combat;
 namespace AldenFall.UI
 {
     /// <summary>
-    /// The first-login "path" panel Aldric raises during the intro cutscene:
-    /// the player picks Warrior (melee) or Mage (magic), and we grant + equip
-    /// the matching starter through the normal Inventory/Equipment APIs.
+    /// The first-login "starting weapon" panel Aldric raises during the intro
+    /// cutscene: the player picks which starter gear to begin with — a worn blade
+    /// or an apprentice's focus — and we grant + equip it through the normal
+    /// Inventory/Equipment APIs. This is NOT a class choice: the player can swap
+    /// weapons and playstyles freely at any time; it's only their opening kit.
     ///
-    /// Combat "style" in this game is emergent, not a flag:
-    ///   - Warrior = a Weapon-slot blade equipped, no Focus  -> PlayerMelee swings.
-    ///   - Mage    = a Focus equipped, no Weapon              -> PlayerMelee casts
-    ///               Magic Bolt autos instead (see PlayerMelee.hasFocus).
+    /// Combat "style" in this game is emergent from the equipped slots, not a flag:
+    ///   - Blade = a Weapon-slot blade equipped, no Focus  -> PlayerMelee swings.
+    ///   - Focus = a Focus equipped, no Weapon             -> PlayerMelee casts
+    ///             Magic Bolt autos instead (see PlayerMelee.hasFocus).
     /// So "setting the style" is exactly which slots we fill. The melee sub-style
-    /// (Attack/Strength/Defence) is left on CombatStyleController for the warrior.
+    /// (Attack/Strength/Defence) is left on CombatStyleController for the blade.
     ///
     /// Built at runtime (no prefab) to match the codebase's code-as-data UI.
     /// Mouse-driven via a UI Button on each card. Local-player only — the caller
@@ -74,19 +76,19 @@ namespace AldenFall.UI
             var scrim = NewImage("Scrim", transform, new Color(0f, 0f, 0f, 0.55f));
             Stretch(scrim.rectTransform);
 
-            Label(transform, "Prompt", "CHOOSE YOUR PATH", new Vector2(0, 300), new Vector2(1200, 60), 40, UITheme.TextGold);
-            Label(transform, "Sub", "Aldric offers you a blade, or the flame.", new Vector2(0, 250), new Vector2(1200, 40), 22, UITheme.TextDim);
+            Label(transform, "Prompt", "CHOOSE YOUR FIRST WEAPON", new Vector2(0, 300), new Vector2(1200, 60), 40, UITheme.TextGold);
+            Label(transform, "Sub", "Aldric offers you a parting gift. You can swap weapons and playstyles freely, anytime — this is only what you set out with.", new Vector2(0, 248), new Vector2(1320, 44), 21, UITheme.TextDim);
 
             BuildCard(
                 new Vector2(-320, -10), UITheme.Gold,
-                "WARRIOR", "The Blade",
-                "Wields the Rusty Sword.\nClose the distance and cut them down.\nAutos train Attack / Strength / Defence.",
+                "A WORN BLADE", "Starter sword",
+                "Step in close and cut them down.\nSwinging trains Attack / Strength / Defence.\nJust your first weapon — trade up whenever you like.",
                 ChooseMelee);
 
             BuildCard(
                 new Vector2(320, -10), UITheme.MagicBlue,
-                "MAGE", "The Flame",
-                "Wields the Apprentice Focus.\nStrike from range with Magic Bolt.\nCasting levels the Magic skill.",
+                "APPRENTICE'S FOCUS", "Starter magic focus",
+                "Strike from range with Magic Bolt.\nCasting levels the Magic skill.\nJust your first weapon — pick up a blade anytime.",
                 ChooseMagic);
         }
 
@@ -125,7 +127,7 @@ namespace AldenFall.UI
             bar.rectTransform.sizeDelta = new Vector2(0, 8);
             bar.raycastTarget = false;
 
-            Label(card, "Title", title, new Vector2(0, 150), new Vector2(520, 60), 42, accent);
+            Label(card, "Title", title, new Vector2(0, 150), new Vector2(520, 60), 34, accent);
             Label(card, "Subtitle", subtitle, new Vector2(0, 100), new Vector2(520, 40), 24, UITheme.TextMain);
 
             var bodyLabel = Label(card, "Body", body, new Vector2(0, -40), new Vector2(500, 220), 22, UITheme.TextDim);

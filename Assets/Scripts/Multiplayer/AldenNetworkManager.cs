@@ -18,7 +18,11 @@ namespace AldenFall.Multiplayer
     {
         [Header("Test Server")]
         [SerializeField] private string requiredPassword = "emberfall";
-        [SerializeField] private Vector3 defaultSpawn = new Vector3(0f, 0.5f, -115f);
+        // Fallback ONLY used if GetStartPosition() returns null (no NetworkStartPositions
+        // registered). Must be SAFE: Aldric's forest glade just north of the city, matching
+        // the NetworkStart_* points. The old value (0,0.5,-115) dropped players into the soot
+        // approach amid mobs, where they died on arrival.
+        [SerializeField] private Vector3 defaultSpawn = new Vector3(0f, 0.5f, 84f);
 
         public AldenPlayerProfile LocalProfile { get; private set; }
         public string LocalPassword { get; private set; } = "";

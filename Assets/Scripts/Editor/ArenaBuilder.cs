@@ -2203,6 +2203,12 @@ namespace AldenFall.Editor
             surface.collectObjects = CollectObjects.Children;
             surface.useGeometry = UnityEngine.AI.NavMeshCollectGeometry.PhysicsColliders; // triggers (water) are ignored
             surface.BuildNavMesh();
+
+            // Safety net: re-bake the NavMesh at runtime on the authoritative peer so
+            // server-simulated enemies always have a mesh to path on, even if the built
+            // (Linux dedicated server) scene shipped without a valid bake. Without a mesh,
+            // NavMeshAgent.SetDestination silently no-ops and every enemy freezes.
+            arenaRoot.AddComponent<AI.ServerNavMeshBaker>();
         }
 
         // ==================== CHARACTERS ====================
@@ -2616,7 +2622,17 @@ namespace AldenFall.Editor
             // NetworkIdentity first — Mirror wants exactly one, ahead of the NetworkBehaviours.
             mob.AddComponent<Mirror.NetworkIdentity>();
 
-            var nt = mob.AddComponent<Mirror.NetworkTransformUnreliable>();
+            // RELIABLE transform sync (was NetworkTransformUnreliable). The desktop build
+            // reaches the Render server over SimpleWebTransport (WebSocket/WSS) — a
+            // reliable-only, TCP-backed transport with no real unreliable channel. An
+            // "Unreliable" NetworkTransform on a reliable-only transport is a mismatch that
+            // left clients rendering enemies frozen at their spawn snapshot while the server
+            // enemy actually chased and meleed — the "frozen enemy that damages from range"
+            // report. Reliable delta-compresses over the reliable channel and replicates
+            // server-driven movement dependably. Coordinate space stays Local (the default)
+            // so syncScale keeps working for the boss's rage growth (World space forces
+            // syncScale off in NetworkTransformBase).
+            var nt = mob.AddComponent<Mirror.NetworkTransformReliable>();
             nt.target = mob.transform;
             nt.syncDirection = Mirror.SyncDirection.ServerToClient;   // server drives movement
             nt.syncPosition = true;
@@ -2779,9 +2795,23 @@ namespace AldenFall.Editor
             return new Vector3(pos.x, 0.05f, pos.z);   // flat valley floor
         }
 
+        /// <summary>
+        /// Nudges a spawn point onto the nearest baked NavMesh (small radius so it only
+        /// corrects tiny offsets and preserves the intended layout). If nothing is found
+        /// within range the original point is kept — EnemyAI.InitializeNavMeshAgent still
+        /// self-heals onto the mesh within 10 units at runtime after the server rebake.
+        /// </summary>
+        private static Vector3 SnapToNavMesh(Vector3 pos)
+        {
+            if (UnityEngine.AI.NavMesh.SamplePosition(pos, out var hit, 3f, UnityEngine.AI.NavMesh.AllAreas))
+                return new Vector3(hit.position.x, pos.y, hit.position.z);
+            return pos;
+        }
+
         private static void CreateSpawner(string name, GameObject prefab, Vector3 pos, float respawnDelay)
         {
             pos = GroundSpawn(pos);
+            pos = SnapToNavMesh(pos);   // ensure the agent can activate on spawn
             var spawnerObj = new GameObject(name);
             spawnerObj.transform.position = pos;
             var spawner = spawnerObj.AddComponent<AI.EnemySpawner>();

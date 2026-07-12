@@ -607,6 +607,12 @@ namespace AldenFall.AI
 
             if (distance > attackRange * 1.2f)
             {
+                // The player fled out of melee range: drop the queued hit so a swing that
+                // started while they were adjacent can't land after they've run away.
+                // DealDamage also re-checks distance, but cancelling here stops the swing
+                // outright rather than relying solely on the range gate at impact time.
+                CancelInvoke(nameof(DealDamage));
+                isAttacking = false;
                 currentState = EnemyState.Chase;
                 return;
             }

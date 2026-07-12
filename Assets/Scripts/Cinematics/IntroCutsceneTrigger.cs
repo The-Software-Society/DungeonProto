@@ -10,20 +10,38 @@ namespace AldenFall.Cinematics
     /// mobs are settled first. The intro ends on Aldric's weapon-choice beat, so
     /// the "seen" flag is only committed once the scene fully finishes — quitting
     /// mid-scene lets you choose again next login.
-    /// F9 cheat mindset: delete the pref to rewatch ("cutscene_intro_seen").
+    ///
+    /// The seen-key is VERSIONED: bumping it (v1 -> v2) makes the reworked intro
+    /// replay once for everyone, even players whose old "cutscene_intro_seen" key
+    /// was already set from an earlier build.
+    /// F9 cheat mindset: delete the pref to rewatch ("cutscene_intro_seen_v2").
     /// </summary>
     [RequireComponent(typeof(CutsceneDirector))]
     public class IntroCutsceneTrigger : MonoBehaviour
     {
-        private const string SeenKey = "cutscene_intro_seen";
+        // v2: reworked "meet Aldric / choose a starting weapon" intro. A new key
+        // guarantees the new scene shows once even for veterans of older builds.
+        private const string SeenKey = "cutscene_intro_seen_v2";
 
         [SerializeField] private bool replayEveryEditorPlay = true;
 
         private IEnumerator Start()
         {
             // Networked avatars: only the local player watches their own intro.
+            // On a fresh client spawn Start can run the same frame the object
+            // arrives, before Mirror has finished assigning local authority — so
+            // wait a short window for the identity to spawn before deciding.
             var identity = GetComponent<NetworkIdentity>();
-            if (identity != null && !identity.isLocalPlayer) yield break;
+            if (identity != null)
+            {
+                float spawnWait = 0f;
+                while (identity.netId == 0 && spawnWait < 3f)
+                {
+                    spawnWait += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+                if (!identity.isLocalPlayer) yield break;
+            }
 
 #if UNITY_EDITOR
             if (!replayEveryEditorPlay && PlayerPrefs.GetInt(SeenKey, 0) != 0) yield break;
@@ -31,10 +49,19 @@ namespace AldenFall.Cinematics
             if (PlayerPrefs.GetInt(SeenKey, 0) != 0) yield break;
 #endif
 
+            // Let the camera, HUD, and mobs settle before the director seizes the
+            // camera. The director reads Camera.main in TakeControl, so make sure
+            // one exists first — a null main camera would break the scripted shots.
             yield return new WaitForSeconds(0.6f);
+            float camWait = 0f;
+            while (Camera.main == null && camWait < 5f)
+            {
+                camWait += Time.unscaledDeltaTime;
+                yield return null;
+            }
 
             var director = GetComponent<CutsceneDirector>();
-            if (!director.Play("intro")) yield break;
+            if (director == null || !director.Play("intro")) yield break;
 
             // Commit "seen" only after the scene (and the mandatory weapon choice) completes.
             while (director.IsPlaying)
