@@ -24,11 +24,15 @@ namespace AldenFall.AI
         private GameObject currentEnemy;
         private bool isRespawning;
 
-        private void Start()
+        private System.Collections.IEnumerator Start()
         {
             // Enemies are server-authoritative: only the server spawns and simulates them.
-            // In host mode NetworkServer.active is true locally, so solo/host play is unchanged.
-            if (!NetworkServer.active) return;
+            // WAIT for the role instead of testing once — Start() runs at scene load, which
+            // can precede StartServer()/StartHost() (host menu, batchmode boot ordering),
+            // and a one-shot check leaves the world permanently empty.
+            while (!NetworkServer.active && !NetworkClient.active)
+                yield return null;
+            if (!NetworkServer.active) yield break;   // pure client: the server owns spawning
 
             if (!NavMesh.SamplePosition(spawnPosition, out _, 5f, NavMesh.AllAreas))
             {

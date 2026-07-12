@@ -22,10 +22,15 @@ namespace AldenFall.AI
 
         private readonly List<GameObject> alive = new List<GameObject>();
 
-        private void Start()
+        private IEnumerator Start()
         {
-            // Server-authoritative: only the server populates the camp. Host counts as server.
-            if (!NetworkServer.active) return;
+            // Server-authoritative: only the server populates the camp (host counts).
+            // WAIT for the role instead of testing once — Start() runs at scene load,
+            // which can precede StartServer()/StartHost() (host menu, batchmode boot
+            // ordering), and a one-shot check leaves the world permanently empty.
+            while (!NetworkServer.active && !NetworkClient.active)
+                yield return null;
+            if (!NetworkServer.active) yield break;   // pure client: the server owns spawning
 
             for (int i = 0; i < population; i++)
                 SpawnOne();

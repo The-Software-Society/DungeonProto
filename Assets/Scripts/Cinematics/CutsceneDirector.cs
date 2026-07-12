@@ -339,10 +339,12 @@ namespace AldenFall.Cinematics
                 barTop.anchorMin = new Vector2(0, 1); barTop.anchorMax = Vector2.one;
                 barTop.offsetMin = new Vector2(0, -130); barTop.offsetMax = Vector2.zero;
 
+                // 170 (not symmetric 130): tall enough to fully cover the HP bar +
+                // action bar, so the HUD can't poke through under the subtitle.
                 var bottom = NewImage("BarBottom", overlayRoot.transform, Color.black);
                 barBottom = bottom.rectTransform;
                 barBottom.anchorMin = Vector2.zero; barBottom.anchorMax = new Vector2(1, 0);
-                barBottom.offsetMin = Vector2.zero; barBottom.offsetMax = new Vector2(0, 130);
+                barBottom.offsetMin = Vector2.zero; barBottom.offsetMax = new Vector2(0, 170);
             }
 
             var subtitleObj = new GameObject("Subtitle");
@@ -350,7 +352,7 @@ namespace AldenFall.Cinematics
             subtitleText = subtitleObj.AddComponent<TextMeshProUGUI>();
             var subRect = subtitleText.rectTransform;
             subRect.anchorMin = new Vector2(0.5f, 0f); subRect.anchorMax = new Vector2(0.5f, 0f);
-            subRect.anchoredPosition = new Vector2(0, 168);
+            subRect.anchoredPosition = new Vector2(0, 212);
             subRect.sizeDelta = new Vector2(1200, 80);
             subtitleText.fontSize = 30;
             subtitleText.alignment = TextAlignmentOptions.Center;
