@@ -123,6 +123,16 @@ namespace AldenFall.World
             ApplyPhase(phase);
         }
 
+        /// <summary>Server, DEV/testing only (F9 panel): force ANY phase, ignoring the
+        /// normal Calm → Erupting → Cleared flow, so testers can flip the world state
+        /// back and forth at will. Transition cutscenes fire like the real thing.</summary>
+        [Server]
+        public void DebugForcePhase(Phase p)
+        {
+            phase = p;
+            ApplyPhase(p);
+        }
+
         // --------------------------------------------------------------- replication
 
         // Runs on clients when the SyncVar arrives. On the host the [Server] setter above

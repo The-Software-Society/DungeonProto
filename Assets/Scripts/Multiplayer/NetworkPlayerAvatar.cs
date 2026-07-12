@@ -163,6 +163,19 @@ namespace AldenFall.Multiplayer
             syncedSwimming = swimming;
         }
 
+        /// <summary>
+        /// DEV/testing (F9 panel): relay a forced world-phase change to the server so
+        /// the eruption state can be flipped from a pure client too. requiresAuthority
+        /// stays default (owner-only) — it's a cheat, not an exploit surface beyond
+        /// what the local-economy demo already allows.
+        /// </summary>
+        [Command]
+        public void CmdDebugSetWorldPhase(int phase)
+        {
+            World.EmberfallWorldState.Instance?
+                .DebugForcePhase((World.EmberfallWorldState.Phase)phase);
+        }
+
         private void OnNameChanged(string _, string __)
         {
             ApplyProfile();
