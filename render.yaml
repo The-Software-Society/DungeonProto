@@ -4,6 +4,7 @@ services:
     runtime: docker
     rootDir: Deploy/Render
     plan: starter
+    healthCheckPath: /
     envVars:
       - key: PORT
         value: 10000
