@@ -35,7 +35,10 @@ namespace AldenFall.Editor
         // (detectionRange 25) so fishing never pulls aggro; expanded to 24x16.
         private static readonly Rect PondRect = new Rect(-38f, -34f, 24f, 16f); // x,z,w,d
         private const float PondDepth = 3f;
-        private const float WaterSurfaceY = 0.1f;
+        // Slightly BELOW the surrounding ground so shorelines read as banks dropping to
+        // water — at +0.1 the surface plane floated above the shore with a hard cube
+        // edge (QA shot 05). Swim depth stays 2.25m (> the 1.3m swim-enter threshold).
+        private const float WaterSurfaceY = -0.35f;
 
         // Terrace (north side)
         private static readonly Rect TerraceRect = new Rect(-14f, 30f, 28f, 12f);
@@ -165,23 +168,25 @@ namespace AldenFall.Editor
 
         private static void SetupLightingAndAtmosphere()
         {
-            // Dusk sun: low, warm, long shadows
+            // Late-afternoon sun: still warm and directional, but HIGH and BRIGHT enough
+            // that camps, forest floors, and the ember approach stay readable — the old
+            // 24°-dusk setup left everything outside the city near-black in playtests.
             var sunObj = new GameObject("Sun (Dusk)");
             var sun = sunObj.AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.62f, 0.38f);
-            sun.intensity = 1.5f;
+            sun.color = new Color(1f, 0.76f, 0.52f);
+            sun.intensity = 1.9f;
             sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = 0.85f;
-            sunObj.transform.rotation = Quaternion.Euler(24f, -128f, 0f);
+            sun.shadowStrength = 0.75f;
+            sunObj.transform.rotation = Quaternion.Euler(42f, -128f, 0f);
             RenderSettings.sun = sun;
 
             // Cool fill from the opposite sky so shadows aren't dead black
             var fillObj = new GameObject("Sky Fill");
             var fill = fillObj.AddComponent<Light>();
             fill.type = LightType.Directional;
-            fill.color = new Color(0.35f, 0.4f, 0.6f);
-            fill.intensity = 0.35f;
+            fill.color = new Color(0.42f, 0.48f, 0.68f);
+            fill.intensity = 0.55f;
             fill.shadows = LightShadows.None;
             fillObj.transform.rotation = Quaternion.Euler(45f, 52f, 0f);
 
@@ -200,11 +205,11 @@ namespace AldenFall.Editor
                 RenderSettings.skybox = sky;
             }
 
-            // Warm-purple ambient + distance fog
+            // Warm-purple ambient + distance fog — lifted so unlit faces stay readable
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.58f, 0.44f, 0.5f);
-            RenderSettings.ambientEquatorColor = new Color(0.42f, 0.34f, 0.37f);
-            RenderSettings.ambientGroundColor = new Color(0.2f, 0.17f, 0.19f);
+            RenderSettings.ambientSkyColor = new Color(0.68f, 0.56f, 0.6f);
+            RenderSettings.ambientEquatorColor = new Color(0.52f, 0.45f, 0.47f);
+            RenderSettings.ambientGroundColor = new Color(0.3f, 0.27f, 0.28f);
 
             // Wide fog band: the near forest stays clear while the encircling mountains fade
             // into hazy silhouettes on the horizon (depth, never floor-to-sky emptiness).

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace AldenFall.Quests
 {
@@ -115,6 +116,60 @@ namespace AldenFall.Quests
                 PrereqQuestId = "q_learn_eat",
                 StartCutscene = "q_rescue_start",
                 CompleteCutscene = "q_rescue_complete",
+            });
+
+            // ---- MAIN-QUEST SPINE to the Floor Boss (giver-less: each auto-accepts
+            // when its prereq is turned in, so the chain keeps its own momentum) ----
+
+            Register(new QuestDef
+            {
+                Id = "q_clear_roads",
+                Name = "Clear the Forest Roads",
+                Description = "With the girl home safe, the town asks more: goblins prowl the western woods and bandits the east. Thin them out so the roads breathe again.",
+                Objectives =
+                {
+                    new ObjectiveDef { Kind = ObjectiveKind.KillMob, TargetId = "goblin_scrapper", Count = 4,
+                        Description = "Cull goblin scrappers",
+                        LocationHint = "The goblin camp squats in the western woods" },
+                    new ObjectiveDef { Kind = ObjectiveKind.KillMob, TargetId = "field_bandit", Count = 4,
+                        Description = "Drive off bandits",
+                        LocationHint = "The bandit camp hides in the eastern woods" },
+                },
+                GoldReward = 120,
+                Rewards = { ("iron_helm", 1) },
+                PrereqQuestId = "q_rescue",
+            });
+
+            Register(new QuestDef
+            {
+                Id = "q_ember_scout",
+                Name = "Smoke on the Horizon",
+                Description = "Ash drifts thicker every day, and the southern sky glows after dark. Walk the Ember Approach and see with your own eyes what the mountain is becoming.",
+                Objectives =
+                {
+                    new ObjectiveDef { Kind = ObjectiveKind.ReachLocation, TargetId = "", Count = 1,
+                        Description = "Scout the Ember Approach",
+                        LocationHint = "Follow the charred road south of the city until the ember-rain thickens",
+                        Location = new Vector3(0f, 0f, -230f), Radius = 30f },
+                },
+                GoldReward = 60,
+                PrereqQuestId = "q_clear_roads",
+            });
+
+            Register(new QuestDef
+            {
+                Id = "q_floor_boss",
+                Name = "The Heart of the Mountain",
+                Description = "The volcano is waking, and Emberfall stands in the path of its fire. Descend into the caldera, fight through its halls, and slay the beast at its heart before the city burns.",
+                Objectives =
+                {
+                    new ObjectiveDef { Kind = ObjectiveKind.KillMob, TargetId = "cave_troll_boss", Count = 1,
+                        Description = "Slay the beast of the caldera",
+                        LocationHint = "The volcano's mouth opens at the far south end of the Ember Approach" },
+                },
+                GoldReward = 400,
+                Rewards = { ("ember_focus", 1) },
+                PrereqQuestId = "q_ember_scout",
             });
         }
 

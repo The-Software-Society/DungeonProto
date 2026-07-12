@@ -184,8 +184,11 @@ namespace AldenFall.Combat
             // Friendly-fire guard: one player's attack can't hurt another player while
             // PvP is off. Single authoritative chokepoint — melee, spells and DoT ticks
             // all pass through here. Toggle CombatRules.PvpEnabled to re-enable PvP.
+            // The ONE exception is an active duel: exactly that mutually-locked pair may
+            // damage each other (DuelMember), without flipping the global switch.
             if (attacker != null && !CombatRules.PvpEnabled
-                && CombatRules.IsPlayer(attacker) && CombatRules.IsPlayer(gameObject))
+                && CombatRules.IsPlayer(attacker) && CombatRules.IsPlayer(gameObject)
+                && !DuelMember.IsActiveDuelPair(attacker, gameObject))
                 return;
 
             if (canMiss && attacker != null)
@@ -223,6 +226,16 @@ namespace AldenFall.Combat
             if (stats != null)
                 damage *= 1f - Stats.CombatMath.DamageReduction(stats);
 
+            // Duel damage never kills: the blow that would drop the defender to <=1 HP
+            // is clamped so they stay at exactly 1, and the duel ends right here (both
+            // fighters restore to full a few seconds later, via DuelMember).
+            if (attacker != null && DuelMember.IsActiveDuelPair(attacker, gameObject)
+                && currentHealth - damage <= 1f)
+            {
+                damage = Mathf.Max(0f, currentHealth - 1f);
+                DuelMember.ServerEndDuel(attacker, gameObject);
+            }
+
             currentHealth = Mathf.Max(0, currentHealth - damage);   // SyncVar → clients update via hook
             OnDamaged?.Invoke(damage);                              // server-side gameplay listeners
             OnHealthChanged?.Invoke(currentHealth, maxHealth);      // server-side (e.g. BossRageMode)
@@ -240,9 +253,16 @@ namespace AldenFall.Combat
             if (xpSkill >= 0 && xpRate > 0f && damage > 0f
                 && fromPlayer && !CombatRules.IsPlayer(gameObject))
             {
+                float xp = damage * xpRate;
                 var attackerCombat = attacker.GetComponent<PlayerCombat>();
                 if (attackerCombat != null)
-                    attackerCombat.ServerGrantCombatXp(xpSkill, damage * xpRate);
+                    attackerCombat.ServerGrantCombatXp(xpSkill, xp);
+
+                // Party share: every OTHER party member earns the same FULL XP
+                // (Jon's decision — optimize later). Disconnected members are simply
+                // absent from the server registry, so the fan-out skips them.
+                Multiplayer.PartySystem.ForEachOtherMember(attacker, member =>
+                    member.GetComponent<PlayerCombat>()?.ServerGrantCombatXp(xpSkill, xp));
             }
 
             if (IsDead)

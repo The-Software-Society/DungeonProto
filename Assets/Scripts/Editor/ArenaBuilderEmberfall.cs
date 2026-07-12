@@ -55,6 +55,7 @@ namespace AldenFall.Editor
             BuildEmberfallCity(root, groundLayer);
             BuildEmberfallLake(root, groundLayer);
             BuildDeepDarkWoods(root, groundLayer);
+            BuildWorldSecrets(root, groundLayer);
             BuildEmberForestCamps(root, groundLayer);
             BuildEmberOrcWarcamp(root, groundLayer);
             BuildEmberApproach(root, groundLayer);
@@ -184,7 +185,7 @@ namespace AldenFall.Editor
             var leafMat = Mat("EmberPineLeaf", new Color(0.13f, 0.29f, 0.15f), smoothness: 0.08f);
             var charTrunk = Mat("EmberCharTrunk", new Color(0.15f, 0.11f, 0.09f), smoothness: 0.03f);
             var charLeaf = Mat("EmberCharLeaf", new Color(0.17f, 0.13f, 0.10f), smoothness: 0.03f);
-            string[] kit = { "OakTree", "BirchTree", "PineTree", "DeadTree" };
+            string[] kit = { "PineTree", "BirchTree", "PineTree", "DeadTree" };   // OakTree fbx pending — every miss became a cube pine
 
             // Camps + POIs the trees must NOT bury.
             var keepClear = new Vector2[]
@@ -374,6 +375,59 @@ namespace AldenFall.Editor
             PlaceTownsfolk(container, new Vector3(-24f, 0f, -18f), new Color(0.32f, 0.34f, 0.5f), groundLayer); // residential SW
             PlaceTownsfolk(container, new Vector3(8f, 0f, 14f), new Color(0.45f, 0.3f, 0.35f), groundLayer);    // plaza edge
 
+            // Plaza furniture: benches ringing the fountain + planters + a hand cart,
+            // so the square reads lived-in instead of a bare cobble field.
+            var benchMat = Mat("PlazaBench", new Color(0.36f, 0.26f, 0.16f), smoothness: 0.08f);
+            var planterMat = Mat("PlazaPlanter", new Color(0.3f, 0.28f, 0.27f), smoothness: 0.1f);
+            var shrubMat = Mat("PlazaShrub", new Color(0.28f, 0.44f, 0.22f), smoothness: 0.05f);
+            foreach (var (pos, yaw) in new[]
+            {
+                (new Vector3(11f, 0f, 0f), 90f), (new Vector3(-11f, 0f, 0f), 90f),
+                (new Vector3(0f, 0f, 11f), 0f), (new Vector3(0f, 0f, -11f), 0f),
+            })
+            {
+                var seat = Cube("PlazaBench", pos + Vector3.up * 0.45f, new Vector3(2.4f, 0.16f, 0.7f), benchMat, container);
+                seat.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                seat.isStatic = true;
+                if (groundLayer >= 0) seat.layer = groundLayer;
+                foreach (float s in new[] { -0.9f, 0.9f })
+                {
+                    var leg = Cube("PlazaBenchLeg",
+                        pos + Quaternion.Euler(0f, yaw, 0f) * new Vector3(s, 0.19f, 0f),
+                        new Vector3(0.22f, 0.38f, 0.6f), benchMat, container);
+                    leg.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                    leg.isStatic = true;
+                    Object.DestroyImmediate(leg.GetComponent<BoxCollider>());
+                }
+            }
+            foreach (var pos in new[]
+            {
+                new Vector3(14f, 0f, 14f), new Vector3(-14f, 0f, 14f),
+                new Vector3(14f, 0f, -14f), new Vector3(-14f, 0f, -14f),
+            })
+            {
+                var box = Cube("PlazaPlanter", pos + Vector3.up * 0.35f, new Vector3(1.4f, 0.7f, 1.4f), planterMat, container);
+                box.isStatic = true;
+                if (groundLayer >= 0) box.layer = groundLayer;
+                var shrub = Cube("PlazaShrub", pos + Vector3.up * 1.05f, new Vector3(1.05f, 0.8f, 1.05f), shrubMat, container);
+                shrub.isStatic = true;
+                Object.DestroyImmediate(shrub.GetComponent<BoxCollider>());
+            }
+            // Hand cart by Market Row.
+            var cartMat = Mat("PlazaCart", new Color(0.4f, 0.29f, 0.17f), smoothness: 0.08f);
+            var cartBed = Cube("CartBed", new Vector3(12f, 0.8f, 26f), new Vector3(2.6f, 0.3f, 1.5f), cartMat, container);
+            cartBed.transform.rotation = Quaternion.Euler(0f, 25f, -7f);
+            cartBed.isStatic = true;
+            if (groundLayer >= 0) cartBed.layer = groundLayer;
+            foreach (float s in new[] { -1f, 1f })
+            {
+                var wheel = Cylinder("CartWheel", new Vector3(12f, 0.55f, 26f) + new Vector3(s * 0.9f, 0f, 0.4f),
+                    new Vector3(0.55f, 0.08f, 0.55f), cartMat, container);
+                wheel.transform.rotation = Quaternion.Euler(0f, 25f, 90f);
+                wheel.isStatic = true;
+                Object.DestroyImmediate(wheel.GetComponent<CapsuleCollider>());
+            }
+
             // ---- NPCs ----
             // Aldric is NOT in the city — he's the old hermit in the forest glade north of
             // town (see BuildAldricGlade), where the intro cutscene meets him. Only the
@@ -551,13 +605,29 @@ namespace AldenFall.Editor
             if (groundLayer >= 0) c.layer = groundLayer;
         }
 
-        /// <summary>A simple, non-networked decorative townsperson (robed capsule + head).</summary>
+        /// <summary>
+        /// A non-networked decorative townsperson. Uses the generated HeroMale/HeroFemale
+        /// base bodies (alternating, idling via their animator) when available — the old
+        /// giant robed capsules read as placeholder blobs in every QA shot. The robe color
+        /// keeps deciding gender pick + survives as the capsule fallback tint.
+        /// </summary>
+        private static int townsfolkCounter;
         private static void PlaceTownsfolk(Transform container, Vector3 pos, Color robe, int groundLayer)
         {
             var npc = new GameObject("Townsfolk");
             npc.transform.SetParent(container);
             npc.transform.position = pos;
             npc.transform.rotation = Quaternion.Euler(0, rng.Next(0, 360), 0);
+
+            string bodyName = (townsfolkCounter++ % 2 == 0) ? "HeroMale" : "HeroFemale";
+            var model = SceneSetup.InstantiateGeneratedVisual(bodyName, npc.transform);
+            if (model != null)
+            {
+                model.name = "Body";
+                model.transform.localPosition = Vector3.zero;
+                model.transform.localRotation = Quaternion.identity;
+                return;
+            }
 
             var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             body.name = "Body";
@@ -618,9 +688,10 @@ namespace AldenFall.Editor
 
             var mudMat = Mat("LakeMud", new Color(0.26f, 0.20f, 0.13f), smoothness: 0.05f);
             var basinMat = Mat("LakeBasin", new Color(0.16f, 0.19f, 0.20f), smoothness: 0.25f);
-            // Brighter, more opaque water so the lake + rivers actually READ (Jon saw none).
-            var waterMat = Mat("LakeWater", new Color(0.13f, 0.40f, 0.52f, 0.82f),
-                smoothness: 0.95f, transparent: true, emission: new Color(0.05f, 0.15f, 0.19f));
+            // Readable but TRANSLUCENT water — 0.82 alpha + strong emission rendered as
+            // an opaque cyan slab in QA; this keeps the glint while letting the bed show.
+            var waterMat = Mat("LakeWater", new Color(0.13f, 0.38f, 0.5f, 0.62f),
+                smoothness: 0.95f, transparent: true, emission: new Color(0.02f, 0.07f, 0.09f));
 
             Vector3 c = LakeCenter;
             float w = LakeHalf * 2f, depth = WaterSurfaceY - LakeBedY;   // depth ~2.7m (>1.8 swim)
@@ -870,7 +941,7 @@ namespace AldenFall.Editor
 
             var trunkMat = Mat("DarkTrunk", new Color(0.18f, 0.13f, 0.09f), smoothness: 0.04f);
             var leafMat = Mat("DarkLeaf", new Color(0.07f, 0.16f, 0.09f), smoothness: 0.05f);
-            string[] kit = { "PineTree", "DeadTree", "OakTree" };
+            string[] kit = { "PineTree", "DeadTree", "BirchTree" };
 
             int planted = 0;
             for (int attempt = 0; attempt < 600 && planted < 150; attempt++)
@@ -901,6 +972,25 @@ namespace AldenFall.Editor
                     Object.DestroyImmediate(cap.GetComponent<SphereCollider>());
                 }
             }
+
+            // Hidden treasure deep in the gloom (guarded by the new acolyte pair at
+            // (-20,210) in monsters.json) — exploration should pay.
+            CreateLootChest(container, new Vector3(-24f, 0f, 218f), 140f,
+                new (string id, float chance)[] { ("raider_saber", 1f), ("bandit_cape", 0.8f), ("adept_focus", 0.5f) }, groundLayer);
+        }
+
+        /// <summary>Hidden world-secret chests: exploration rewards off the beaten paths.</summary>
+        private static void BuildWorldSecrets(Transform root, int groundLayer)
+        {
+            var container = Child(root, "WorldSecrets");
+
+            // Behind the lake's NW outflow, tucked against the mountain ring.
+            CreateLootChest(container, new Vector3(-196f, 0f, 198f), 45f,
+                new (string id, float chance)[] { ("iron_chestplate", 1f), ("cooked_carp", 1f), ("apprentice_focus", 0.6f) }, groundLayer);
+
+            // A soot-buried cache just off the Ember Approach road (east shoulder).
+            CreateLootChest(container, new Vector3(44f, 0f, -195f), -60f,
+                new (string id, float chance)[] { ("iron_legs", 1f), ("emberfang", 0.35f) }, groundLayer);
         }
 
         // ==================== FOREST CAMPS (goblin W, bandit E dressing) ====================
@@ -951,6 +1041,38 @@ namespace AldenFall.Editor
                 spike.isStatic = true;
                 if (groundLayer >= 0) spike.layer = groundLayer;
             }
+
+            // War banners: tall poles with ragged red cloth so the camp reads as
+            // GRUKMAR'S from a distance (it was an anonymous dark patch in QA).
+            var poleMat = Mat("WarBannerPole", new Color(0.2f, 0.15f, 0.1f), smoothness: 0.05f);
+            var clothMat = Mat("WarBannerCloth", new Color(0.55f, 0.1f, 0.08f), smoothness: 0.05f);
+            foreach (var (off, yaw) in new[]
+            {
+                (new Vector3(10f, 0f, 10f), 20f), (new Vector3(-11f, 0f, 8f), -35f),
+                (new Vector3(0f, 0f, -13f), 180f),
+            })
+            {
+                var pole = Cylinder("WarBannerPole", center + off + Vector3.up * 2.6f,
+                    new Vector3(0.16f, 2.6f, 0.16f), poleMat, container);
+                pole.isStatic = true;
+                if (groundLayer >= 0) pole.layer = groundLayer;
+                var cloth = Cube("WarBannerCloth", center + off + new Vector3(0f, 4.1f, 0f),
+                    new Vector3(1.3f, 1.9f, 0.12f), clothMat, container);
+                cloth.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                cloth.isStatic = true;
+                Object.DestroyImmediate(cloth.GetComponent<BoxCollider>());
+            }
+
+            // Second fire by the cage so the rescue tableau is lit.
+            var cageFire = new GameObject("CageFire");
+            cageFire.transform.SetParent(container);
+            cageFire.transform.position = center + new Vector3(-6f, 0.9f, -6f);
+            var cfl = cageFire.AddComponent<Light>();
+            cfl.type = LightType.Point;
+            cfl.color = new Color(1f, 0.55f, 0.2f);
+            cfl.range = 13f;
+            cfl.shadows = LightShadows.None;
+            cageFire.AddComponent<World.TorchFlicker>().Configure(2.4f, 0.7f, 6f);
 
             // The caged daughter — freed (RescueCaptive) when grukmar dies.
             BuildCagedDaughter(container, center + new Vector3(-3f, 0f, -3f), groundLayer);
@@ -1133,6 +1255,45 @@ namespace AldenFall.Editor
             Rock("ConePeakE", cone + new Vector3(48f, 22f, -26f), new Vector3(46f, 52f, 46f), 22f, rockDark);
             Rock("ConePeakS", cone + new Vector3(0f, 30f, -46f), new Vector3(56f, 72f, 56f), 10f, rockMat);
 
+            // ---- Upper cone: two shrinking ring tiers stacked over the base so the
+            // volcano reads as a MOUNTAIN from the city, not another wall of boxes. ----
+            for (int tier = 0; tier < 2; tier++)
+            {
+                float tierRad = 40f - tier * 16f;
+                float tierBase = 34f + tier * 26f;
+                int n = 10 - tier * 3;
+                for (int i = 0; i < n; i++)
+                {
+                    float a = i / (float)n * Mathf.PI * 2f;
+                    if (tier == 0 && Mathf.Sin(a) > 0.75f) continue;   // keep the north face lower
+                    Vector3 p = cone + new Vector3(Mathf.Cos(a) * tierRad, 0f, Mathf.Sin(a) * tierRad);
+                    float hgt = 20f + (float)rng.NextDouble() * 10f;
+                    Rock($"ConeT{tier}_{i}", new Vector3(p.x, tierBase + hgt / 2f, p.z),
+                        new Vector3(26f - tier * 8f, hgt, 26f - tier * 8f),
+                        (float)rng.NextDouble() * 40f, (i + tier) % 2 == 0 ? rockMat : rockDark);
+                }
+            }
+
+            // ---- Crater: emissive glow ring + light + smoke/ember plume, visible from
+            // the whole valley (the "ember-fall" is always on the horizon). ----
+            float craterY = 78f;
+            var craterGlow = Cube("CraterGlow", cone + new Vector3(0f, craterY, 0f), new Vector3(20f, 1.2f, 20f), emberMat, container);
+            craterGlow.isStatic = true;
+            Object.DestroyImmediate(craterGlow.GetComponent<BoxCollider>());
+            var craterLightObj = new GameObject("CraterLight");
+            craterLightObj.transform.SetParent(container);
+            craterLightObj.transform.position = cone + new Vector3(0f, craterY + 8f, 0f);
+            var craterLight = craterLightObj.AddComponent<Light>();
+            craterLight.type = LightType.Point;
+            craterLight.color = new Color(1f, 0.4f, 0.1f);
+            craterLight.range = 90f;
+            craterLight.intensity = 5f;
+            craterLight.shadows = LightShadows.None;
+            var plumeObj = new GameObject("VolcanoPlume");
+            plumeObj.transform.SetParent(container);
+            plumeObj.transform.position = cone + new Vector3(0f, craterY + 2f, 0f);
+            plumeObj.AddComponent<World.VolcanoPlume>();
+
             // ---- Entrance mouth at the cone base ----
             Rock("MouthLintel", new Vector3(0f, 9f, VolcanoEntranceZ - 3f), new Vector3(16f, 4f, 4f), 0f, rockDark);
             CreateTorch(container, new Vector3(-7f, 0f, VolcanoEntranceZ), 1.1f);
@@ -1150,6 +1311,18 @@ namespace AldenFall.Editor
             {
                 Slab($"{name}_Floor", c + Vector3.down * 0.25f, new Vector3(s.x, 0.5f, s.y), floorMat, true);
                 Slab($"{name}_Ceiling", c + Vector3.up * 8f, new Vector3(s.x + 2f, 0.8f, s.y + 2f), wallMat, false);
+
+                // The ceiling blocks the sun, so every room carries its own warm ember
+                // glow — without this the interior is a near-black void (QA shot 11).
+                var lo = new GameObject($"{name}_RoomLight");
+                lo.transform.SetParent(container);
+                lo.transform.position = c + Vector3.up * 6.2f;
+                var l = lo.AddComponent<Light>();
+                l.type = LightType.Point;
+                l.color = new Color(1f, 0.55f, 0.28f);
+                l.range = Mathf.Max(s.x, s.y) * 1.1f;
+                l.intensity = 2.4f;
+                l.shadows = LightShadows.None;
             }
             void Wall(string name, Vector3 c, Vector3 s) => Slab(name, c, s, wallMat, false);
             void Ember(string name, Vector3 pos)
@@ -1261,6 +1434,15 @@ namespace AldenFall.Editor
             // Guardian loot.
             CreateLootChest(container, new Vector3(-28f, 0f, -374f), 30f,
                 new (string id, float chance)[] { ("knight_sword", 1f), ("adept_focus", 1f), ("iron_chestplate", 0.75f) }, groundLayer);
+
+            // Hidden nook: a rock-screened cache in LavaHall's NE corner — reward for
+            // hugging the wall past the lava channel instead of running the center.
+            var nookRock = Cube("LavaHall_NookRock", new Vector3(27f, 1.6f, -359f), new Vector3(5f, 3.2f, 1.2f), rockDark, container);
+            nookRock.transform.rotation = Quaternion.Euler(0f, 28f, 0f);
+            nookRock.isStatic = true;
+            if (groundLayer >= 0) nookRock.layer = groundLayer;
+            CreateLootChest(container, new Vector3(30f, 0f, -362f), 210f,
+                new (string id, float chance)[] { ("ember_focus", 0.5f), ("cooked_bass", 1f), ("knight_sword", 0.6f) }, groundLayer);
             CreateLootChest(container, new Vector3(0f, 0f, -430f), 0f,
                 new (string id, float chance)[] { ("ember_focus", 1f), ("emberfang", 0.9f), ("knight_sword", 1f) }, groundLayer);
         }
@@ -1287,7 +1469,7 @@ namespace AldenFall.Editor
             // A soft ring of lush trees framing the glade (trunk-only colliders).
             var trunkMat = Mat("GladeTrunk", new Color(0.32f, 0.22f, 0.14f), smoothness: 0.05f);
             var leafMat = Mat("GladeLeaf", new Color(0.16f, 0.36f, 0.18f), smoothness: 0.08f);
-            string[] kit = { "OakTree", "BirchTree", "PineTree" };
+            string[] kit = { "BirchTree", "PineTree", "BirchTree" };
             for (int i = 0; i < 12; i++)
             {
                 float a = i / 12f * Mathf.PI * 2f + 0.3f;

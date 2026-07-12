@@ -51,6 +51,40 @@ namespace AldenFall.Quests
             if (fishing != null) fishing.OnFishCaught += id => Advance(ObjectiveKind.CatchFish, id);
         }
 
+        // ReachLocation objectives are position-driven: poll the player's spot a few
+        // times a second (declared in the enum since v1, but nothing drove it until
+        // the main-quest spine needed "walk the Ember Approach").
+        private float nextLocationCheck;
+
+        private void Update()
+        {
+            if (Time.time < nextLocationCheck) return;
+            nextLocationCheck = Time.time + 0.75f;
+
+            bool changed = false;
+            foreach (var kv in states)
+            {
+                if (kv.Value.Status != QuestStatus.Active) continue;
+                var def = QuestDatabase.Get(kv.Key);
+                if (def == null) continue;
+
+                for (int i = 0; i < def.Objectives.Count; i++)
+                {
+                    var obj = def.Objectives[i];
+                    if (obj.Kind != ObjectiveKind.ReachLocation) continue;
+                    if (kv.Value.Progress[i] >= obj.Count) continue;
+                    if (Vector3.Distance(transform.position, obj.Location) > Mathf.Max(1f, obj.Radius)) continue;
+
+                    kv.Value.Progress[i] = obj.Count;
+                    changed = true;
+                }
+            }
+
+            if (!changed) return;
+            OnQuestChanged?.Invoke();
+            CheckAllCompletion();
+        }
+
         // ==================== QUERIES ====================
 
         public QuestState StateOf(string id) => states.TryGetValue(id, out var s) ? s : null;

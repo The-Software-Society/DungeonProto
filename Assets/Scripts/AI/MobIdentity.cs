@@ -62,23 +62,31 @@ namespace AldenFall.AI
         }
 
         /// <summary>
-        /// Gold + KillMob quest credit go to the last attacker (the killer). Death
-        /// runs on the SERVER, and in the host-authoritative demo the killer's
-        /// player object lives on the same machine as its owning client, so the
-        /// Wallet/QuestLog updated here are the very ones the local HUD reads.
-        /// A dedicated-server split (no local client for that player) would need a
-        /// SyncVar / TargetRpc bridge to push these to the owning client — an
-        /// accepted limitation for now (party-shared credit also comes later).
+        /// Gold + KillMob quest credit go to the last attacker (the killer) — and, when
+        /// the killer is partied, the same FULL gold + quest credit go to every other
+        /// party member (Jon's decision: full shares, optimize later). Death runs on
+        /// the SERVER, and in the host-authoritative demo each player object lives on
+        /// the same machine as its owning client, so the Wallet/QuestLog updated here
+        /// are the very ones the local HUD reads. A dedicated-server split (no local
+        /// client for that player) would need a SyncVar / TargetRpc bridge to push
+        /// these to the owning client — an accepted limitation for now.
         /// </summary>
         private void GrantKillRewards()
         {
             if (lastAttacker == null) return;
 
             int gold = Random.Range(goldRange.x, goldRange.y + 1) * Mathf.Max(1, combatLevel);
-            lastAttacker.GetComponent<Wallet>()?.Add(gold);
+            GrantRewardsTo(lastAttacker, gold);
+            Multiplayer.PartySystem.ForEachOtherMember(lastAttacker,
+                member => GrantRewardsTo(member, gold));
+        }
 
+        private void GrantRewardsTo(GameObject player, int gold)
+        {
+            if (player == null) return;
+            player.GetComponent<Wallet>()?.Add(gold);
             if (!string.IsNullOrEmpty(MobId))
-                lastAttacker.GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, MobId);
+                player.GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, MobId);
         }
 
         private void RollLoot()
@@ -94,10 +102,11 @@ namespace AldenFall.AI
                 if (def != null && def.Slot != EquipSlot.None)
                     dropId = ItemPlus.Compose(dropId, ItemPlus.RollPlus());
 
-                // Scatter multiple drops slightly so they don't stack
+                // Scatter multiple drops slightly so they don't stack. The killer (and
+                // their party) own the drop for the first 60s before it goes public.
                 Vector3 offset = Random.insideUnitSphere * 0.6f;
                 offset.y = 0;
-                LootDrop.Spawn(dropId, transform.position + offset);
+                LootDrop.Spawn(dropId, transform.position + offset, owner: lastAttacker);
             }
         }
     }

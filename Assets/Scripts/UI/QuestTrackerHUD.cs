@@ -9,10 +9,11 @@ namespace AldenFall.UI
     /// <summary>
     /// Quest UI, built at runtime on its own canvas (like DebugCheatPanel) so it
     /// never touches the authored HUD. Two surfaces:
-    ///   • a compact always-on tracker (top-right) that summarises ACTIVE quests
-    ///     and the current objective + where to go;
-    ///   • a full quest log toggled with <b>Q</b> that lists ACTIVE quests (every
-    ///     objective + a direction hint) and COMPLETED history.
+    ///   • a MINIMAL always-on tracker (top-right): no panel, one small line per
+    ///     active quest (max 2) — "◆ name — current objective" — so it never
+    ///     covers gameplay;
+    ///   • a full quest log toggled with <b>Q</b> that holds ALL the detail:
+    ///     descriptions, every objective, direction hints, completed history.
     /// Lives on the player; reads the sibling QuestLog and redraws on change.
     /// Gold now lives in the inventory/character panel, not here.
     /// </summary>
@@ -73,27 +74,24 @@ namespace AldenFall.UI
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1920, 1080);
 
-            var panel = new GameObject("Panel").AddComponent<RectTransform>();
-            panel.SetParent(canvasObj.transform, false);
-            panel.anchorMin = panel.anchorMax = new Vector2(1f, 1f);
-            panel.pivot = new Vector2(1f, 1f);
-            panel.anchoredPosition = new Vector2(-24f, -150f);
-            panel.sizeDelta = new Vector2(360f, 240f);
-
-            var bg = panel.gameObject.AddComponent<Image>();
-            bg.color = UITheme.PanelBg;
-
+            // Minimal tracker: bare text, no panel, so it never covers gameplay.
             var textObj = new GameObject("Body").AddComponent<RectTransform>();
-            textObj.SetParent(panel, false);
-            textObj.anchorMin = Vector2.zero; textObj.anchorMax = Vector2.one;
-            textObj.offsetMin = new Vector2(14f, 12f); textObj.offsetMax = new Vector2(-14f, -12f);
+            textObj.SetParent(canvasObj.transform, false);
+            textObj.anchorMin = textObj.anchorMax = new Vector2(1f, 1f);
+            textObj.pivot = new Vector2(1f, 1f);
+            textObj.anchoredPosition = new Vector2(-24f, -150f);
+            textObj.sizeDelta = new Vector2(460f, 60f);
 
             body = textObj.gameObject.AddComponent<TextMeshProUGUI>();
-            body.fontSize = 16;
+            body.fontSize = 13;
             body.color = UITheme.TextMain;
-            body.alignment = TextAlignmentOptions.TopLeft;
+            body.alignment = TextAlignmentOptions.TopRight;
             body.raycastTarget = false;
-            body.enableWordWrapping = true;
+            body.enableWordWrapping = false;
+            body.overflowMode = TextOverflowModes.Truncate;   // a long line clips, never sprawls
+            // Thin dark outline keeps the bare text readable over bright terrain.
+            body.outlineWidth = 0.16f;
+            body.outlineColor = new Color(0f, 0f, 0f, 0.85f);
         }
 
         private void BuildLogPanel()
@@ -159,29 +157,38 @@ namespace AldenFall.UI
         {
             if (body != null)
             {
+                // One compact line per active quest, max 2 — everything else
+                // (descriptions, hints, completed history) lives in the Q log.
+                const int MaxTracked = 2;
                 var sb = new StringBuilder();
-                sb.Append("<size=13><color=#A69BB0>QUESTS</color>   <color=#8A8494>[Q] log</color></size>\n");
+                int shown = 0;
 
-                bool any = false;
                 foreach (var def in QuestDatabase.All)
                 {
+                    if (shown >= MaxTracked) break;
                     var status = log.StatusOf(def.Id);
                     if (status != QuestStatus.Active && status != QuestStatus.Complete) continue;
-                    any = true;
 
-                    string tag = status == QuestStatus.Complete ? " <color=#5ED68C>(ready)</color>" : "";
-                    sb.Append($"\n<b>{def.Name}</b>{tag}\n");
-
-                    int cur = CurrentObjective(def);
-                    if (cur >= 0)
+                    string tail;
+                    if (status == QuestStatus.Complete)
+                        tail = "<color=#5ED68C>ready to hand in</color>";
+                    else
                     {
-                        var obj = def.Objectives[cur];
-                        sb.Append($"  <color=#C8C2CE>{obj.Description}</color>\n");
-                        if (!string.IsNullOrEmpty(obj.LocationHint))
-                            sb.Append($"  <color=#8FB8E8>→ {obj.LocationHint}</color>\n");
+                        int cur = CurrentObjective(def);
+                        var obj = cur >= 0 ? def.Objectives[cur] : null;
+                        string count = obj != null && obj.Count > 1
+                            ? $" {Mathf.Min(log.ProgressOf(def.Id, cur), obj.Count)}/{obj.Count}"
+                            : "";
+                        tail = $"<color=#C8C2CE>{obj?.Description}{count}</color>";
                     }
+
+                    if (shown > 0) sb.Append('\n');
+                    sb.Append($"<color=#F2CC8C>◆</color> <b>{def.Name}</b> — {tail}");
+                    shown++;
                 }
-                if (!any) sb.Append("\n<color=#8A8494>No active quests. Seek out Aldric.</color>");
+
+                if (shown == 0)
+                    sb.Append("<color=#8A8494>No quest — find Aldric</color>");
 
                 body.text = sb.ToString();
             }

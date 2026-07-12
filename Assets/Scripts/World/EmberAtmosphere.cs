@@ -34,9 +34,9 @@ namespace AldenFall.World
 
         [Header("Particles")]
         [Tooltip("Emission rate of drifting embers at full intensity.")]
-        [SerializeField] private float maxEmberRate = 90f;
+        [SerializeField] private float maxEmberRate = 160f;
         [Tooltip("Emission rate of dark soot flecks at full intensity.")]
-        [SerializeField] private float maxSootRate = 70f;
+        [SerializeField] private float maxSootRate = 110f;
         [Tooltip("Half-width of the square patch of sky the particles rain from, centred on the camera.")]
         [SerializeField] private float fallFieldRadius = 26f;
         [Tooltip("Height above the tracked camera the particles spawn at.")]
@@ -55,7 +55,10 @@ namespace AldenFall.World
         // --- apocalypse look targets (intensity == 1) ---
         private static readonly Color AshFogColor = new Color(0.30f, 0.11f, 0.07f);
         private static readonly Color HellAmbient = new Color(0.34f, 0.13f, 0.09f);
+        private static readonly Color HellAmbientEquator = new Color(0.26f, 0.10f, 0.07f);
+        private static readonly Color HellAmbientGround = new Color(0.16f, 0.06f, 0.05f);
         private static readonly Color HellSun    = new Color(1.00f, 0.42f, 0.18f);
+        private static readonly Color HellSkyTint = new Color(0.55f, 0.12f, 0.05f);
 
         // --- calm baseline, captured on Awake so intensity 0 restores it exactly ---
         private bool baseFog;
@@ -63,9 +66,19 @@ namespace AldenFall.World
         private float baseFogDensity;
         private FogMode baseFogMode;
         private Color baseAmbient;
+        private Color baseAmbientEquator;
+        private Color baseAmbientGround;
         private Color baseSunColor;
         private float baseSunIntensity;
         private bool baselineCaptured;
+
+        // --- skybox: we tint a runtime COPY of the shared skybox material so the
+        // sky itself goes hellish during the eruption (fog alone never touches it) ---
+        private Material skyboxRuntime;
+        private Color baseSkyTint;
+        private float baseSkyExposure;
+        private float baseSkyThickness;
+        private bool skyboxDriven;
 
         // --- intensity state ---
         private float globalIntensity;      // set by world-state
@@ -243,6 +256,10 @@ namespace AldenFall.World
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             renderer.sortingFudge = -10f;   // draw in front of most world geometry
+            // A particle drifting right past the lens must never blow up into a
+            // screen-corner square — clamp billboard size to ~2% of the viewport
+            // (Unity's default is 50%).
+            renderer.maxParticleSize = 0.02f;
 
             ps.Play();
             return ps;
@@ -281,7 +298,24 @@ namespace AldenFall.World
             RenderSettings.fogMode = t > 0.02f ? FogMode.ExponentialSquared : baseFogMode;
             RenderSettings.fogColor = Color.Lerp(baseFogColor, AshFogColor, t);
             RenderSettings.fogDensity = Mathf.Lerp(baseFogDensity, maxFogDensity, t);
-            RenderSettings.ambientLight = Color.Lerp(baseAmbient, HellAmbient, t);
+
+            // The scene uses Trilight ambient: drive all three channels or the ground
+            // stays calmly lit while the sky burns.
+            RenderSettings.ambientSkyColor = Color.Lerp(baseAmbient, HellAmbient, t);
+            RenderSettings.ambientEquatorColor = Color.Lerp(baseAmbientEquator, HellAmbientEquator, t);
+            RenderSettings.ambientGroundColor = Color.Lerp(baseAmbientGround, HellAmbientGround, t);
+
+            ApplySkybox(t);
+        }
+
+        // The procedural skybox ignores fog entirely — without this the horizon stays
+        // cheerful blue while the world burns (exactly what playtests showed).
+        private void ApplySkybox(float t)
+        {
+            if (!skyboxDriven) return;
+            skyboxRuntime.SetColor("_SkyTint", Color.Lerp(baseSkyTint, HellSkyTint, t));
+            skyboxRuntime.SetFloat("_Exposure", Mathf.Lerp(baseSkyExposure, baseSkyExposure * 0.55f, t));
+            skyboxRuntime.SetFloat("_AtmosphereThickness", Mathf.Lerp(baseSkyThickness, 2.2f, t));
         }
 
         // ----------------------------------------------------------------- lighting
@@ -303,7 +337,23 @@ namespace AldenFall.World
             baseFogColor = RenderSettings.fogColor;
             baseFogDensity = RenderSettings.fogDensity;
             baseFogMode = RenderSettings.fogMode;
-            baseAmbient = RenderSettings.ambientLight;
+            baseAmbient = RenderSettings.ambientSkyColor;
+            baseAmbientEquator = RenderSettings.ambientEquatorColor;
+            baseAmbientGround = RenderSettings.ambientGroundColor;
+
+            // Swap the shared skybox asset for a runtime copy we can tint freely
+            // (mutating the asset itself would persist edits in the editor).
+            var sky = RenderSettings.skybox;
+            if (sky != null && sky.HasProperty("_SkyTint") && sky.HasProperty("_Exposure"))
+            {
+                skyboxRuntime = new Material(sky) { name = sky.name + " (EmberAtmosphere)" };
+                RenderSettings.skybox = skyboxRuntime;
+                baseSkyTint = skyboxRuntime.GetColor("_SkyTint");
+                baseSkyExposure = skyboxRuntime.GetFloat("_Exposure");
+                baseSkyThickness = skyboxRuntime.HasProperty("_AtmosphereThickness")
+                    ? skyboxRuntime.GetFloat("_AtmosphereThickness") : 1f;
+                skyboxDriven = skyboxRuntime.HasProperty("_AtmosphereThickness");
+            }
 
             // Resolve the sun if it wasn't wired in the inspector: first directional light.
             if (sunLight == null)

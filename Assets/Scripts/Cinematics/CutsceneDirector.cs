@@ -48,6 +48,7 @@ namespace AldenFall.Cinematics
         private Camera cam;
         private Behaviour cameraController;
         private readonly List<Behaviour> lockedComponents = new List<Behaviour>();
+        private readonly List<Canvas> hiddenCanvases = new List<Canvas>();
 
         // Overlay UI
         private GameObject overlayRoot;
@@ -294,7 +295,29 @@ namespace AldenFall.Cinematics
             CombatPaused = true;
             GetComponent<Combat.Health>()?.SetInvulnerable(true);
 
+            HideGameplayHud();
             BuildOverlay(letterbox);
+        }
+
+        /// <summary>
+        /// The camera is telling a story — the HUD gets out of the way. Disables
+        /// every root gameplay canvas (health, action bar, quest tracker, panels,
+        /// nameplates…) and remembers exactly which ones were on so Finish can
+        /// restore them. The director's own overlay sits at sortingOrder 400 and
+        /// is built after this, so it's never caught.
+        /// </summary>
+        private void HideGameplayHud()
+        {
+            hiddenCanvases.Clear();
+            foreach (var canvas in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+            {
+                if (canvas == null || !canvas.enabled || !canvas.isRootCanvas) continue;
+                if (canvas.sortingOrder >= 400) continue; // cutscene-layer overlays keep drawing
+                if (overlayRoot != null && canvas.gameObject == overlayRoot) continue;
+
+                canvas.enabled = false;
+                hiddenCanvases.Add(canvas);
+            }
         }
 
         private void Finish()
@@ -305,6 +328,11 @@ namespace AldenFall.Cinematics
             foreach (var behaviour in lockedComponents)
                 if (behaviour != null) behaviour.enabled = true;
             lockedComponents.Clear();
+
+            // Bring back exactly the canvases we hid (skip any destroyed mid-scene)
+            foreach (var canvas in hiddenCanvases)
+                if (canvas != null) canvas.enabled = true;
+            hiddenCanvases.Clear();
 
             if (cameraController != null) cameraController.enabled = true; // rig snaps back
 

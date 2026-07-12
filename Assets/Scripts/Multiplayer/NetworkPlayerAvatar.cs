@@ -17,6 +17,9 @@ namespace AldenFall.Multiplayer
         [SerializeField] private float rotationLerp = 16f;
 
         [SyncVar(hook = nameof(OnNameChanged))] private string syncedName = "Player";
+
+        /// <summary>Synced display name (party/duel prompts, rosters).</summary>
+        public string DisplayName => syncedName;
         [SyncVar(hook = nameof(OnIntProfileChanged))] private int syncedGender;
         [SyncVar(hook = nameof(OnIntProfileChanged))] private int syncedSkinTone;
         [SyncVar(hook = nameof(OnIntProfileChanged))] private int syncedHairStyle = 1;
@@ -72,8 +75,10 @@ namespace AldenFall.Multiplayer
             if (cam != null)
                 cam.SetTarget(transform);
 
+            // You always know your own name — only remote players get a plate.
+            // (Also handled in CreateNameplate; this covers whichever runs last.)
             if (nameplate != null)
-                nameplate.color = new Color(0.9f, 1f, 0.75f);
+                nameplate.gameObject.SetActive(false);
 
             GetComponent<StarterLoadout>()?.EnsureGranted();
         }
@@ -291,9 +296,14 @@ namespace AldenFall.Multiplayer
             nameplate.text = syncedName;
             nameplate.alignment = TextAlignmentOptions.Center;
             nameplate.fontSize = 18f;
-            nameplate.color = isLocalPlayer ? new Color(0.9f, 1f, 0.75f) : new Color(0.75f, 0.95f, 1f);
+            nameplate.color = new Color(0.75f, 0.95f, 1f);
             nameplate.raycastTarget = false;
             nameplate.rectTransform.sizeDelta = new Vector2(220f, 32f);
+
+            // Own name over own head is noise — hide it for the local player.
+            // isLocalPlayer may not be set yet here; OnStartLocalPlayer re-hides.
+            if (isLocalPlayer)
+                canvasObj.SetActive(false);
         }
     }
 }

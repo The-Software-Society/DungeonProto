@@ -202,6 +202,29 @@ namespace AldenFall.Combat
                 result = hit;
                 found = true;
             }
+
+            // Duel: a remote avatar's ONLY collider is the detection TRIGGER capsule
+            // (its CharacterController is disabled on non-owning machines), which the
+            // trigger-ignoring sweep above can never hit. While the owner is dueling,
+            // run a second trigger-including sweep on the player layer and accept
+            // ONLY the duel opponent from it.
+            var duel = owner != null ? owner.GetComponent<DuelMember>() : null;
+            if (duel != null && duel.IsDueling)
+            {
+                var triggerHits = Physics.SphereCastAll(from, hitRadius, delta / distance, distance,
+                    GameLayers.GetPlayerMask(), QueryTriggerInteraction.Collide);
+                foreach (var hit in triggerHits)
+                {
+                    if (IsOwner(hit.collider.transform)) continue;
+                    var avatar = hit.collider.GetComponentInParent<Multiplayer.NetworkPlayerAvatar>();
+                    if (avatar == null || !duel.IsDuelingWith(avatar.netId)) continue;
+                    if (hit.distance >= best) continue;
+                    best = hit.distance;
+                    result = hit;
+                    found = true;
+                }
+            }
+
             return found;
         }
 
@@ -219,7 +242,16 @@ namespace AldenFall.Combat
         {
             if (CombatRules.PvpEnabled) return false;
             if (owner == null || !CombatRules.IsPlayer(owner)) return false;
-            return t.GetComponentInParent<Multiplayer.NetworkPlayerAvatar>() != null;
+            var avatar = t.GetComponentInParent<Multiplayer.NetworkPlayerAvatar>();
+            if (avatar == null) return false;
+
+            // Duels: your ACTIVE duel opponent is a legitimate target — the projectile
+            // must explode on them even while global PvP stays off (DuelMember's
+            // opponent SyncVar replicates, so this client-side check stays honest).
+            var duel = owner.GetComponent<DuelMember>();
+            if (duel != null && duel.IsDuelingWith(avatar.netId)) return false;
+
+            return true;
         }
 
         private void Explode(Vector3 position, Collider directHit)

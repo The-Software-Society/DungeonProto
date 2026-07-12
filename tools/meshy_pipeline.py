@@ -292,10 +292,11 @@ PROPS = {
     "ForestBush": "small round leafy green bush shrub, low-poly game environment plant",
     "MossBoulder": "large grey rock boulder covered in green moss patches, low-poly game environment prop",
     "TreeStump": "old cut tree stump with visible growth rings and gnarled roots, low-poly game environment prop",
-    "Cottage": "small medieval fantasy cottage house with thatched straw roof, timber frame walls, stone foundation, wooden door and shuttered windows, stylized low-poly game building",
+    "Cottage": "simple medieval cottage, thatched roof, timber walls, low-poly game building",
     "TownHouse": "two-story medieval fantasy timber-framed townhouse with red tiled roof, wooden door and glass windows, stylized low-poly game building",
-    "BlacksmithShop": "medieval blacksmith forge shop building with tall stone chimney, open forge workshop front, anvil, hanging wooden sign, stylized low-poly game building",
-    "Storehouse": "medieval wooden storehouse barn with large double doors and sloped shingle roof, stylized low-poly game building",
+    "BlacksmithShop": "simple medieval blacksmith shop, stone chimney, wooden walls, low-poly game building",
+    "Storehouse": "simple medieval wooden barn, double doors, sloped roof, low-poly game building",
+    "TownHall": "grand two-story medieval fantasy town hall with clock gable, timber-framed upper floor over a stone ground floor, wide entrance steps and double doors, stylized low-poly game building",
     "TownWell": "round medieval stone town well with a small wooden roof and a bucket on a rope, stylized low-poly game prop",
     "MarketBarrel": "wooden medieval barrel with iron bands, stylized game prop",
     "WoodCrate": "wooden storage crate with plank sides, stylized game prop",
@@ -609,12 +610,26 @@ def generate_prop(meshy: Meshy, state: State, name: str, prompt: str):
     )
     preview_id = state.data[f"prop:{name}:preview"]["task_id"]
 
-    _, refine = run_step(
-        meshy, state, f"prop:{name}:refine",
-        "/openapi/v2/text-to-3d", "/openapi/v2/text-to-3d",
-        {"mode": "refine", "preview_task_id": preview_id, "enable_pbr": True},
-        f"{name} refine",
-    )
+    # Heavy architectural previews can push the PBR refine over Meshy's server-side
+    # task timeout; when that happens, fall back to a plain (non-PBR) refine, which
+    # is markedly faster and still delivers a textured building.
+    try:
+        _, refine = run_step(
+            meshy, state, f"prop:{name}:refine",
+            "/openapi/v2/text-to-3d", "/openapi/v2/text-to-3d",
+            {"mode": "refine", "preview_task_id": preview_id, "enable_pbr": True},
+            f"{name} refine",
+        )
+    except RuntimeError as e:
+        if "timeout" not in str(e).lower():
+            raise
+        print(f"    {name}: PBR refine timed out — retrying without PBR")
+        _, refine = run_step(
+            meshy, state, f"prop:{name}:refine_nopbr",
+            "/openapi/v2/text-to-3d", "/openapi/v2/text-to-3d",
+            {"mode": "refine", "preview_task_id": preview_id, "enable_pbr": False},
+            f"{name} refine (no PBR)",
+        )
     download_model_urls(refine, prop_dir, name)
 
 

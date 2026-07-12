@@ -27,6 +27,10 @@ namespace AldenFall.UI
         public TMP_Text bonusText;
         public TMP_Text goldText;
 
+        // Small "<amount>g" chip under the bag grid, created at runtime so it
+        // shows up even in scenes built before it existed (no rebuild needed).
+        private TMP_Text bagGoldText;
+
         private Inventory inventory;
         private Equipment equipment;
         private StatBlock stats;
@@ -35,7 +39,29 @@ namespace AldenFall.UI
 
         private void Start()
         {
+            EnsureBagGold();
             TryBindPlayer();
+        }
+
+        /// <summary>Builds the gold readout in the bag corner if the scene doesn't have one.</summary>
+        private void EnsureBagGold()
+        {
+            if (bagGoldText != null) return;
+
+            var obj = new GameObject("BagGold");
+            var rect = obj.AddComponent<RectTransform>();
+            rect.SetParent(transform, false);
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(1f, 0f);
+            rect.anchoredPosition = new Vector2(-22f, 16f);
+            rect.sizeDelta = new Vector2(180f, 22f);
+
+            bagGoldText = obj.AddComponent<TextMeshProUGUI>();
+            bagGoldText.fontSize = 14;
+            bagGoldText.fontStyle = FontStyles.Bold;
+            bagGoldText.color = UITheme.TextGold;
+            bagGoldText.alignment = TextAlignmentOptions.MidlineRight;
+            bagGoldText.raycastTarget = false;
+            bagGoldText.text = "0g";
         }
 
         private void Update()
@@ -84,9 +110,11 @@ namespace AldenFall.UI
 
         private void RefreshGold()
         {
-            if (goldText == null) return;
             int gold = wallet != null ? wallet.Gold : 0;
-            goldText.text = $"<color=#F2CC8C><b>Gold:</b> {gold}</color>";
+            if (goldText != null)
+                goldText.text = $"<color=#F2CC8C><b>Gold:</b> {gold}</color>";
+            if (bagGoldText != null)
+                bagGoldText.text = $"{gold}g";
         }
 
         public void Refresh()

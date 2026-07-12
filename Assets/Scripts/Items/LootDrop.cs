@@ -15,9 +15,17 @@ namespace AldenFall.Items
     {
         private const float PickupRange = 1.8f;
         private const float Lifetime = 120f;
+        private const float OwnershipSeconds = 60f;   // killer (+party) exclusive window
 
         [SyncVar(hook = nameof(OnItemIdSync))] private string itemId;
         [SyncVar] private float pickupDelay;   // grace so a just-dropped item isn't re-vacuumed
+
+        // Ownership: for the first 60s only the killer or their party (snapshot taken at
+        // spawn, server-only) may pick this up. Synced so clients can stop asking for
+        // loot that isn't theirs; the SERVER check in CmdTryPickup is authoritative.
+        [SyncVar] private uint ownerNetId;             // 0 = unowned (public immediately)
+        [SyncVar] private double protectedUntil;       // NetworkTime.time when it goes public
+        private System.Collections.Generic.List<uint> allowedNetIds; // server-only party snapshot
 
         private Transform player;
         private float baseY;
@@ -35,8 +43,13 @@ namespace AldenFall.Items
         private static GameObject Prefab =>
             cachedPrefab != null ? cachedPrefab : (cachedPrefab = Resources.Load<GameObject>("NetLootDrop"));
 
-        /// <summary>Server-authoritative spawn — a networked world drop visible to everyone.</summary>
-        public static LootDrop ServerSpawn(string itemId, Vector3 position, float pickupDelay = 0f)
+        /// <summary>
+        /// Server-authoritative spawn — a networked world drop visible to everyone.
+        /// Pass <paramref name="owner"/> (the killer) to reserve the drop for them +
+        /// their party for the first 60s; null = public immediately (bag drops, chests).
+        /// </summary>
+        public static LootDrop ServerSpawn(string itemId, Vector3 position, float pickupDelay = 0f,
+            GameObject owner = null)
         {
             if (!NetworkServer.active) return null;
             if (ItemDatabase.Get(itemId) == null) return null;
@@ -52,6 +65,17 @@ namespace AldenFall.Items
             var drop = obj.GetComponent<LootDrop>();
             drop.itemId = itemId;          // SyncVar set before Spawn → carried in the spawn payload
             drop.pickupDelay = pickupDelay;
+
+            var ownerIdentity = owner != null ? owner.GetComponent<NetworkIdentity>() : null;
+            if (ownerIdentity != null)
+            {
+                drop.ownerNetId = ownerIdentity.netId;
+                drop.protectedUntil = NetworkTime.time + OwnershipSeconds;
+                // Party snapshot at SPAWN time — joining a party later doesn't grant
+                // access to drops that were already on the ground.
+                drop.allowedNetIds = PartySystem.SnapshotMemberIds(ownerIdentity.netId);
+            }
+
             NetworkServer.Spawn(obj);
             return drop;
         }
@@ -62,10 +86,11 @@ namespace AldenFall.Items
         /// server to spawn via the local player's relay. Returns null on the client path
         /// (the networked spawn is asynchronous).
         /// </summary>
-        public static LootDrop Spawn(string itemId, Vector3 position, float pickupDelay = 0f)
+        public static LootDrop Spawn(string itemId, Vector3 position, float pickupDelay = 0f,
+            GameObject owner = null)
         {
             if (NetworkServer.active)
-                return ServerSpawn(itemId, position, pickupDelay);
+                return ServerSpawn(itemId, position, pickupDelay, owner);
 
             var localPlayer = LocalPlayerLocator.Find();
             var combat = localPlayer != null ? localPlayer.GetComponent<AldenFall.Combat.PlayerCombat>() : null;
@@ -186,6 +211,7 @@ namespace AldenFall.Items
         {
             if (age < pickupDelay) return;
             if (Time.time < nextPickupRequestTime) return;
+            if (IsProtectedFromLocalPlayer()) return;   // someone else's drop (first 60s)
 
             if (player == null)
             {
@@ -203,11 +229,38 @@ namespace AldenFall.Items
             CmdTryPickup();
         }
 
+        /// <summary>
+        /// CLIENT: cheap pre-check so we never spam pickup requests for a drop that is
+        /// still inside someone else's 60s ownership window. Approximate (uses the local
+        /// CURRENT party roster, not the server's spawn-time snapshot) — the server-side
+        /// check in CmdTryPickup is the authoritative one.
+        /// </summary>
+        private bool IsProtectedFromLocalPlayer()
+        {
+            if (ownerNetId == 0 || NetworkTime.time >= protectedUntil) return false;
+
+            var local = NetworkClient.localPlayer;
+            if (local == null) return true;              // can't prove it's ours yet
+            if (local.netId == ownerNetId) return false; // our own kill
+
+            var partyMember = local.GetComponent<Multiplayer.PartyMember>();
+            return partyMember == null || !partyMember.IsPartiedWith(ownerNetId);
+        }
+
+        /// <summary>SERVER: may this netId take the drop right now?</summary>
+        private bool ServerMayPickup(uint requesterNetId)
+        {
+            if (ownerNetId == 0 || NetworkTime.time >= protectedUntil) return true; // public
+            if (requesterNetId == ownerNetId) return true;
+            return allowedNetIds != null && allowedNetIds.Contains(requesterNetId);
+        }
+
         [Command(requiresAuthority = false)]
         private void CmdTryPickup(NetworkConnectionToClient sender = null)
         {
             if (claimed || sender == null || sender.identity == null) return;
             if (age < pickupDelay) return;   // server-side grace re-check
+            if (!ServerMayPickup(sender.identity.netId)) return;   // owned by someone else (60s)
 
             // Range check against the requesting player (generous, for client/server lag).
             float dist = Vector3.Distance(transform.position, sender.identity.transform.position + Vector3.up);

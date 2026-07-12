@@ -84,6 +84,15 @@ namespace AldenFall.Multiplayer
                 pendingProfiles[conn.connectionId] = profile;
         }
 
+        public override void OnStopServer()
+        {
+            // Static server-side registries outlive the network session inside one
+            // process (host stop/start in the editor) — never leak them across runs.
+            PartySystem.ServerReset();
+            Combat.DuelMember.ServerReset();
+            base.OnStopServer();
+        }
+
         public override void OnServerDisconnect(NetworkConnectionToClient conn)
         {
             if (conn != null)
