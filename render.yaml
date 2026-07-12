@@ -3,7 +3,7 @@ services:
     name: aldenfall-test-server
     runtime: docker
     rootDir: Deploy/Render
-    plan: free
+    plan: starter
     envVars:
       - key: PORT
         value: 10000
