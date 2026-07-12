@@ -35,6 +35,14 @@ namespace AldenFall.AI
         public string DisplayName => displayName;
         public int CombatLevel => combatLevel;
 
+        /// <summary>
+        /// SERVER-side: fired when any mob with a MobId dies (Health death is
+        /// server-authoritative, so this never fires on pure clients). World-state
+        /// hooks subscribe here — e.g. the Floor Boss death settling the eruption —
+        /// without every mob needing a bespoke watcher component.
+        /// </summary>
+        public static event System.Action<string, GameObject> OnAnyMobKilled;
+
         // Last thing to hurt us — tracked server-side so death can credit the killer.
         private GameObject lastAttacker;
 
@@ -49,6 +57,8 @@ namespace AldenFall.AI
         {
             RollLoot();
             GrantKillRewards();
+            if (!string.IsNullOrEmpty(MobId))
+                OnAnyMobKilled?.Invoke(MobId, gameObject);
         }
 
         /// <summary>

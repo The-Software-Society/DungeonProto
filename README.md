@@ -1,103 +1,100 @@
-# DungeonProto
+# AldenFall
 
-An OSRS-inspired MMO prototype built in Unity 6, combining sandbox freedom with action combat.
-
-## Project Status
-
-**Phase 1: Foundation** - Rebuilding core systems
+An OSRS-inspired MMO prototype built in Unity 6 — sandbox freedom with action combat.
 
 ## Quick Start
 
-1. Open project in Unity 6000.3.2f1
-2. Unity will import packages (URP, Input System, TextMeshPro, etc.)
-3. Create a new scene or open existing
-4. Go to **DungeonProto > Setup New Scene** to auto-create player, camera, enemy, and ground
-5. Press Play!
+1. Open the project in Unity 6000.3.2f1
+2. Open `Assets/Scenes/EmberfallDemo.unity` (or rebuild it: **AldenFall > Build Emberfall Demo**)
+3. Press Play
 
 ## Controls
 
 | Input | Action |
 |-------|--------|
 | WASD | Move |
-| Space | Jump |
+| Double-tap W/A/S/D | Dodge roll (i-frames) |
+| Space | Jump / swim up / vault out of water |
 | Left Shift | Run |
-| Left Click | Target enemy |
+| Left Click | Target enemy (click anywhere else to clear) |
 | Tab | Cycle targets |
+| 1 | Fireball (homing at target) |
+| 2 | Ember Nova (point-blank AoE burst) |
 | Right Click + Mouse | Rotate camera |
 | Scroll Wheel | Zoom camera |
-| 1 | Cast Fireball |
+
+Swimming is automatic in deep water (chest-deep and beyond). Goblins won't follow you in.
+
+## The Demo — Emberfall Courtyard
+
+A torch-lit walled arena at dusk: central brazier plaza, raised terrace, swimmable
+pond, crates and rubble, three goblins with respawns. Built entirely by editor
+tooling — no hand-placed scene state.
+
+## Editor Menu
+
+- **AldenFall > Build Emberfall Demo** — build + bake + save the demo scene
+- **AldenFall > Build Complete Scene** — legacy Millbrook castle city build
+- **AldenFall > Import Meshy Characters** — wire generated models into prefabs
+- **AldenFall > Fix Combat System** — repair layers/refs on an existing scene
+- **AldenFall > Advanced > ...** — city-only / navmesh-only / manual tools
+
+Headless builds (CI or CLI):
+
+```sh
+Unity -batchmode -quit -projectPath . \
+  -executeMethod AldenFall.Editor.ArenaBuilder.BuildDemoHeadless
+```
+
+## Meshy Asset Pipeline
+
+Characters (rigged + animated) and props are generated through the
+[Meshy API](https://docs.meshy.ai):
+
+```sh
+# key in .env.local (MESHY_API_KEY=...) or ~/.meshy_key
+python3 tools/meshy_pipeline.py --dry-run --all   # show plan + credit estimate
+python3 tools/meshy_pipeline.py --all             # generate everything
+```
+
+Output lands in `Assets/Models/`. The run is resumable — completed Meshy tasks are
+recorded in `tools/meshy_state.json` and never re-billed. After generation, open
+Unity and run **AldenFall > Import Meshy Characters**, then rebuild the demo
+scene: player/goblin visuals upgrade from primitives to the generated models
+automatically.
+
+## Architecture Notes
+
+- `GameLayers` — single source of truth for layer masks; every system resolves
+  layers through it (falls back to Default when a layer is missing)
+- `Projectile` — swept SphereCast hit detection; no trigger-physics dependence
+- `HitEffect` — strictly visual; damage/knockback belong to the damage dealer
+- `TargetingSystem` — resolves child colliders to entities via `GetComponentInParent<Health>`
+- Water — full-capsule submersion depth with enter/exit hysteresis (no surface
+  flicker), momentum cleared on exit
+- Enemy AI — state machine: patrol, chase, melee, jump attack, charge attack
+  (windup → charge → wall-stun), off-mesh-link traversal
 
 ## Project Structure
 
 ```
 Assets/
 ├── Scripts/
-│   ├── AI/           # Enemy AI
-│   ├── Combat/       # Health, targeting, projectiles
-│   ├── Player/       # Character controller, camera
-│   ├── UI/           # HUD, health bars
-│   ├── World/        # Tile system for city layout
-│   └── Editor/       # Editor tools
-├── Prefabs/
-├── Scenes/
-├── Materials/
-└── Animations/
+│   ├── AI/           # EnemyAI state machine, spawner
+│   ├── Combat/       # Health, targeting, projectiles, abilities, FX
+│   ├── Player/       # Controller (move/dodge/swim), camera, death
+│   ├── UI/           # HUD, enemy health bars
+│   ├── World/        # GameLayers, torch flicker, tile mockup tools
+│   └── Editor/       # ArenaBuilder, SceneSetup, MeshyCharacterImporter
+├── Models/           # Meshy-generated characters + props (gitignored source of truth: tools/meshy_pipeline.py)
+├── Prefabs/          # Fireball, Goblin, Generated/ visuals
+├── Scenes/           # EmberfallDemo.unity
+└── Materials/        # Emberfall/ scene materials
+tools/
+└── meshy_pipeline.py # Meshy API generation pipeline
 ```
-
-## Editor Tools
-
-- **DungeonProto > Setup New Scene** - Quick scene setup
-- **DungeonProto > City Layout Editor** - Visual city mockup tool
-- **DungeonProto > Create Player/Enemy Prefab** - Generate prefabs
-
-## City Mockup System
-
-The city layout uses color-coded tiles for rapid prototyping:
-
-| Color | Tile Type |
-|-------|-----------|
-| Gray | Cobblestone (streets) |
-| Green | Grass |
-| Brown/Tan | Buildings |
-| Dark Gray | Walls |
-| Blue | Water |
-| Orange | Market stalls |
-| Light Brown | Dirt paths |
-
-## Implemented Features
-
-- [x] WASD movement with camera-relative direction
-- [x] Third-person camera (BG3 style - right click to rotate)
-- [x] Jump with ground detection
-- [x] Walk/Run toggle
-- [x] Click and Tab targeting
-- [x] Health system with events
-- [x] Fireball with homing to target
-- [x] Enemy AI (patrol, chase, melee attack)
-- [x] Death and respawn
-- [x] Basic HUD structure
-
-## Roadmap (from GDD)
-
-See the full Game Design Document for detailed plans.
-
-**Phase 2: Core Systems**
-- Skill system framework
-- Inventory (weight-based)
-- Equipment system
-- Starting City (Millbrook)
-
-**Phase 3: World Building**
-- Training Grounds zone
-- Dungeon 1
-- Monster spawning
-- Roaming Elite (Hollow Knight)
 
 ## Dependencies
 
-- Unity 6000.3.2f1
-- Universal Render Pipeline 17.0.3
-- Input System 1.11.2
-- TextMeshPro 3.2.0
-- Cinemachine 3.1.2
-- AI Navigation 2.0.4
+- Unity 6000.3.2f1 · URP 17.0.3 · Input System · TextMeshPro · AI Navigation
+- Meshy API (Pro tier) for asset generation

@@ -357,6 +357,7 @@ namespace AldenFall.Editor
             player.AddComponent<UI.DebugCheatPanel>();   // F9 testing cheatsheet
             player.AddComponent<UI.QuestTrackerHUD>();    // quest tracker + gold readout
             player.AddComponent<UI.ForgePanel>();         // F7 gear-upgrade forge
+            player.AddComponent<UI.VendorPanel>();        // market buy/sell (opened by VendorNPC)
             player.AddComponent<Player.CharacterAppearance>();      // v6 customization baseline
             player.AddComponent<UI.CharacterCustomizationUI>();     // F10 appearance panel
             player.AddComponent<Cinematics.CutsceneDirector>();     // v7.2 cutscene engine

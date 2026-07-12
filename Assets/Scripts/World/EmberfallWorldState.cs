@@ -66,11 +66,39 @@ namespace AldenFall.World
             if (Instance == this) Instance = null;
         }
 
+        [Header("Main-quest hooks")]
+        [Tooltip("MobId whose death settles the eruption (the Floor Boss).")]
+        [SerializeField] private string floorBossMobId = "cave_troll_boss";
+
         public override void OnStartClient()
         {
             // A late-joining pure client reflects the current phase immediately. On the host
             // the server setters already applied it, so skip to avoid a redundant pass.
             if (!isServer) ApplyPhase(phase);
+        }
+
+        public override void OnStartServer()
+        {
+            // Seed the initial phase so later setters register as genuine TRANSITIONS
+            // (the climax cutscene only plays on a transition, never on initial state).
+            ApplyPhase(phase);
+            AI.MobIdentity.OnAnyMobKilled += HandleMobKilled;
+        }
+
+        public override void OnStopServer()
+        {
+            AI.MobIdentity.OnAnyMobKilled -= HandleMobKilled;
+        }
+
+        // The Floor Boss falling is THE floor objective: settle the eruption. If the
+        // eruption somehow never triggered (entrance trigger skipped), advance through
+        // Erupting so the world still converges on Cleared.
+        [Server]
+        private void HandleMobKilled(string mobId, GameObject mob)
+        {
+            if (mobId != floorBossMobId) return;
+            if (phase == Phase.Calm) BeginEruption();
+            MarkDungeonCleared();
         }
 
         // ---------------------------------------------------------------- server API
@@ -110,6 +138,7 @@ namespace AldenFall.World
         private void ApplyPhase(Phase p)
         {
             if (hasApplied && lastApplied == p) return;
+            bool isTransition = hasApplied; // false only for the initial state application
             hasApplied = true;
             lastApplied = p;
 
@@ -117,6 +146,18 @@ namespace AldenFall.World
                 EmberAtmosphere.Instance.SetGlobalIntensity(IntensityFor(p));
 
             OnPhaseChanged?.Invoke(p);
+
+            // Climax beats: text cutscene on the LOCAL player's director. Only on a live
+            // transition — a client logging in mid-eruption gets the atmosphere, not a
+            // replay of the moment. Headless servers have no local player and skip this.
+            if (isTransition && p != Phase.Calm)
+            {
+                var localPlayer = Multiplayer.LocalPlayerLocator.Find();
+                var director = localPlayer != null
+                    ? localPlayer.GetComponent<Cinematics.CutsceneDirector>() : null;
+                if (director != null && !director.IsPlaying)
+                    director.Play(p == Phase.Erupting ? "eruption" : "floor_cleared");
+            }
         }
 
         private float IntensityFor(Phase p)

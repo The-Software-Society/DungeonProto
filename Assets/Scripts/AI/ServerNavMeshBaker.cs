@@ -43,10 +43,11 @@ namespace AldenFall.AI
                 yield return null;
             }
 
-            // Pure clients render server-replicated enemy transforms and have their agents
-            // disabled by EnemyNetworkSync — they must NOT bake (wasteful, and a slightly
-            // different local mesh would only fight the incoming NetworkTransform).
-            if (NetworkClient.active && !NetworkServer.active)
+            // Only the server simulates enemies, so only the server ever bakes. A plain
+            // "client-active" check is not enough: a client that sits on the connect screen
+            // past the timeout has NetworkClient.active == false and would bake anyway
+            // (a wasteful multi-second hitch right at scene load).
+            if (!NetworkServer.active)
                 yield break;
 
             var surface = GetComponent<NavMeshSurface>();
@@ -57,8 +58,28 @@ namespace AldenFall.AI
             }
 
             surface.BuildNavMesh();
-            Debug.Log($"ServerNavMeshBaker: runtime NavMesh (re)bake complete on the authoritative peer " +
-                      $"(server={NetworkServer.active}). Enemies can now path.");
+
+            var triangulation = NavMesh.CalculateTriangulation();
+            if (triangulation.vertices == null || triangulation.vertices.Length == 0)
+            {
+                Debug.LogError("ServerNavMeshBaker: runtime bake produced an EMPTY NavMesh — enemies cannot path. " +
+                               "Check that world geometry is on the Ground layer and present in the server build.");
+                yield break;
+            }
+
+            // Enemies spawned before the bake finished failed their initial Warp and sit
+            // frozen off-mesh; nudge every agent back onto the fresh mesh.
+            int rewarped = 0;
+            foreach (var agent in FindObjectsByType<NavMeshAgent>(FindObjectsSortMode.None))
+            {
+                if (agent.isOnNavMesh) continue;
+                if (NavMesh.SamplePosition(agent.transform.position, out NavMeshHit hit, 6f, NavMesh.AllAreas) &&
+                    agent.Warp(hit.position))
+                    rewarped++;
+            }
+
+            Debug.Log($"ServerNavMeshBaker: runtime NavMesh (re)bake complete on the server — " +
+                      $"{triangulation.vertices.Length} verts, {rewarped} agent(s) re-warped. Enemies can now path.");
         }
     }
 }

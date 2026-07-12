@@ -226,7 +226,29 @@ namespace AldenFall.Multiplayer
 
             var remoteCharacterController = GetComponent<CharacterController>();
             if (remoteCharacterController != null)
+            {
                 remoteCharacterController.enabled = false;
+                EnsureDetectionCollider(remoteCharacterController);
+            }
+        }
+
+        /// <summary>
+        /// The CharacterController is the avatar's ONLY collider, and it just got disabled
+        /// (remote avatars are moved by synced state, not physics). On a HOST the server
+        /// simulation shares this instance, so without a replacement collider enemy
+        /// Physics.OverlapSphere detection can never see remote players — they'd never pull
+        /// aggro. Add a trigger capsule on the same GameObject (so GetComponent&lt;Health&gt;
+        /// on the hit collider still works) matching the CC's dimensions.
+        /// </summary>
+        private void EnsureDetectionCollider(CharacterController cc)
+        {
+            var capsule = GetComponent<CapsuleCollider>();
+            if (capsule == null)
+                capsule = gameObject.AddComponent<CapsuleCollider>();
+            capsule.isTrigger = true;
+            capsule.center = cc.center;
+            capsule.height = cc.height;
+            capsule.radius = cc.radius;
         }
 
         private void Disable<T>() where T : Behaviour

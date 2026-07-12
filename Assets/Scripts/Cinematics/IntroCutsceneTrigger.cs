@@ -34,8 +34,11 @@ namespace AldenFall.Cinematics
             var identity = GetComponent<NetworkIdentity>();
             if (identity != null)
             {
+                // Wait on isLocalPlayer itself, not just netId: authority can be
+                // assigned a frame after the netId lands, and a one-shot check at
+                // that moment would permanently skip the intro for the owner.
                 float spawnWait = 0f;
-                while (identity.netId == 0 && spawnWait < 3f)
+                while (!identity.isLocalPlayer && spawnWait < 5f)
                 {
                     spawnWait += Time.unscaledDeltaTime;
                     yield return null;
@@ -58,6 +61,14 @@ namespace AldenFall.Cinematics
             {
                 camWait += Time.unscaledDeltaTime;
                 yield return null;
+            }
+            if (Camera.main == null)
+            {
+                // Playing without a camera would NRE mid-scene and strand the player
+                // on a black screen with input disabled. Skip and leave the seen-flag
+                // unset so the intro retries next login.
+                Debug.LogWarning("IntroCutsceneTrigger: no main camera after 5s — skipping intro this session.");
+                yield break;
             }
 
             var director = GetComponent<CutsceneDirector>();

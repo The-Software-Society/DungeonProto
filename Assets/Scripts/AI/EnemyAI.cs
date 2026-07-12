@@ -536,8 +536,15 @@ namespace AldenFall.AI
 
             float distance = Vector3.Distance(transform.position, playerTarget.position);
 
+            // Specials move the body by writing transform.position directly (bypassing the
+            // agent), so they are only allowed while actually standing on the NavMesh —
+            // otherwise a mob that cannot path (no mesh under it) could still leap/charge
+            // onto a distant player, which reads as "hit from range with no contact".
+            bool canUseSpecials = agent != null && agent.isOnNavMesh;
+
             // Check for charge attack opportunity (special attack)
-            if (chargeAttackEnabled
+            if (canUseSpecials
+                && chargeAttackEnabled
                 && distance >= chargeAttackMinRange && distance <= chargeAttackMaxRange
                 && Time.time - lastChargeAttackTime >= chargeAttackCooldown
                 && CanSeePlayer()
@@ -548,7 +555,8 @@ namespace AldenFall.AI
             }
 
             // Check for jump attack opportunity
-            if (jumpAttackEnabled
+            if (canUseSpecials
+                && jumpAttackEnabled
                 && distance >= jumpAttackMinRange && distance <= jumpAttackMaxRange
                 && Time.time - lastJumpAttackTime >= jumpAttackCooldown
                 && CanSeePlayer())
@@ -586,7 +594,11 @@ namespace AldenFall.AI
             Vector3 targetPos = playerTarget.position + Vector3.up * 1f;
             Vector3 direction = targetPos - eyePos;
 
-            if (Physics.Raycast(eyePos, direction.normalized, out RaycastHit hit, direction.magnitude))
+            // Exclude the Enemy layer (the ray starts inside our own capsule and other mobs
+            // shouldn't block sight) and ignore triggers (water/ember zones are not walls).
+            int mask = ~(1 << gameObject.layer);
+            if (Physics.Raycast(eyePos, direction.normalized, out RaycastHit hit, direction.magnitude,
+                                mask, QueryTriggerInteraction.Ignore))
             {
                 return hit.transform == playerTarget || hit.transform.IsChildOf(playerTarget);
             }
@@ -612,6 +624,7 @@ namespace AldenFall.AI
                 // DealDamage also re-checks distance, but cancelling here stops the swing
                 // outright rather than relying solely on the range gate at impact time.
                 CancelInvoke(nameof(DealDamage));
+                CancelInvoke(nameof(EndAttack));
                 isAttacking = false;
                 currentState = EnemyState.Chase;
                 return;

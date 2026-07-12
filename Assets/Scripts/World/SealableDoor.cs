@@ -29,10 +29,14 @@ namespace AldenFall.World
 
         [Header("Tuning")]
         [SerializeField] private float checkInterval = 0.5f;
+        [Tooltip("Safety valve: if the guarded room NEVER receives a live enemy within this window " +
+                 "(spawner failed, mob fell through), open anyway rather than sealing the dungeon forever.")]
+        [SerializeField] private float failOpenSeconds = 90f;
 
         private bool opened;
         private bool hasSeenEnemies;   // don't open before the room has ever been populated
         private float nextCheck;
+        private float watchStartedAt = -1f;
 
         /// <summary>Called by the builder to point the door at the room it gates.</summary>
         public void Configure(Vector3 center, Vector3 size)
@@ -46,13 +50,23 @@ namespace AldenFall.World
             if (opened) return;
             if (Time.time < nextCheck) return;
             nextCheck = Time.time + checkInterval;
+            if (watchStartedAt < 0f) watchStartedAt = Time.time;
 
             int alive = CountLiveEnemiesInRoom();
             if (alive > 0) { hasSeenEnemies = true; return; }
 
             // Zero live enemies. Only unseal once the room was actually populated,
             // otherwise the build-time / pre-spawn frame would pop the door open.
-            if (hasSeenEnemies) Open();
+            if (hasSeenEnemies)
+            {
+                Open();
+            }
+            else if (failOpenSeconds > 0f && Time.time - watchStartedAt > failOpenSeconds)
+            {
+                Debug.LogWarning($"SealableDoor '{name}': guarded room never received enemies " +
+                                 $"within {failOpenSeconds}s — failing open so the dungeon stays passable.");
+                Open();
+            }
         }
 
         private int CountLiveEnemiesInRoom()

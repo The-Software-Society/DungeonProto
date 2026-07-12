@@ -106,15 +106,22 @@ namespace AldenFall.Cinematics
             IsPlaying = true;
             TakeControl(data.letterbox);
 
-            foreach (var step in data.steps)
+            // try/finally (legal around yields) so a step that throws can never
+            // strand the player with input locked, combat paused, and a black fade.
+            try
             {
-                var routine = Execute(step);
-                if (routine == null) continue;
-                if (step.blocking) yield return StartCoroutine(routine);
-                else StartCoroutine(routine);
+                foreach (var step in data.steps)
+                {
+                    var routine = Execute(step);
+                    if (routine == null) continue;
+                    if (step.blocking) yield return StartCoroutine(routine);
+                    else StartCoroutine(routine);
+                }
             }
-
-            Finish();
+            finally
+            {
+                Finish();
+            }
         }
 
         private IEnumerator Execute(CutsceneStep step)
@@ -137,6 +144,8 @@ namespace AldenFall.Cinematics
 
         private IEnumerator CameraStep(CutsceneStep step)
         {
+            if (cam == null) yield break; // no main camera — skip the shot rather than NRE mid-scene
+
             Vector3 targetPos = V3(step.pos, cam.transform.position);
             Quaternion targetRot = step.lookAt != null
                 ? Quaternion.LookRotation(V3(step.lookAt, targetPos + cam.transform.forward) - targetPos)
@@ -195,6 +204,9 @@ namespace AldenFall.Cinematics
             var animator = actor != null ? actor.GetComponentInChildren<Animator>() : null;
             if (animator != null && !string.IsNullOrEmpty(step.state))
                 animator.CrossFadeInFixedTime(step.state, 0.2f);
+            else
+                Debug.LogWarning($"CutsceneDirector: anim step '{step.state}' skipped — " +
+                                 (actor == null ? $"actor '{step.actor}' not found in scene." : "actor has no Animator."));
         }
 
         private IEnumerator MoveStep(CutsceneStep step)

@@ -41,7 +41,7 @@ namespace AldenFall.Quests
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.TalkToNpc, TargetId = "aldric", Count = 1,
                         Description = "Speak with Aldric",
-                        LocationHint = "Aldric waits by the spawn clearing" },
+                        LocationHint = "Aldric waits in the forest glade where you woke, north of the city" },
                 },
                 GoldReward = 10,
                 GiverNpcId = "aldric",
@@ -56,7 +56,7 @@ namespace AldenFall.Quests
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.UseAbility, TargetId = "", Count = 1,
                         Description = "Use any ability (keys 1-5)",
-                        LocationHint = "Out in the field, press keys 1-5" },
+                        LocationHint = "Right here in the glade — press keys 1-5" },
                 },
                 GoldReward = 15,
                 PrereqQuestId = "q_intro",
@@ -66,12 +66,12 @@ namespace AldenFall.Quests
             {
                 Id = "q_learn_fish",
                 Name = "A Fisher's Patience",
-                Description = "Take the pole to the pond and land your first catch.",
+                Description = "Take the pole to Emberfall Lake and land your first catch.",
                 Objectives =
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.CatchFish, TargetId = "", Count = 1,
-                        Description = "Catch a fish at the pond",
-                        LocationHint = "Take the pole to the pond nearby" },
+                        Description = "Catch a fish at Emberfall Lake",
+                        LocationHint = "The lake lies northwest of the city — fish from its east bank, or swim right in" },
                 },
                 GoldReward = 15,
                 PrereqQuestId = "q_learn_skill",
@@ -86,7 +86,7 @@ namespace AldenFall.Quests
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.EatFood, TargetId = "", Count = 1,
                         Description = "Eat any cooked food",
-                        LocationHint = "Cook your catch at the campfire, then eat it" },
+                        LocationHint = "Cook your catch at the lakeside campfire, then eat it" },
                 },
                 GoldReward = 20,
                 Rewards = { ("cooked_fish", 3) },
@@ -104,10 +104,10 @@ namespace AldenFall.Quests
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.KillMob, TargetId = "grukmar", Count = 1,
                         Description = "Slay Grukmar the Warlord",
-                        LocationHint = "Head to the forest warcamp" },
+                        LocationHint = "Grukmar's warcamp lies in the southwest woods, beyond the city" },
                     new ObjectiveDef { Kind = ObjectiveKind.TalkToNpc, TargetId = "townsperson", Count = 1,
                         Description = "Return to the girl's mother in town",
-                        LocationHint = "Return to the girl's mother in town" },
+                        LocationHint = "Her mother waits near the fountain in the city square" },
                 },
                 GoldReward = 150,
                 Rewards = { ("knight_sword", 1) },

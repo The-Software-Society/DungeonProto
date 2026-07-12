@@ -86,6 +86,8 @@ namespace AldenFall.Player
         public bool IsDodging => isDodging;
         public bool IsInWater => isInWater;
         public bool IsSwimming => isInWater;
+        /// <summary>World-space Y of the water surface while swimming (fishing-while-swimming anchors the bobber here).</summary>
+        public float WaterSurfaceY => waterSurfaceY;
         public Vector3 MoveDirection { get; private set; }
 
         private void Awake()

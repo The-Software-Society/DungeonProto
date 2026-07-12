@@ -29,9 +29,14 @@ namespace AldenFall.Player
         private Health health;
         private Animator animator;
         private FishingSpot spot;
+        private Vector3 swimAnchor;   // bobber anchor when fishing from open water (no spot)
+        private bool wasSwimming;
         private Coroutine loop;
         private GameObject bobber;
         private float tickStartedAt;
+
+        /// <summary>Where the bobber floats: the spot's anchor on a bank, or a point on the water surface ahead of a swimmer.</summary>
+        private Vector3 BobberAnchor => spot != null ? spot.BobberAnchor : swimAnchor;
 
         private static readonly int SpecialAttackHash = Animator.StringToHash("SpecialAttack");
 
@@ -90,6 +95,25 @@ namespace AldenFall.Player
             return true;
         }
 
+        /// <summary>
+        /// Fish anywhere while swimming: no FishingSpot needed — the bobber lands on the
+        /// water surface a cast ahead of the swimmer. Same loop, tools, and level-gated
+        /// catch table as bank fishing.
+        /// </summary>
+        public bool StartSwimFishing()
+        {
+            if (IsFishing || controller == null || !controller.IsSwimming) return false;
+
+            Vector3 forward = transform.forward;
+            forward.y = 0f;
+            forward = forward.sqrMagnitude > 0.01f ? forward.normalized : Vector3.forward;
+            Vector3 anchor = transform.position + forward * 2.5f;
+            anchor.y = controller.WaterSurfaceY + 0.05f;
+            swimAnchor = anchor;
+
+            return StartFishing(null);
+        }
+
         public void StopFishing()
         {
             if (loop != null)
@@ -106,11 +130,30 @@ namespace AldenFall.Player
 
         private void Update()
         {
-            if (!IsFishing) return;
+            bool swimming = controller != null && controller.IsSwimming;
 
-            // Any of these breaks the trance
+            if (!IsFishing)
+            {
+                // Fish-anywhere: while treading water with a pole, F casts in place.
+                if (swimming && Input.GetKeyDown(KeyCode.F))
+                    StartSwimFishing();
+
+                // One nudge per dip so the feature is discoverable without HUD work.
+                if (swimming && !wasSwimming && inventory != null && inventory.Contains(requiredTool))
+                    CombatEvents.RaiseStatus(transform.position + Vector3.up * 2f,
+                        "Press F to fish here", UI.UITheme.TextDim);
+                wasSwimming = swimming;
+                return;
+            }
+            wasSwimming = swimming;
+
+            // Any of these breaks the trance. Entering the water cancels BANK fishing
+            // (spot != null); when the cast started from open water, swimming is the
+            // whole point and only movement/damage/jump break it.
             bool cancel =
-                (controller != null && (controller.HasManualMoveInput || controller.IsSwimming)) ||
+                (controller != null && controller.HasManualMoveInput) ||
+                (spot != null && swimming) ||
+                (spot == null && !swimming) ||
                 (health != null && health.IsDead) ||
                 Input.GetKeyDown(KeyCode.Space);
             if (cancel)
@@ -179,11 +222,10 @@ namespace AldenFall.Player
 
         private void SpawnBobber()
         {
-            if (spot == null) return;
             bobber = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             bobber.name = "Bobber";
             Destroy(bobber.GetComponent<Collider>());
-            bobber.transform.position = spot.BobberAnchor;
+            bobber.transform.position = BobberAnchor;
             bobber.transform.localScale = Vector3.one * 0.18f;
             var renderer = bobber.GetComponent<MeshRenderer>();
             renderer.material.color = new Color(0.9f, 0.25f, 0.2f);
@@ -195,7 +237,7 @@ namespace AldenFall.Player
             while (bobber != null)
             {
                 float bob = Mathf.Sin(Time.time * 2.2f) * 0.06f;
-                bobber.transform.position = spot.BobberAnchor + Vector3.up * bob;
+                bobber.transform.position = BobberAnchor + Vector3.up * bob;
                 yield return null;
             }
         }

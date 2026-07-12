@@ -307,16 +307,27 @@ namespace AldenFall.Editor
                 // Tavern + party/quest board (NW)
                 ("TownHall",       new Vector3(-34f, 0f, 34f),  135f, 9f),
                 ("Cottage",        new Vector3(-38f, 0f, 12f),  90f,  7f),
-                // Market Row (NE)
+                ("TownHouse",      new Vector3(-46f, 0f, 46f),  140f, 8f),
+                // Residential lane (W of the plaza)
+                ("TownHouse",      new Vector3(-22f, 0f, 22f),  120f, 8f),
+                ("Cottage",        new Vector3(-16f, 0f, 36f),  100f, 7f),
+                // Market Row (NE) — a real double row flanking the east street
                 ("MarketStall",    new Vector3(30f, 0f, 34f),   215f, 3.4f),
                 ("MarketStall",    new Vector3(38f, 0f, 26f),   250f, 3.4f),
+                ("MarketStall",    new Vector3(22f, 0f, 26f),   190f, 3.4f),
+                ("MarketStall",    new Vector3(16f, 0f, 38f),   170f, 3.4f),
                 ("TownHouse",      new Vector3(36f, 0f, 40f),   225f, 8f),
+                ("TownHouse",      new Vector3(46f, 0f, 46f),   225f, 8f),
                 // The Forge (SE) — the gear-upgrader is the F7 panel, so this is flavour.
                 ("BlacksmithShop", new Vector3(34f, 0f, -30f),  315f, 8f),
                 ("Storehouse",     new Vector3(40f, 0f, -12f),  270f, 7.5f),
-                // Aldric's home (SW, by the plaza)
+                ("TownHouse",      new Vector3(22f, 0f, -24f),  340f, 8f),
+                ("Storehouse",     new Vector3(46f, 0f, -44f),  300f, 7.5f),
+                // Aldric's home + residential (SW)
                 ("Cottage",        new Vector3(-34f, 0f, -30f), 45f,  7f),
                 ("TownHouse",      new Vector3(-40f, 0f, -12f), 90f,  8f),
+                ("Cottage",        new Vector3(-22f, 0f, -22f), 30f,  7f),
+                ("TownHouse",      new Vector3(-46f, 0f, -44f), 60f,  8f),
             };
             foreach (var b in buildings)
                 PlaceCityBuilding(container, b.name, b.pos, b.yaw, b.h, groundLayer);
@@ -339,13 +350,18 @@ namespace AldenFall.Editor
             if (groundLayer >= 0) anvil.layer = groundLayer;
             CreateTorch(container, new Vector3(27f, 0f, -26f), 0.9f); // forge glow
 
-            // Plaza + street torches for warm, lived-in light.
+            // Plaza + street torches for warm, lived-in light — lamps pace the
+            // four gate streets so the walk from any gate feels tended.
             foreach (var p in new[]
             {
                 new Vector3(9f, 0f, 9f), new Vector3(-9f, 0f, 9f),
                 new Vector3(9f, 0f, -9f), new Vector3(-9f, 0f, -9f),
                 new Vector3(0f, 0f, 30f), new Vector3(0f, 0f, -30f),
                 new Vector3(30f, 0f, 0f), new Vector3(-30f, 0f, 0f),
+                new Vector3(6.5f, 0f, 18f), new Vector3(-6.5f, 0f, -18f),
+                new Vector3(18f, 0f, 6.5f), new Vector3(-18f, 0f, -6.5f),
+                new Vector3(6.5f, 0f, 42f), new Vector3(-6.5f, 0f, -42f),
+                new Vector3(42f, 0f, 6.5f), new Vector3(-42f, 0f, -6.5f),
             })
                 CreateTorch(container, p, 1f);
 
@@ -353,6 +369,10 @@ namespace AldenFall.Editor
             PlaceTownsfolk(container, new Vector3(24f, 0f, 26f), new Color(0.4f, 0.32f, 0.5f), groundLayer);   // market
             PlaceTownsfolk(container, new Vector3(-26f, 0f, 24f), new Color(0.3f, 0.4f, 0.55f), groundLayer);  // tavern
             PlaceTownsfolk(container, new Vector3(28f, 0f, -22f), new Color(0.5f, 0.35f, 0.28f), groundLayer);  // forge
+            PlaceTownsfolk(container, new Vector3(20f, 0f, 33f), new Color(0.35f, 0.45f, 0.3f), groundLayer);   // market row
+            PlaceTownsfolk(container, new Vector3(-18f, 0f, 28f), new Color(0.55f, 0.4f, 0.3f), groundLayer);   // residential W
+            PlaceTownsfolk(container, new Vector3(-24f, 0f, -18f), new Color(0.32f, 0.34f, 0.5f), groundLayer); // residential SW
+            PlaceTownsfolk(container, new Vector3(8f, 0f, 14f), new Color(0.45f, 0.3f, 0.35f), groundLayer);    // plaza edge
 
             // ---- NPCs ----
             // Aldric is NOT in the city — he's the old hermit in the forest glade north of
@@ -360,6 +380,69 @@ namespace AldenFall.Editor
             // Worried Mother (q_rescue giver, npcId "townsperson") lives in the city — kept at (10,0,-6)
             // so the existing q_rescue_start/complete cutscenes still frame correctly.
             BuildRescueGiver(container, groundLayer);
+            BuildVendorNPC(container, groundLayer);
+        }
+
+        /// <summary>
+        /// Marla the Trader — the Market Row vendor (E to trade). Opens the buy/sell
+        /// VendorPanel on the interacting player. Non-networked like the other NPCs
+        /// (the economy is client-local, same model as the F7 Forge).
+        /// </summary>
+        private static void BuildVendorNPC(Transform parent, int groundLayer)
+        {
+            int interactableLayer = LayerMask.NameToLayer("Interactable");
+            var npcObj = new GameObject("VendorMarla");
+            npcObj.transform.SetParent(parent);
+            npcObj.transform.position = new Vector3(26f, 0f, 31f);   // between the market stalls
+            npcObj.transform.rotation = Quaternion.Euler(0f, 200f, 0f); // facing the plaza
+            if (interactableLayer >= 0) npcObj.layer = interactableLayer;
+
+            var vendor = npcObj.AddComponent<World.VendorNPC>();
+            var vendorSO = new SerializedObject(vendor);
+            vendorSO.FindProperty("displayName").stringValue = "Marla the Trader";
+            vendorSO.FindProperty("prompt").stringValue = "Trade with Marla";
+            vendorSO.FindProperty("radius").floatValue = 3.5f;
+            vendorSO.ApplyModifiedProperties();
+
+            var model = SceneSetup.InstantiateGeneratedVisual("HeroFemale", npcObj.transform);
+            if (model != null)
+            {
+                model.name = "Body";
+                model.transform.localPosition = Vector3.zero;
+                model.transform.localRotation = Quaternion.identity;
+            }
+            else
+            {
+                var robeMat = Mat("VendorRobe", new Color(0.55f, 0.38f, 0.2f), smoothness: 0.1f);
+                var skinMat = Mat("VendorSkin", new Color(0.8f, 0.62f, 0.5f), smoothness: 0.1f);
+                var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+                body.name = "Body";
+                body.transform.SetParent(npcObj.transform);
+                body.transform.localPosition = new Vector3(0f, 1.0f, 0f);
+                body.transform.localScale = new Vector3(0.8f, 1.0f, 0.8f);
+                body.GetComponent<MeshRenderer>().sharedMaterial = robeMat;
+                if (groundLayer >= 0) body.layer = groundLayer;
+
+                var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                head.name = "Head";
+                head.transform.SetParent(npcObj.transform);
+                head.transform.localPosition = new Vector3(0f, 2.05f, 0f);
+                head.transform.localScale = Vector3.one * 0.55f;
+                Object.DestroyImmediate(head.GetComponent<SphereCollider>());
+                head.GetComponent<MeshRenderer>().sharedMaterial = skinMat;
+                if (groundLayer >= 0) head.layer = groundLayer;
+            }
+
+            // Warm stall light so the vendor reads from across the plaza.
+            var lightObj = new GameObject("VendorLight");
+            lightObj.transform.SetParent(npcObj.transform);
+            lightObj.transform.localPosition = Vector3.up * 2.6f;
+            var light = lightObj.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(0.95f, 0.8f, 0.5f);
+            light.intensity = 1.6f;
+            light.range = 5f;
+            light.shadows = LightShadows.None;
         }
 
         private static void BuildCityWalls(Transform container, int groundLayer)
@@ -1136,7 +1219,9 @@ namespace AldenFall.Editor
             // ---- Sealable boss door: solid until the antechamber sentinels are dead ----
             var sealMat = Mat("VolDoorSeal", new Color(0.17f, 0.11f, 0.09f), smoothness: 0.15f,
                 emission: new Color(0.16f, 0.04f, 0.02f));
-            var slab = Cube("BossDoor_Seal", new Vector3(0f, 2.5f, -419f), new Vector3(6.6f, 5f, 0.6f), sealMat, container);
+            // Full 10m corridor width + the pinch-wall gap (x[-8,8]) and floor-to-ceiling
+            // (y0-8) so the seal can't be slipped around the flanks or double-jumped over.
+            var slab = Cube("BossDoor_Seal", new Vector3(0f, 4f, -419f), new Vector3(16.5f, 8f, 0.6f), sealMat, container);
             slab.isStatic = true;
             if (groundLayer >= 0) slab.layer = groundLayer;
             var seNav = slab.AddComponent<NavMeshModifier>(); seNav.overrideArea = true; seNav.area = 1;
@@ -1156,11 +1241,22 @@ namespace AldenFall.Editor
             var gate = Cube("Floor2_SealedGate", new Vector3(0f, 3.5f, -449f), new Vector3(10f, 7f, 0.8f), gateMat, container);
             gate.isStatic = true;
             if (groundLayer >= 0) gate.layer = groundLayer;
+            // Sealed until the floor is cleared: opens on EmberfallWorldState -> Cleared
+            // (Floor Boss death), revealing the stairway to Floor 2 (SAO hook).
+            gate.AddComponent<World.WorldStateGate>().Configure(
+                World.EmberfallWorldState.Phase.Cleared,
+                "Ancient stonework grinds open — the stairway to Floor 2 stands revealed.");
             var signMat = Mat("Floor2Sign", new Color(0.3f, 0.28f, 0.34f), smoothness: 0.1f, emission: new Color(0.1f, 0.14f, 0.3f));
             var sign = Cube("Floor2_Sign", new Vector3(0f, 5f, -446.5f), new Vector3(6f, 1.2f, 0.3f), signMat, container);
             Object.DestroyImmediate(sign.GetComponent<BoxCollider>());
-            // NOTE: "Sealed until Emberfall is cleared." The Phase-3 quest agent unlocks this
-            // gate on EmberfallWorldState -> Cleared. For now it is a permanent wall (SAO hook).
+
+            // ---- Main-quest climax tripwire: first player through the entry tunnel
+            // flips the world into the eruption (BeginEruption; server-side).
+            var eruptionTrigger = new GameObject("EruptionTrigger");
+            eruptionTrigger.transform.SetParent(container, false);
+            eruptionTrigger.transform.position = new Vector3(0f, 4f, -326f);
+            eruptionTrigger.AddComponent<World.EruptionTrigger>().Configure(
+                new Vector3(0f, 4f, -326f), new Vector3(12f, 10f, 24f));
 
             // Guardian loot.
             CreateLootChest(container, new Vector3(-28f, 0f, -374f), 30f,

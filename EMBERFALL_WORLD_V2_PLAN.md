@@ -125,3 +125,35 @@ walls everywhere, core combat bugs. Full feedback (grouped):
   forest mobs]; (C) magic ability depth; (D) intro cutscene + starter-weapon choice + Aldric hermit.
   Keep the valley floor flat (mountains ring it) so existing placement stays grounded.
 - **Round 2:** bigger structured city; playable multi-room volcano dungeon; fish-anywhere; polish.
+
+---
+# Round 2 + Phase 3 status (2026-07-12 overnight pass)
+
+**Combat integrity (audit of hotfix c486f00, all fixed):** enemy jump/charge specials now
+require `agent.isOnNavMesh` (they teleported via transform writes — THE "damage from range,
+contact gone" bug); ServerNavMeshBaker is server-only gated (a slow-connecting client used to
+run a wasteful bake), verifies the bake produced triangulation, and re-warps agents that
+spawned before the bake; enemy LOS raycast now masks out the Enemy layer + triggers; remote
+avatars keep a trigger capsule when their CharacterController is disabled (host-mode aggro).
+Intro hardening: trigger waits on `isLocalPlayer` (not just netId), aborts cleanly when no
+camera exists, CutsceneDirector null-guards the camera + logs missing actors, and playback
+runs in try/finally so a throwing step can never strand input-locked players.
+
+**Phase 3 eruption — WIRED:** EruptionTrigger (volcano entry tunnel AABB, server) →
+BeginEruption; MobIdentity.OnAnyMobKilled (server event) → cave_troll_boss death →
+MarkDungeonCleared; Floor2_SealedGate opens on Cleared via new WorldStateGate; climax text
+cutscenes `eruption.json` / `floor_cleared.json` play on genuine phase transitions.
+
+**Round 2 — DONE:** dungeon fragilities fixed (boss-door seal now 16.5×8 full corridor+ceiling,
+was slip/jump-passable 6.6×5; SealableDoor 90s fail-open safety; vestibule acolyte pair at
+z-330 so the entrance reads hostile); city densified to 19 buildings (double market row, W/SW
+residential lanes) + gate-street lamps + 7 townsfolk; **Marla the Trader** vendor at the market
+(new VendorNPC + runtime VendorPanel: buy at 4× SellValue, sell anything, Esc/walk-away);
+**fish-anywhere-while-swimming** (F while swimming, bobber on the water surface ahead; bank
+spots unchanged); quest LocationHints rewritten with V2 compass directions.
+
+**Jon ruling 2026-07-12:** utility casts (Taunt/SelfBuff/Blink) KEEP on-cast XP.
+**Still open:** near-city lava/spawns during Erupting phase (atmosphere-only for now); Meshy
+buildings (Cottage/BlacksmithShop/Storehouse/TownHall still fallback blocks); starter-weapon
+choice is client-side only (server unaware of Focus swap — flag for combat owner); vendor/forge
+economy is client-local.
