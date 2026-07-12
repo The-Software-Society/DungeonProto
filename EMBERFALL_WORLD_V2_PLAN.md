@@ -152,6 +152,32 @@ residential lanes) + gate-street lamps + 7 townsfolk; **Marla the Trader** vendo
 **fish-anywhere-while-swimming** (F while swimming, bobber on the water surface ahead; bank
 spots unchanged); quest LocationHints rewritten with V2 compass directions.
 
+---
+# Overnight autonomous loop (2026-07-12, ~02:15–04:30) — status
+
+**Main-quest spine COMPLETE:** q_intro→…→q_rescue→q_clear_roads (kill 4 goblins + 4 bandits)→
+q_ember_scout (first ReachLocation quest; QuestLog now polls position)→q_floor_boss (slay
+cave_troll_boss, 400g + ember_focus). Giver-less chain auto-accepts; boss death still drives the
+eruption Cleared phase + Floor-2 gate independently.
+
+**Party/duel/loot MVP COMPLETE (needs Jon's 2-player validation):** P invite (max 4, full-share
+XP/gold/quest credit), O duel (pairwise pvp exception, loser clamped 1HP, 3s restore), loot 60s
+owner+party protection, minimal PartyHUD. Duels effectively ranged-only (melee targeting can't
+select players yet — known gap).
+
+**World:** +7 camps, 4 secret chests, warcamp banners, plaza furniture; Cottage/BlacksmithShop/
+Storehouse Meshy buildings LANDED and baked; **Aldric + Daughter real models LANDED, textured,
+in-scene** (glade hermit + caged girl). TownHall/MarketBarrel/OakTree still fail Meshy refine
+(service timeouts; fresh-preview retry queued) — fallbacks in place.
+
+**Terrain rewrite: attempted 3 QA rounds, ROLLED BACK** (UseUnityTerrain=false). Foundation works
+(NavMesh/spawns/splats/carved lake+river/basemapDistance + InstanceCountMode fixes found); blocked
+on URP detail-grass rendering (unlit black shards) + splat texture quality. Full code kept for
+in-editor iteration.
+
+**Deploys:** milestone b53e4eb live on Render mid-loop; final overnight build deploying at ~04:30.
+QA screenshot sets in scratchpad (qa_shots3/qa_t1-3/qa_final); repo copy Screenshots/qa-2026-07-12.
+
 **Jon ruling 2026-07-12:** utility casts (Taunt/SelfBuff/Blink) KEEP on-cast XP.
 **Still open:** near-city lava/spawns during Erupting phase (atmosphere-only for now); Meshy
 buildings (Cottage/BlacksmithShop/Storehouse/TownHall still fallback blocks); starter-weapon

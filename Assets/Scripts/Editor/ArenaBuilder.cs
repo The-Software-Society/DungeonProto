@@ -216,8 +216,10 @@ namespace AldenFall.Editor
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = new Color(0.5f, 0.42f, 0.46f);
-            RenderSettings.fogStartDistance = 70f;
-            RenderSettings.fogEndDistance = 340f;
+            // Start farther out: at 70 the terrain washed pale-mint within one screen
+            // of the player (QA terrain round 1) — the haze belongs on the mountains.
+            RenderSettings.fogStartDistance = 130f;
+            RenderSettings.fogEndDistance = 380f;
         }
 
         private static void CreatePostProcessing()

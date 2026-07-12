@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
 using Unity.AI.Navigation;
@@ -49,9 +50,21 @@ namespace AldenFall.Editor
         // ==================== ENTRY ====================
 
         /// <summary>Single entry called by BuildArena — assembles the whole radial world.</summary>
+        // Jon greenlit the real-Terrain rewrite (2026-07-12). ROLLED BACK after 3 QA
+        // rounds: NavMesh/spawns/splats/carving all work, but URP renders the detail
+        // grass as unlit black shards and the ground washes pale next to the richer
+        // tile look — net visual regression per the rollback directive. The full
+        // implementation (BuildEmberfallTerrain + helpers) stays for in-editor
+        // iteration: the missing pieces are a proper URP detail-grass shader and
+        // hand-tuned splat textures, not structure.
+        private const bool UseUnityTerrain = false;
+
         private static void BuildEmberfallWorld(Transform root, int groundLayer)
         {
-            BuildEmberfallGround(root, groundLayer);   // forest ring + charred approach ground
+            if (UseUnityTerrain)
+                BuildEmberfallTerrain(root, groundLayer);  // real Terrain + splats + wind grass
+            else
+                BuildEmberfallGround(root, groundLayer);   // legacy cube tiles (rollback path)
             BuildEmberfallCity(root, groundLayer);
             BuildEmberfallLake(root, groundLayer);
             BuildDeepDarkWoods(root, groundLayer);
@@ -108,6 +121,289 @@ namespace AldenFall.Editor
         }
 
         // ==================== GROUND (forest ring + approach) ====================
+
+        // ==================== REAL TERRAIN (greenlit rewrite) ====================
+
+        /// <summary>
+        /// Real Unity Terrain replacing the cube-tile valley floor: procedurally
+        /// authored splat layers (lush grass → lake sand → volcanic soot via the same
+        /// SootAmount gradient the tiles used), carved lake/river bowls (the existing
+        /// lake/river geometry renders inside them), a recessed city pad so the cobbles
+        /// sit proud without z-fighting, subtle height noise for a natural floor, and
+        /// GPU-instanced WAVING detail grass across the lush ring — the "real terrain +
+        /// wind grass" upgrade Jon greenlit. TerrainCollider is on the Ground layer, so
+        /// the NavMesh bake and GroundSpawn snapping work unchanged.
+        /// </summary>
+        private static void BuildEmberfallTerrain(Transform root, int groundLayer)
+        {
+            const float sizeX = 520f, sizeZ = 592f, sizeY = 40f;
+            Vector3 origin = new Vector3(-260f, -sizeY / 2f, -322f);   // surface base sits at y=0
+            const int hmRes = 257, splatRes = 256, detailRes = 512;
+
+            var data = new TerrainData
+            {
+                heightmapResolution = hmRes,
+                alphamapResolution = splatRes,
+            };
+            data.size = new Vector3(sizeX, sizeY, sizeZ);
+
+            float baseH = 0.5f;   // heightmap value putting the surface at world y=0
+            float MetersToH(float meters) => baseH + meters / sizeY;
+
+            // ---- Heights: flat base + gentle low-frequency noise in the wild ring;
+            // carved bowls for the lake + feeder river; recessed city pad. ----
+            var heights = new float[hmRes, hmRes];
+            for (int iz = 0; iz < hmRes; iz++)
+            {
+                for (int ix = 0; ix < hmRes; ix++)
+                {
+                    float wx = origin.x + ix / (float)(hmRes - 1) * sizeX;
+                    float wz = origin.z + iz / (float)(hmRes - 1) * sizeZ;
+                    float h = 0f;
+
+                    bool flatZone = InCityFootprint(wx, wz) || InGlade(wx, wz)
+                                 || InApproachFootprint(wx, wz)
+                                 || (Mathf.Abs(wx) < 8f && wz > -322f);   // main N-S road
+                    if (!flatZone)
+                        h = (Mathf.PerlinNoise(wx * 0.012f + 31.7f, wz * 0.012f + 17.3f) - 0.5f) * 0.5f;
+
+                    if (InCityFootprint(wx, wz))
+                        h = -0.15f;   // cobbles (top y=0) sit proud of the pad
+
+                    // Lake bowl: sit just under the built mud banks/bed with a WIDE soft
+                    // blend — the deep sharp carve exposed the bank slabs as floating
+                    // shelves in QA round 1.
+                    float lakeDx = Mathf.Max(Mathf.Abs(wx - LakeCenter.x), Mathf.Abs(wz - LakeCenter.z));
+                    if (lakeDx < LakeHalf - 6f)
+                        h = -2.9f;
+                    else if (lakeDx < LakeHalf + 12f)
+                        h = Mathf.Lerp(-2.9f, h, (lakeDx - (LakeHalf - 6f)) / 18f);
+
+                    // Feeder river channel down from the north mountains.
+                    if (wz > LakeCenter.z + LakeHalf - 4f && wz < 270f)
+                    {
+                        float riverDx = Mathf.Abs(wx - FeederRiverX(wz));
+                        if (riverDx < 9f)
+                            h = -2.6f;
+                        else if (riverDx < 15f)
+                            h = Mathf.Lerp(-2.6f, h, (riverDx - 9f) / 6f);
+                    }
+
+                    heights[iz, ix] = MetersToH(h);
+                }
+            }
+            data.SetHeights(0, 0, heights);
+
+            // ---- Splat layers (procedural textures — no external assets needed) ----
+            var grassLayer = MakeTerrainLayer("TL_Grass", new Color(0.16f, 0.3f, 0.12f), 0.05f);
+            var sandLayer = MakeTerrainLayer("TL_Sand", new Color(0.52f, 0.46f, 0.34f), 0.03f);
+            var sootLayer = MakeTerrainLayer("TL_Soot", new Color(0.115f, 0.09f, 0.08f), 0.04f);
+            var dirtLayer = MakeTerrainLayer("TL_Dirt", new Color(0.36f, 0.28f, 0.19f), 0.04f);
+            data.terrainLayers = new[] { grassLayer, sandLayer, sootLayer, dirtLayer };
+
+            var alpha = new float[splatRes, splatRes, 4];
+            for (int iz = 0; iz < splatRes; iz++)
+            {
+                for (int ix = 0; ix < splatRes; ix++)
+                {
+                    float wx = origin.x + ix / (float)(splatRes - 1) * sizeX;
+                    float wz = origin.z + iz / (float)(splatRes - 1) * sizeZ;
+
+                    float soot = SootAmount(wx, wz);
+                    bool nearLake = Mathf.Abs(wx - LakeCenter.x) < LakeHalf + 12f
+                                 && Mathf.Abs(wz - LakeCenter.z) < LakeHalf + 12f;
+                    bool road = Mathf.Abs(wx) < 6f && wz > -322f;
+
+                    float g = 1f, s = 0f, so = 0f, d = 0f;
+                    if (soot > 0.05f) { so = Mathf.Clamp01(soot); g = 1f - so; }
+                    if (nearLake) { s = 0.85f; g *= 0.15f; }
+                    if (road || InCityFootprint(wx, wz)) { d = 0.8f; g *= 0.2f; so *= 0.5f; }
+
+                    float sum = g + s + so + d;
+                    alpha[iz, ix, 0] = g / sum;
+                    alpha[iz, ix, 1] = s / sum;
+                    alpha[iz, ix, 2] = so / sum;
+                    alpha[iz, ix, 3] = d / sum;
+                }
+            }
+            data.SetAlphamaps(0, 0, alpha);
+
+            // ---- GPU-instanced detail grass across the lush ring. URP does NOT render
+            // the classic GrassBillboard/wavingGrass path (QA round 1: zero grass drawn) —
+            // instanced MESH details are the supported route in Unity 6 URP. ----
+            data.SetDetailResolution(detailRes, 32);
+            // Unity 6 defaults to COVERAGE scatter mode, where our 1-3 density values
+            // (out of 255) render as effectively nothing — we author instance counts.
+            data.SetDetailScatterMode(DetailScatterMode.InstanceCountMode);
+            var detail = new DetailPrototype
+            {
+                prototype = MakeGrassTuftPrefab(),
+                renderMode = DetailRenderMode.VertexLit,
+                healthyColor = new Color(0.32f, 0.55f, 0.22f),
+                dryColor = new Color(0.42f, 0.44f, 0.16f),
+                minWidth = 0.7f, maxWidth = 1.3f,
+                minHeight = 0.6f, maxHeight = 1.1f,
+                noiseSeed = 42,
+                useInstancing = true,
+                usePrototypeMesh = true,
+            };
+            data.detailPrototypes = new[] { detail };
+
+            var density = new int[detailRes, detailRes];
+            for (int iz = 0; iz < detailRes; iz++)
+            {
+                for (int ix = 0; ix < detailRes; ix++)
+                {
+                    float wx = origin.x + ix / (float)(detailRes - 1) * sizeX;
+                    float wz = origin.z + iz / (float)(detailRes - 1) * sizeZ;
+
+                    if (InCityFootprint(wx, wz) || InApproachFootprint(wx, wz)) continue;
+                    if (InLakeWater(wx, wz) || InFeederRiver(wx, wz)) continue;
+                    if (Mathf.Abs(wx - LakeCenter.x) < LakeHalf + 10f
+                     && Mathf.Abs(wz - LakeCenter.z) < LakeHalf + 10f) continue;
+                    if (SootAmount(wx, wz) > 0.25f) continue;
+                    if (Mathf.Abs(wx) < 7f && wz > -60f) continue;      // keep the road clear
+                    float ring = Mathf.Sqrt(wx * wx + wz * wz);
+                    if (ring > 250f) continue;
+
+                    // Clumpy coverage reads more natural than a uniform lawn.
+                    float clump = Mathf.PerlinNoise(wx * 0.05f + 7.7f, wz * 0.05f + 3.1f);
+                    if (clump < 0.35f) continue;
+                    density[iz, ix] = clump > 0.6f ? 3 : 1;
+                }
+            }
+            data.SetDetailLayer(0, 0, 0, density);
+
+            AssetDatabase.CreateAsset(data, $"{MaterialDir}/EmberfallTerrain.asset");
+
+            var terrainObj = Terrain.CreateTerrainGameObject(data);
+            terrainObj.name = "EmberfallTerrain";
+            terrainObj.transform.SetParent(root);
+            terrainObj.transform.position = origin;
+            if (groundLayer >= 0) terrainObj.layer = groundLayer;
+            terrainObj.isStatic = true;
+            var terrain = terrainObj.GetComponent<Terrain>();
+            terrain.detailObjectDistance = 120f;
+            terrain.detailObjectDensity = 1f;
+            terrain.heightmapPixelError = 6f;
+            // Default basemapDistance (~20m) swaps to the washed-out low-res basemap one
+            // screen from the player — THE pale-mint wash in both QA rounds. Keep the
+            // real splats out to the fog band.
+            terrain.basemapDistance = 400f;
+        }
+
+        private static TerrainLayer MakeTerrainLayer(string name, Color baseColor, float noise)
+        {
+            var tex = new Texture2D(64, 64, TextureFormat.RGBA32, true);
+            var px = new Color[64 * 64];
+            var r = new System.Random(name.GetHashCode());
+            for (int i = 0; i < px.Length; i++)
+            {
+                float n = ((float)r.NextDouble() * 2f - 1f) * noise * 3f;
+                px[i] = new Color(
+                    Mathf.Clamp01(baseColor.r + n),
+                    Mathf.Clamp01(baseColor.g + n),
+                    Mathf.Clamp01(baseColor.b + n), 1f);
+            }
+            tex.SetPixels(px);
+            tex.Apply(true);
+            AssetDatabase.CreateAsset(tex, $"{MaterialDir}/{name}_Tex.asset");
+
+            var layer = new TerrainLayer
+            {
+                diffuseTexture = tex,
+                tileSize = new Vector2(14f, 14f),
+                specular = Color.black,
+                smoothness = 0.03f,
+            };
+            AssetDatabase.CreateAsset(layer, $"{MaterialDir}/{name}.terrainlayer");
+            return layer;
+        }
+
+        /// <summary>
+        /// A crossed-quad grass tuft PREFAB for instanced terrain details (URP path).
+        /// Two intersecting vertical quads, vertex-colored dark→light so the terrain
+        /// detail tinting reads as depth. Saved under MaterialDir like the layers.
+        /// </summary>
+        private static GameObject MakeGrassTuftPrefab()
+        {
+            string prefabPath = $"{MaterialDir}/GrassTuft.prefab";
+            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (existing != null) return existing;
+
+            var mesh = new Mesh { name = "GrassTuftMesh" };
+            var verts = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var cols = new List<Color>();
+            var tris = new List<int>();
+            void Quad(Quaternion rot)
+            {
+                int b = verts.Count;
+                verts.Add(rot * new Vector3(-0.5f, 0f, 0f));
+                verts.Add(rot * new Vector3(0.5f, 0f, 0f));
+                verts.Add(rot * new Vector3(0.35f, 1f, 0f));
+                verts.Add(rot * new Vector3(-0.35f, 1f, 0f));
+                uvs.Add(new Vector2(0, 0)); uvs.Add(new Vector2(1, 0));
+                uvs.Add(new Vector2(1, 1)); uvs.Add(new Vector2(0, 1));
+                var dark = new Color(0.16f, 0.3f, 0.12f);
+                var light = new Color(0.4f, 0.62f, 0.24f);
+                cols.Add(dark); cols.Add(dark); cols.Add(light); cols.Add(light);
+                tris.AddRange(new[] { b, b + 2, b + 1, b, b + 3, b + 2,
+                                      b, b + 1, b + 2, b, b + 2, b + 3 });   // double-sided
+            }
+            Quad(Quaternion.identity);
+            Quad(Quaternion.Euler(0f, 90f, 0f));
+            mesh.SetVertices(verts);
+            mesh.SetUVs(0, uvs);
+            mesh.SetColors(cols);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+            AssetDatabase.CreateAsset(mesh, $"{MaterialDir}/GrassTuftMesh.asset");
+
+            var mat = Mat("GrassTuft", new Color(0.3f, 0.5f, 0.2f), smoothness: 0.05f);
+
+            var go = new GameObject("GrassTuft");
+            var mf = go.AddComponent<MeshFilter>();
+            mf.sharedMesh = mesh;
+            var mr = go.AddComponent<MeshRenderer>();
+            mr.sharedMaterial = mat;
+            mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            var prefab = PrefabUtility.SaveAsPrefabAsset(go, prefabPath);
+            Object.DestroyImmediate(go);
+            return prefab;
+        }
+
+        private static Texture2D MakeGrassBladeTexture()
+        {
+            // A few soft vertical blades with alpha falloff — enough for the terrain
+            // grass billboard shader to read as waving tufts, not solid cards.
+            const int w = 32, h = 32;
+            var tex = new Texture2D(w, h, TextureFormat.RGBA32, true);
+            var px = new Color[w * h];
+            var r = new System.Random(1234);
+            for (int i = 0; i < px.Length; i++) px[i] = new Color(0, 0, 0, 0);
+            for (int blade = 0; blade < 7; blade++)
+            {
+                int bx = 2 + r.Next(w - 4);
+                float lean = ((float)r.NextDouble() - 0.5f) * 6f;
+                int height = h - 4 - r.Next(8);
+                for (int y = 0; y < height; y++)
+                {
+                    int x = bx + Mathf.RoundToInt(lean * y / (float)h);
+                    if (x < 0 || x >= w) continue;
+                    float t = y / (float)height;
+                    var c = Color.Lerp(new Color(0.25f, 0.42f, 0.15f), new Color(0.45f, 0.65f, 0.25f), t);
+                    c.a = 1f;
+                    px[y * w + x] = c;
+                    if (y < height / 2 && x + 1 < w) px[y * w + x + 1] = c;   // thicker base
+                }
+            }
+            tex.SetPixels(px);
+            tex.Apply(true);
+            AssetDatabase.CreateAsset(tex, $"{MaterialDir}/TL_GrassBlade_Tex.asset");
+            return tex;
+        }
 
         private static void BuildEmberfallGround(Transform root, int groundLayer)
         {
