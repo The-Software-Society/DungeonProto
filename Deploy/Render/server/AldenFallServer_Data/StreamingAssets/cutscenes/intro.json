@@ -3,39 +3,39 @@
   "letterbox": true,
   "steps": [
     { "type": "fade", "target": 1, "seconds": 0 },
-    { "type": "camera", "pos": [0, 22, -138], "lookAt": [0, 1, -115], "seconds": 0 },
+    { "type": "camera", "pos": [14, 9, 78], "lookAt": [0, 1.4, 90], "seconds": 0 },
     { "type": "fade", "target": 0, "seconds": 2.0, "blocking": false },
-    { "type": "subtitle", "text": "EMBERFALL", "seconds": 3.2, "blocking": false },
-    { "type": "camera", "pos": [3.5, 5, -125], "lookAt": [0, 1.2, -115], "seconds": 5.0 },
-    { "type": "subtitle", "text": "You wake beneath the pines, the taste of ash on the wind.", "seconds": 4.2, "blocking": false },
-    { "type": "wait", "seconds": 0.8 },
+    { "type": "subtitle", "text": "THE NORTHERN GLADE", "seconds": 3.2, "blocking": false },
+    { "type": "camera", "pos": [5.5, 3.0, 84], "lookAt": [0, 1.5, 90], "seconds": 5.0 },
+    { "type": "subtitle", "text": "You come to beneath the pines, the smoke of Emberfall still at your back.", "seconds": 4.4, "blocking": false },
+    { "type": "wait", "seconds": 0.6 },
 
-    { "type": "move", "actor": "Aldric", "pos": [2.4, 0, -112.5], "seconds": 3.0, "blocking": false },
-    { "type": "camera", "pos": [-2.8, 2.2, -118.5], "lookAt": [1.4, 1.4, -114], "seconds": 3.2 },
-    { "type": "subtitle", "text": "Aldric:  On your feet. The forest floor is no bed for the living.", "seconds": 3.8, "blocking": false },
-    { "type": "face", "actor": "Aldric", "lookAt": [0, 0, -115] },
-    { "type": "face", "actor": "player", "lookAt": [2.4, 0, -112.5] },
+    { "type": "face", "actor": "Aldric", "lookAt": [0, 0, 84] },
+    { "type": "camera", "pos": [-2.6, 2.2, 85.5], "lookAt": [1.6, 1.5, 90], "seconds": 3.4 },
+    { "type": "subtitle", "text": "Aldric:  Easy, now. You walked a long way just to fall down in an old man's glade.", "seconds": 4.6, "blocking": false },
 
-    { "type": "camera", "pos": [1.2, 2.0, -109.5], "lookAt": [2.6, 1.6, -113], "seconds": 3.6 },
-    { "type": "subtitle", "text": "Aldric:  I am Aldric. Once I was... something else. Now I keep this quiet corner of a dying world.", "seconds": 5.0, "blocking": false },
+    { "type": "camera", "pos": [1.8, 1.9, 87.0], "lookAt": [0.2, 1.5, 90], "seconds": 3.6 },
+    { "type": "subtitle", "text": "Aldric:  They called me something once, down in the low country. A hero, if you believe the songs. I stopped believing them.", "seconds": 5.6, "blocking": false },
     { "type": "anim", "actor": "Aldric", "state": "Cast" },
+    { "type": "subtitle", "text": "Aldric:  So I came up here, to the quiet, and let the trees forget my name for me.", "seconds": 4.6, "blocking": false },
 
-    { "type": "camera", "pos": [-1.5, 1.8, -111], "lookAt": [2.6, 1.5, -113], "seconds": 4.0 },
-    { "type": "subtitle", "text": "Aldric:  Emberfall is falling. The dungeon beneath the hills spreads its rot a little further each night.", "seconds": 5.0, "blocking": false },
+    { "type": "camera", "pos": [-1.2, 2.4, 86.0], "lookAt": [0.4, 1.5, 90], "seconds": 4.0 },
+    { "type": "subtitle", "text": "Aldric:  But the quiet's ending. South of here the mountain burns — the volcano is waking, and its embers reach for the town.", "seconds": 5.8, "blocking": false },
+    { "type": "wait", "seconds": 0.3 },
+    { "type": "subtitle", "text": "Aldric:  Someone has to go down into that fire and end it. And you have the look of someone with little left to lose.", "seconds": 5.4, "blocking": false },
+
+    { "type": "camera", "pos": [2.2, 1.7, 87.5], "lookAt": [0, 1.4, 90.5], "seconds": 3.8 },
+    { "type": "subtitle", "text": "Aldric:  I've two gifts left in me. A blade, for a steady hand — or the flame, for a restless mind. Choose what suits you.", "seconds": 5.6, "blocking": false },
+    { "type": "anim", "actor": "player", "state": "Idle" },
+
+    { "type": "choice", "blocking": true },
+
     { "type": "wait", "seconds": 0.4 },
-    { "type": "subtitle", "text": "Aldric:  Someone must go down into the dark and end it. But not as you are now.", "seconds": 4.4, "blocking": false },
+    { "type": "camera", "pos": [0, 6.0, 80], "lookAt": [0, 1.4, 92], "seconds": 4.2 },
+    { "type": "subtitle", "text": "Aldric:  Good. Go and learn its weight. Fish the lake, warm yourself, live a little. The mountain will still be waiting.", "seconds": 5.6, "blocking": false },
 
-    { "type": "camera", "pos": [2.2, 1.6, -110.5], "lookAt": [0, 1.3, -115], "seconds": 3.6 },
-    { "type": "subtitle", "text": "Aldric:  Take this — it is yours now. A blade, or the spark of magic. Choose what suits your hand.", "seconds": 4.6, "blocking": false },
-    { "type": "anim", "actor": "player", "state": "Attack" },
-
-    { "type": "camera", "pos": [0, 5.5, -122], "lookAt": [0, 1.2, -102], "seconds": 4.4 },
-    { "type": "subtitle", "text": "Aldric:  Learn to fight. Learn to fish and to cook — a full belly wins more battles than a sharp sword.", "seconds": 5.0, "blocking": false },
-    { "type": "wait", "seconds": 0.4 },
-    { "type": "subtitle", "text": "Aldric:  The town of Emberfall lies north through the gate. Go. Live a little, before the dark calls you down.", "seconds": 5.0, "blocking": false },
-
-    { "type": "wait", "seconds": 1.0 },
-    { "type": "fade", "target": 1, "seconds": 1.0 },
+    { "type": "wait", "seconds": 0.9 },
+    { "type": "fade", "target": 1, "seconds": 1.2 },
     { "type": "fade", "target": 0, "seconds": 0.8 }
   ]
 }
