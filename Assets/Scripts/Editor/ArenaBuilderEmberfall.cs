@@ -2185,6 +2185,97 @@ namespace AldenFall.Editor
 
             // Side quest "The Empty Grave": a grave near Sister Maela's shrine, never filled.
             BuildEmptyGrave(new Vector3(-36f, 0f, 13f), groundLayer);
+
+            // Phase 7 gathering + crafting: ore rocks, oak trees, an anvil and a fletch bench.
+            BuildGatherCraft(root, groundLayer);
+        }
+
+        private static void BuildGatherCraft(Transform root, int groundLayer)
+        {
+            int interactLayer = LayerMask.NameToLayer("Interactable");
+            var container = new GameObject("GatherCraft");
+            container.transform.SetParent(root, false);
+
+            // ---- Ore rocks (Mining) ----
+            var copperMat = Mat("OreCopper", new Color(0.55f, 0.35f, 0.22f), smoothness: 0.3f, emission: new Color(0.5f, 0.22f, 0.06f));
+            var ironMat = Mat("OreIron", new Color(0.42f, 0.42f, 0.46f), smoothness: 0.25f, emission: new Color(0.12f, 0.12f, 0.14f));
+            var rockMat = Mat("OreRock", new Color(0.3f, 0.29f, 0.3f), smoothness: 0.1f);
+            Vector3[] copper = { new Vector3(-70f, 0f, 40f), new Vector3(76f, 0f, 52f), new Vector3(-58f, 0f, -42f) };
+            foreach (var p in copper) BuildOreNode(container.transform, p, "copper_ore", "Copper", 1, rockMat, copperMat, interactLayer, groundLayer);
+            Vector3[] iron = { new Vector3(-150f, 0f, 64f), new Vector3(150f, 0f, 72f) };
+            foreach (var p in iron) BuildOreNode(container.transform, p, "iron_ore", "Iron", 10, rockMat, ironMat, interactLayer, groundLayer);
+
+            // ---- Oak trees (Woodcutting) ----
+            Vector3[] trees = { new Vector3(-90f, 0f, 120f), new Vector3(86f, 0f, 104f), new Vector3(42f, 0f, 150f) };
+            foreach (var p in trees) BuildTreeNode(container.transform, p, interactLayer, groundLayer);
+
+            // ---- Anvil (Smithing) near the forge, fletch bench (Fletching) at the market ----
+            BuildStation(container.transform, new Vector3(30f, 0f, -10f), "anvil", "Smith at the anvil",
+                new Color(0.16f, 0.16f, 0.18f), new Vector3(1.4f, 1.0f, 0.8f), interactLayer, groundLayer);
+            BuildStation(container.transform, new Vector3(16f, 0f, -8f), "fletch_bench", "Fletch at the bench",
+                new Color(0.4f, 0.28f, 0.16f), new Vector3(1.8f, 0.9f, 0.9f), interactLayer, groundLayer);
+        }
+
+        private static void BuildOreNode(Transform parent, Vector3 pos, string item, string label, int level,
+            Material rockMat, Material oreMat, int interactLayer, int groundLayer)
+        {
+            var go = new GameObject($"OreNode_{label}");
+            go.transform.SetParent(parent);
+            go.transform.position = pos;
+            if (interactLayer >= 0) go.layer = interactLayer;
+
+            var rock = Cube("Rock", pos + Vector3.up * 0.8f, new Vector3(2.4f, 1.7f, 2.2f), rockMat, go.transform);
+            rock.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() * 8 - 4), (float)(rng.NextDouble() * 360), 0f);
+            rock.isStatic = true;
+            if (groundLayer >= 0) rock.layer = groundLayer;
+            var vein = Cube("Vein", pos + Vector3.up * 1.1f, new Vector3(2.5f, 0.5f, 2.3f), oreMat, go.transform);
+            Object.DestroyImmediate(vein.GetComponent<BoxCollider>());
+            if (groundLayer >= 0) vein.layer = groundLayer;
+
+            var node = go.AddComponent<World.ResourceNode>();
+            node.Configure("Mining", item, "pickaxe", level, 18f, 3f, 8, 20f);
+            node.Prompt = $"Mine {label.ToLower()} (Mining {level})";
+            node.Radius = 3.2f;
+        }
+
+        private static void BuildTreeNode(Transform parent, Vector3 pos, int interactLayer, int groundLayer)
+        {
+            var go = new GameObject("TreeNode_Oak");
+            go.transform.SetParent(parent);
+            go.transform.position = pos;
+            if (interactLayer >= 0) go.layer = interactLayer;
+
+            var trunkMat = Mat("OakTrunk", new Color(0.34f, 0.24f, 0.15f), smoothness: 0.05f);
+            var leafMat = Mat("OakLeaf", new Color(0.26f, 0.45f, 0.2f), smoothness: 0.05f);
+            var trunk = Cylinder("Trunk", pos + Vector3.up * 2.2f, new Vector3(0.7f, 2.2f, 0.7f), trunkMat, go.transform);
+            trunk.isStatic = true;
+            if (groundLayer >= 0) trunk.layer = groundLayer;
+            var canopy = Sphere("Canopy", pos + Vector3.up * 5.0f, new Vector3(4.2f, 3.4f, 4.2f), leafMat, go.transform);
+            Object.DestroyImmediate(canopy.GetComponent<SphereCollider>());
+            if (groundLayer >= 0) canopy.layer = groundLayer;
+
+            var node = go.AddComponent<World.ResourceNode>();
+            node.Configure("Woodcutting", "oak_log", "axe", 1, 16f, 3f, 10, 22f);
+            node.Prompt = "Chop oak (Woodcutting)";
+            node.Radius = 3.4f;
+        }
+
+        private static void BuildStation(Transform parent, Vector3 pos, string station, string prompt,
+            Color color, Vector3 size, int interactLayer, int groundLayer)
+        {
+            var go = new GameObject($"Station_{station}");
+            go.transform.SetParent(parent);
+            go.transform.position = pos;
+            if (interactLayer >= 0) go.layer = interactLayer;
+
+            var block = Cube("Block", pos + Vector3.up * (size.y * 0.5f), size, Mat($"Station_{station}", color, smoothness: 0.2f), go.transform);
+            block.isStatic = true;
+            if (groundLayer >= 0) block.layer = groundLayer;
+
+            var s = go.AddComponent<World.CraftingStation>();
+            s.Station = station;
+            s.Prompt = prompt;
+            s.Radius = 3.2f;
         }
 
         private static void BuildEmptyGrave(Vector3 pos, int groundLayer)

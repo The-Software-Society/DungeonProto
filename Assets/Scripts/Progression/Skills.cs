@@ -13,6 +13,11 @@ namespace AldenFall.Progression
         Fishing = 4,   // append-only enum, serialized indices
         Cooking = 5,
         Ranged = 6,    // archery (third combat style)
+        Mining = 7,    // gather ore
+        Woodcutting = 8, // gather logs
+        Smithing = 9,  // craft ore/bars into gear
+        Fletching = 10, // craft logs/bars into arrows and bows
+        Health = 11,   // levels via damage taken, feeds MaxHealth
     }
 
     /// <summary>
@@ -25,7 +30,7 @@ namespace AldenFall.Progression
     /// </summary>
     public class Skills : MonoBehaviour
     {
-        public const int SkillCount = 7;
+        public const int SkillCount = 12;
 
         /// <summary>The level clamp. Reads config/progression.json (practicalCap, 99 today).
         /// hardCap (500) is reserved for the secret-cap work in WORLD1_COMPLETION_PLAN F5.</summary>
@@ -35,7 +40,7 @@ namespace AldenFall.Progression
         public UnityEvent<SkillType, float> OnXpGained;      // skill, xp amount
         public UnityEvent<SkillType, int> OnLevelUp;          // skill, new level
 
-        private readonly int[] levels = { 1, 1, 1, 1, 1, 1, 1 };
+        private readonly int[] levels = { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
         private readonly float[] xp = new float[SkillCount];
 
         public int Level(SkillType skill) => levels[(int)skill];

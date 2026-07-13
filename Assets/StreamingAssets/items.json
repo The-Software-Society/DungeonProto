@@ -673,6 +673,230 @@
       "EatLockout": 0.0,
       "CookedResult": "",
       "Value": 0
+    },
+    {
+      "Id": "pickaxe",
+      "Name": "Pickaxe",
+      "Description": "A miner's pick. Needed to work ore.",
+      "slot": "None",
+      "weaponKind": "None",
+      "rarity": "Common",
+      "Bonuses": [],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 1,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 20
+    },
+    {
+      "Id": "axe",
+      "Name": "Woodcutting Axe",
+      "Description": "A felling axe for timber.",
+      "slot": "None",
+      "weaponKind": "None",
+      "rarity": "Common",
+      "Bonuses": [],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 1,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 18
+    },
+    {
+      "Id": "copper_ore",
+      "Name": "Copper Ore",
+      "Description": "Raw copper, smelts into a bar.",
+      "slot": "None",
+      "weaponKind": "None",
+      "rarity": "Common",
+      "Bonuses": [],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 100,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 3
+    },
+    {
+      "Id": "iron_ore",
+      "Name": "Iron Ore",
+      "Description": "Raw iron, smelts into a bar.",
+      "slot": "None",
+      "weaponKind": "None",
+      "rarity": "Common",
+      "Bonuses": [],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 100,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 5
+    },
+    {
+      "Id": "copper_bar",
+      "Name": "Copper Bar",
+      "Description": "A smelted copper bar.",
+      "slot": "None",
+      "weaponKind": "None",
+      "rarity": "Common",
+      "Bonuses": [],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 100,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 8
+    },
+    {
+      "Id": "iron_bar",
+      "Name": "Iron Bar",
+      "Description": "A smelted iron bar.",
+      "slot": "None",
+      "weaponKind": "None",
+      "rarity": "Common",
+      "Bonuses": [],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 100,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 12
+    },
+    {
+      "Id": "steel_bar",
+      "Name": "Steel Bar",
+      "Description": "Iron worked with copper into steel.",
+      "slot": "None",
+      "weaponKind": "None",
+      "rarity": "Uncommon",
+      "Bonuses": [],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 100,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 22
+    },
+    {
+      "Id": "oak_log",
+      "Name": "Oak Log",
+      "Description": "Seasoned oak, good for shafts and bows.",
+      "slot": "None",
+      "weaponKind": "None",
+      "rarity": "Common",
+      "Bonuses": [],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 100,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 4
+    },
+    {
+      "Id": "steel_sword",
+      "Name": "Steel Sword",
+      "Description": "A keen steel blade, forged not looted.",
+      "slot": "Weapon",
+      "weaponKind": "Sword",
+      "rarity": "Uncommon",
+      "Bonuses": [
+        {
+          "type": "WeaponPower",
+          "value": 14.0
+        },
+        {
+          "type": "AttackSpeed",
+          "value": 0.06
+        }
+      ],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 1,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 0
+    },
+    {
+      "Id": "steel_bow",
+      "Name": "Steel-strung Bow",
+      "Description": "A crafted bow of oak and steel wire.",
+      "slot": "Weapon",
+      "weaponKind": "Bow",
+      "rarity": "Uncommon",
+      "Bonuses": [
+        {
+          "type": "WeaponPower",
+          "value": 13.0
+        }
+      ],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 1,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 0
     }
   ]
 }

@@ -294,6 +294,18 @@ namespace AldenFall.DebugTools
             var bossQ = Quests.QuestDatabase.Get("q_floor_boss");
             Check("q_floor_boss offers melee/magic/archery (3 choices)", bossQ != null && bossQ.RewardChoices.Count == 3);
 
+            // Phase 7 gather/craft skills.
+            Check("SkillRegistry has Mining", Progression.SkillRegistry.Get(Progression.SkillType.Mining).display == "Mining");
+            Check("SkillRegistry has Smithing", Progression.SkillRegistry.Get(Progression.SkillType.Smithing).display == "Smithing");
+            Check("SkillRegistry has Health", Progression.SkillRegistry.Get(Progression.SkillType.Health).display == "Health");
+            Check("recipes load (>=6)", Items.RecipeDatabase.All.Count >= 6);
+            Check("anvil has smithing recipes", Items.RecipeDatabase.ForStation("anvil").Count >= 1);
+            var oreItem = Items.ItemDatabase.Get("iron_ore");
+            Check("iron_ore stacks", oreItem != null && oreItem.MaxStack > 1);
+            Check("iron_bar item loads", Items.ItemDatabase.Get("iron_bar") != null);
+            Check("resource nodes placed (>=5)", FindObjectsByType<World.ResourceNode>(FindObjectsSortMode.None).Length >= 5);
+            Check("craft stations placed (>=2)", FindObjectsByType<World.CraftingStation>(FindObjectsSortMode.None).Length >= 2);
+
             // Ability database + enums/flags.
             var fb = Abilities.AbilityDatabase.Get("fireball");
             Check("ability fireball loaded, kind Projectile", fb != null && fb.Kind == Abilities.AbilityKind.Projectile);

@@ -88,6 +88,7 @@ namespace AldenFall.Multiplayer
             Ensure<StatBlock>();
             Ensure<Skills>();
             Ensure<Combat.Health>();
+            Ensure<Combat.HealthSkill>();
             Ensure<Combat.StatusSystem>();
             Ensure<Combat.TargetingSystem>();
             Ensure<Combat.PlayerMelee>();
@@ -102,6 +103,8 @@ namespace AldenFall.Multiplayer
             Ensure<PlayerConsumables>();
             Ensure<FishingController>();
             Ensure<CookingController>();
+            Ensure<GatherController>();
+            Ensure<CraftingController>();
             Ensure<PlayerInteractor>();
         }
 
@@ -219,6 +222,8 @@ namespace AldenFall.Multiplayer
                 Enable<Items.PlayerConsumables>();
                 Enable<FishingController>();
                 Enable<CookingController>();
+                Enable<GatherController>();
+                Enable<CraftingController>();
                 Enable<PlayerInteractor>();
                 Enable<PlayerDeath>();
                 var characterController = GetComponent<CharacterController>();
@@ -239,6 +244,8 @@ namespace AldenFall.Multiplayer
             Disable<Items.PlayerConsumables>();
             Disable<FishingController>();
             Disable<CookingController>();
+            Disable<GatherController>();
+            Disable<CraftingController>();
             Disable<PlayerInteractor>();
             Disable<PlayerDeath>();
 
