@@ -781,9 +781,8 @@ namespace AldenFall.Editor
             // ---- NPCs ----
             // Aldric is NOT in the city — he's the old hermit in the forest glade north of
             // town (see BuildAldricGlade), where the intro cutscene meets him. Only the
-            // Worried Mother (q_rescue giver, npcId "townsperson") lives in the city — kept at (10,0,-6)
-            // so the existing q_rescue_start/complete cutscenes still frame correctly.
-            BuildRescueGiver(container, groundLayer);
+            // Elowen (q_rescue giver, npcId "elowen") is placed from npcs.json at (10,0,-6),
+            // replacing the old hardcoded Worried Mother; the rescue cutscenes still frame there.
             BuildVendorNPC(container, groundLayer);
             BuildEmberRestTavern(container, groundLayer);
         }
@@ -2158,6 +2157,124 @@ namespace AldenFall.Editor
 
             // Q4 "First Blood, First Return": a fallen traveler on the road south of the glade.
             BuildDeadTravelerMarker(groundLayer);
+
+            // Named NPC roster (Elowen, Rusk, Maela, Sella, Garron, Toma, Pip) from npcs.json.
+            BuildDataNpcs(root, groundLayer);
+        }
+
+        private static void BuildDataNpcs(Transform root, int groundLayer)
+        {
+            int interactableLayer = LayerMask.NameToLayer("Interactable");
+            var container = new GameObject("DataNpcs");
+            container.transform.SetParent(root, false);
+            foreach (var def in World.NpcRoster.LoadAll())
+                BuildOneDataNpc(container.transform, def, groundLayer, interactableLayer);
+        }
+
+        private static void BuildOneDataNpc(Transform parent, World.NpcDef def, int groundLayer, int interactableLayer)
+        {
+            var go = new GameObject(string.IsNullOrEmpty(def.displayName) ? def.id : def.displayName);
+            go.transform.SetParent(parent);
+            go.transform.position = new Vector3(def.x, 0f, def.z);
+            go.transform.rotation = Quaternion.Euler(0f, def.yaw, 0f);
+            if (interactableLayer >= 0) go.layer = interactableLayer;
+
+            switch ((def.role ?? "townsfolk").ToLowerInvariant())
+            {
+                case "quest":
+                {
+                    var giver = go.AddComponent<World.QuestGiverNPC>();
+                    var so = new SerializedObject(giver);
+                    so.FindProperty("npcId").stringValue = string.IsNullOrEmpty(def.questNpcId) ? def.id : def.questNpcId;
+                    so.FindProperty("questId").stringValue = "";
+                    so.FindProperty("displayName").stringValue = def.displayName;
+                    so.FindProperty("prompt").stringValue = $"Talk to {def.displayName}";
+                    so.FindProperty("radius").floatValue = 3.5f;
+                    so.ApplyModifiedProperties();
+                    AddNpcLight(go.transform);
+                    break;
+                }
+                case "vendor":
+                {
+                    var vendor = go.AddComponent<World.VendorNPC>();
+                    var so = new SerializedObject(vendor);
+                    so.FindProperty("displayName").stringValue = def.displayName;
+                    so.ApplyModifiedProperties();
+                    break;
+                }
+                default:
+                {
+                    var folk = go.AddComponent<World.TownsfolkNPC>();
+                    var so = new SerializedObject(folk);
+                    so.FindProperty("displayName").stringValue = def.displayName;
+                    var barks = so.FindProperty("barks");
+                    if (def.barks != null)
+                    {
+                        barks.arraySize = def.barks.Length;
+                        for (int i = 0; i < def.barks.Length; i++)
+                            barks.GetArrayElementAtIndex(i).stringValue = def.barks[i];
+                    }
+                    so.FindProperty("prompt").stringValue = $"Talk to {def.displayName}";
+                    so.FindProperty("radius").floatValue = 2.6f;
+                    so.ApplyModifiedProperties();
+                    break;
+                }
+            }
+
+            // Root collider so the player cannot walk through them.
+            var col = go.AddComponent<CapsuleCollider>();
+            col.height = 2f; col.radius = 0.4f; col.center = new Vector3(0f, 1f, 0f);
+
+            BuildNpcVisual(go.transform, def, groundLayer);
+        }
+
+        private static void BuildNpcVisual(Transform npc, World.NpcDef def, int groundLayer)
+        {
+            var model = SceneSetup.InstantiateGeneratedVisual(def.model, npc);
+            if (model != null)
+            {
+                model.name = "Body";
+                model.transform.localPosition = Vector3.zero;
+                model.transform.localRotation = Quaternion.identity;
+                if (groundLayer >= 0) SetLayerRecursive(model, groundLayer);
+                return;
+            }
+
+            Color robe = ColorUtility.TryParseHtmlString(string.IsNullOrEmpty(def.robeHex) ? "#4A4258" : def.robeHex, out var c)
+                ? c : new Color(0.29f, 0.26f, 0.35f);
+            var robeMat = SceneSetup.GetOrCreateMaterialAsset(robe, $"Npc_{def.id}_Robe");
+            var skinMat = SceneSetup.GetOrCreateMaterialAsset(new Color(0.82f, 0.66f, 0.52f), "NpcSkinMaterial");
+
+            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            body.name = "Body";
+            body.transform.SetParent(npc);
+            body.transform.localPosition = new Vector3(0f, 1.0f, 0f);
+            body.transform.localScale = new Vector3(0.8f, 1.0f, 0.8f);
+            Object.DestroyImmediate(body.GetComponent<Collider>());   // root collider handles solidity
+            body.GetComponent<MeshRenderer>().sharedMaterial = robeMat;
+            if (groundLayer >= 0) body.layer = groundLayer;
+
+            var head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            head.name = "Head";
+            head.transform.SetParent(npc);
+            head.transform.localPosition = new Vector3(0f, 2.05f, 0f);
+            head.transform.localScale = Vector3.one * 0.55f;
+            Object.DestroyImmediate(head.GetComponent<Collider>());
+            head.GetComponent<MeshRenderer>().sharedMaterial = skinMat;
+            if (groundLayer >= 0) head.layer = groundLayer;
+        }
+
+        private static void AddNpcLight(Transform npc)
+        {
+            var lightObj = new GameObject("QuestLight");
+            lightObj.transform.SetParent(npc);
+            lightObj.transform.localPosition = Vector3.up * 2.6f;
+            var light = lightObj.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = new Color(0.95f, 0.8f, 0.5f);
+            light.intensity = 1.4f;
+            light.range = 5f;
+            light.shadows = LightShadows.None;
         }
 
         private static void BuildDeadTravelerMarker(int groundLayer)

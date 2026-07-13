@@ -340,6 +340,13 @@ namespace AldenFall.DebugTools
                 Check("reward-choice Grant adds the chosen item", inv2.CountOf("adept_focus") == before + 1);
             }
 
+            // Named NPC roster loaded + placed in the scene.
+            Check("npc roster loads 7", World.NpcRoster.LoadAll().Count == 7);
+            bool hasElowen = false;
+            foreach (var g in FindObjectsByType<World.QuestGiverNPC>(FindObjectsSortMode.None))
+                if (g.NpcId == "elowen") hasElowen = true;
+            Check("Elowen quest giver placed in scene", hasElowen);
+
             // Safe zones baked into the scene (pond + city peaceful, forest not).
             Check("city center is a safe zone", World.SafeZone.IsInAnySafeZone(Vector3.zero));
             Check("lake center is a safe zone", World.SafeZone.IsInAnySafeZone(new Vector3(-138f, 0f, 138f)));
