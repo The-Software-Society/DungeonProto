@@ -35,13 +35,18 @@ namespace AldenFall.UI
         public const string StarterMelee = "rusty_sword";           // main hand (sword)
         public const string StarterMagicWand = "apprentice_wand";   // main hand (wand)
         public const string StarterMagicFocus = "apprentice_focus"; // off hand (focus)
-        public const string PathKey = "starter_path_v1";            // "melee" | "magic"
+        public const string StarterBow = "short_bow";               // main hand (bow)
+        public const string StarterArrows = "arrow";                // consumable ammo
+        public const int StarterArrowCount = 60;
+        public const string PathKey = "starter_path_v1";            // "melee" | "magic" | "archery"
 
         // Starter kits for action bar keys 1-5 (see ActionBar.ApplyCombatKit).
         public static readonly string[] MeleeKit =
             { "blade_rush", "savage_cleave", "whirlwind", "bash", "bulwark" };
         public static readonly string[] MagicKit =
             { "fireball", "frost_bolt", "ember_nova", "meteor_strike", "arcane_ward" };
+        public static readonly string[] ArcheryKit =
+            { "power_shot", "multi_shot", "pinning_shot", "rain_of_arrows", "hunters_mark" };
 
         /// <summary>True while the choice is on screen, the director suppresses SPACE-skip so the pick is mandatory.</summary>
         public static bool IsOpen { get; private set; }
@@ -97,16 +102,22 @@ namespace AldenFall.UI
             sub.characterSpacing = 1;
 
             BuildCard(
-                new Vector2(-312, -32), UITheme.Gold,
+                new Vector2(-580, -32), UITheme.Gold,
                 "A WORN BLADE", "Starter sword, main hand",
                 "Step in close and cut them down.\n\nSwinging trains Attack / Strength / Defence.\nYour bar fills with five sword skills.\n\nJust your first weapon: trade up whenever you like.",
                 ChooseMelee);
 
             BuildCard(
-                new Vector2(312, -32), UITheme.MagicBlue,
+                new Vector2(0, -32), UITheme.MagicBlue,
                 "APPRENTICE'S KIT", "Starter wand and off-hand focus",
                 "Strike from range with wand and focus.\n\nCasting levels the Magic skill.\nYour bar fills with five spells.\n\nJust your first weapons: pick up a blade anytime.",
                 ChooseMagic);
+
+            BuildCard(
+                new Vector2(580, -32), UITheme.TextGold,
+                "A HUNTER'S BOW", "Starter short bow and a quiver",
+                "Loose arrows from afar and keep your distance.\n\nShooting trains Archery (and Hitpoints).\nYour bar fills with five bow skills.\n\nArrows are ammo: gather them from foes and traders.",
+                ChooseArchery);
         }
 
         private void Update()
@@ -215,6 +226,19 @@ namespace AldenFall.UI
 
             player.GetComponent<ActionBar>()?.ApplyCombatKit(MagicKit);
             Commit("magic");
+        }
+
+        private void ChooseArchery()
+        {
+            var inv = player != null ? player.GetComponent<Inventory>() : null;
+            var equip = player != null ? player.GetComponent<Equipment>() : null;
+            if (inv == null || equip == null) { Resolve(); return; }
+
+            GrantAndEquip(inv, equip, StarterBow);   // bow into the main hand
+            for (int i = 0; i < StarterArrowCount; i++) inv.Add(StarterArrows);
+
+            player.GetComponent<ActionBar>()?.ApplyCombatKit(ArcheryKit);
+            Commit("archery");
         }
 
         private static void GrantAndEquip(Inventory inv, Equipment equip, string itemId)

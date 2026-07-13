@@ -17,6 +17,9 @@ namespace AldenFall.Items
         private const string StarterPathKey = "starter_path_v1";
         private const string MagicWand = "apprentice_wand";
         private const string MagicFocus = "apprentice_focus";
+        private const string Bow = "short_bow";
+        private const string Arrows = "arrow";
+        private const int ArrowCount = 60;
 
         [SerializeField] private string starterWeapon = "rusty_sword";
         [SerializeField] private string starterTool = "fishing_pole";
@@ -41,10 +44,17 @@ namespace AldenFall.Items
 
             // You begin with one terrible weapon set and a fishing pole, everything
             // better comes from the world.
-            if (PlayerPrefs.GetString(StarterPathKey, "") == "magic")
+            string path = PlayerPrefs.GetString(StarterPathKey, "");
+            if (path == "magic")
             {
                 GrantAndEquip(inventory, equipment, MagicWand);   // main hand
                 GrantAndEquip(inventory, equipment, MagicFocus);  // off hand
+            }
+            else if (path == "archery")
+            {
+                GrantAndEquip(inventory, equipment, Bow);         // main hand
+                if (inventory.CountOf(Arrows) < ArrowCount)       // top the quiver back up on relog
+                    for (int i = inventory.CountOf(Arrows); i < ArrowCount; i++) inventory.Add(Arrows);
             }
             else
             {

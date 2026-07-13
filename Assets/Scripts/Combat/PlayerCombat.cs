@@ -54,7 +54,7 @@ namespace AldenFall.Combat
         {
             if (!isServer || xp <= 0f || xpSkill < 0) return;
             if (isLocalPlayer)
-                GetComponent<Progression.Skills>()?.AddXp((Progression.SkillType)xpSkill, xp);
+                ApplyCombatXp(xpSkill, xp);
             else
                 TargetGrantCombatXp(xpSkill, xp);
         }
@@ -62,7 +62,23 @@ namespace AldenFall.Combat
         [TargetRpc]
         private void TargetGrantCombatXp(int xpSkill, float xp)
         {
-            GetComponent<Progression.Skills>()?.AddXp((Progression.SkillType)xpSkill, xp);
+            ApplyCombatXp(xpSkill, xp);
+        }
+
+        /// <summary>Grant the chosen offensive skill AND an OSRS-style Hitpoints trickle: every
+        /// point of combat XP also feeds Hitpoints (SkillType.Health) at hitpointsXpFraction,
+        /// so Hitpoints levels slowly from ALL combat (melee/magic/archery), never from the
+        /// Health grant itself.</summary>
+        private void ApplyCombatXp(int xpSkill, float xp)
+        {
+            var skills = GetComponent<Progression.Skills>();
+            if (skills == null) return;
+            skills.AddXp((Progression.SkillType)xpSkill, xp);
+            if ((Progression.SkillType)xpSkill != Progression.SkillType.Health)
+            {
+                float hp = xp * Data.GameConfig.Progression.hitpointsXpFraction;
+                if (hp > 0f) skills.AddXp(Progression.SkillType.Health, hp);
+            }
         }
 
         /// <summary>Server grants gold to this player. Host player (local) gets it directly;

@@ -44,6 +44,9 @@ namespace AldenFall.Data
         public float xpExponent = 1.35f;
         public int practicalCap = 99;   // public wall shown to players
         public int hardCap = 500;       // secret ceiling, never surfaced in UI (reserved)
+        // OSRS-style Hitpoints: every point of combat XP also trickles into Hitpoints at
+        // this fraction (0.33 = the classic ~1/3). Trains from DEALING combat damage.
+        public float hitpointsXpFraction = 0.33f;
     }
 
     /// <summary>Economy knobs. Mirrors config/economy.json.</summary>
