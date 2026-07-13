@@ -200,7 +200,7 @@ namespace AldenFall.Editor
         {
             // Expanded world (Environment milestone): room for a city-sized north lake + forest
             // buffer + real mountains, keeping city@origin + volcano south.
-            const float sizeX = 900f, sizeZ = 1040f, sizeY = 70f;
+            const float sizeX = 900f, sizeZ = 1040f, sizeY = 150f;   // tall Y range for real mountains
             Vector3 origin = new Vector3(-450f, -sizeY / 2f, -470f);   // x[-450,450], z[-470,570]; surface base y=0
             const int hmRes = 513, splatRes = 512, detailRes = 1024;
 
@@ -229,9 +229,11 @@ namespace AldenFall.Editor
                                  || InApproachFootprint(wx, wz)
                                  || (Mathf.Abs(wx) < 8f && wz > -322f && wz < 190f);   // city road (city -> glade)
                     if (!flatZone)
-                        // Gentle rolling valley floor (kept modest so placements sit right).
-                        h = (Mathf.PerlinNoise(wx * 0.008f + 12.3f, wz * 0.008f + 5.1f) - 0.5f) * 1.6f
-                          + (Mathf.PerlinNoise(wx * 0.024f + 31.7f, wz * 0.024f + 17.3f) - 0.5f) * 0.7f;
+                        // Gentle rolling valley floor, clamped ABOVE the waterline so it never
+                        // dips into an accidental puddle (only the carved lake/rivers hold water).
+                        h = Mathf.Max(0.05f,
+                            (Mathf.PerlinNoise(wx * 0.008f + 12.3f, wz * 0.008f + 5.1f) - 0.5f) * 1.6f
+                          + (Mathf.PerlinNoise(wx * 0.024f + 31.7f, wz * 0.024f + 17.3f) - 0.5f) * 0.7f);
 
                     if (InCityFootprint(wx, wz))
                         h = -0.15f;   // cobbles (top y=0) sit proud of the pad
@@ -241,10 +243,10 @@ namespace AldenFall.Editor
                     float edge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
                                            Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
                     bool southCorridor = Mathf.Abs(wx) < ApproachHalfW + 24f && wz < -90f;
-                    if (!InCityFootprint(wx, wz) && !southCorridor && edge < 120f)
+                    if (!InCityFootprint(wx, wz) && !southCorridor && edge < 160f)
                     {
-                        float m = 1f - edge / 120f;                 // 0 inner -> 1 at the edge
-                        h = Mathf.Max(h, m * m * 60f);              // steep mountains up to ~60m
+                        float m = 1f - edge / 160f;                 // 0 inner -> 1 at the edge
+                        h = Mathf.Max(h, m * m * 130f);             // steep tall mountains up to ~70m
                     }
 
                     // LAKE: a natural round basin carved into the terrain (deep centre -> shore),
@@ -302,10 +304,19 @@ namespace AldenFall.Editor
                     bool southCorridor = Mathf.Abs(wx) < ApproachHalfW + 24f && wz < -90f;
 
                     float g = 1f, s = 0f, so = 0f, d = 0f, rk = 0f;
-                    if (!southCorridor && edge < 110f) { rk = Mathf.Clamp01((110f - edge) / 70f); g *= 1f - rk; }  // rock mountains
-                    if (soot > 0.05f) { so = Mathf.Clamp01(soot); g *= 1f - so; rk *= 1f - so; }                    // volcanic south
+                    if (!southCorridor && edge < 150f) { rk = Mathf.Clamp01((150f - edge) / 95f); g *= 1f - rk; }  // rock mountains
+                    // Volcanic south gradient: green -> dry dirt -> cracked lava toward the volcano.
+                    if (wz < 40f)
+                    {
+                        float southT = Mathf.Clamp01(Mathf.InverseLerp(40f, -300f, wz));
+                        so = Mathf.Clamp01((southT - 0.58f) * 2.6f);                      // lava/ash at the deep end
+                        float dryDirt = Mathf.Clamp01(1f - Mathf.Abs(southT - 0.45f) * 3.0f) * (1f - so);  // dirt peaks mid
+                        d = Mathf.Max(d, dryDirt);
+                        g *= Mathf.Clamp01(1f - southT * 1.9f);                            // green fades out going south
+                        rk *= 1f - so;
+                    }
                     if (shore) { s = 0.8f; g *= 0.2f; rk *= 0.2f; }                                                 // sand/mud shores
-                    if (road || InCityFootprint(wx, wz)) { d = 0.85f; g *= 0.15f; so *= 0.4f; }                     // dirt roads + city
+                    if (road || InCityFootprint(wx, wz)) { d = Mathf.Max(d, 0.85f); g *= 0.15f; so *= 0.4f; }       // dirt roads + city
 
                     float sum = g + s + so + d + rk;
                     if (sum <= 0f) { g = 1f; sum = 1f; }
@@ -1328,14 +1339,28 @@ namespace AldenFall.Editor
 
             // Translucent surface spans the WHOLE lake (deep core + shallow mud shore) so it
             // reads as a full body of water. Collider stripped so players/props pass in.
-            var surf = Cube("Lake_Surface", c + Vector3.up * WaterSurfaceY, new Vector3(w - 0.4f, 0.06f, w - 0.4f), waterMat, container);
-            Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
+            if (!UseUnityTerrain)
+            {
+                var surf = Cube("Lake_Surface", c + Vector3.up * WaterSurfaceY, new Vector3(w - 0.4f, 0.06f, w - 0.4f), waterMat, container);
+                Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
+            }
+            else
+            {
+                // ONE world-spanning water sheet at the waterline. Since the valley terrain is
+                // clamped ABOVE the waterline and only the lake + rivers are carved below it,
+                // water shows ONLY in those carved bodies - clean ribbons + lake, zero puddles.
+                // Clipped to z>-30 so it never floods the volcanic south.
+                var world = Cube("WorldWater", new Vector3(0f, WaterSurfaceY, 270f),
+                    new Vector3(900f, 0.05f, 600f), waterMat, container);
+                Object.DestroyImmediate(world.GetComponent<BoxCollider>());
+                world.isStatic = true;
+            }
 
             // The full river network: four waterfall sources on the mountain ring feeding
             // seven reaches (two splits) that all drain here. The lake still overflows
             // OUT at its NW corner off the map.
             BuildRiverNetwork(container, groundLayer, waterLayer, mudMat, waterMat);
-            BuildLakeOutflow(container, groundLayer, waterLayer, mudMat, waterMat);
+            if (!UseUnityTerrain) BuildLakeOutflow(container, groundLayer, waterLayer, mudMat, waterMat);
 
             // Fish schools — visible ambient shoals in the deep lake + the feeder river.
             var lakeFish = new GameObject("Lake_FishSchool");
@@ -1425,7 +1450,9 @@ namespace AldenFall.Editor
                 Vector3 source = RiverPaths[r][0];
                 Vector3 dirIn = (RiverPaths[r][1] - source).normalized;
                 float yaw = Mathf.Atan2(dirIn.x, dirIn.z) * Mathf.Rad2Deg + 180f;
-                BuildWaterfall(container, source + Vector3.up * 0.2f, 14f, RiverHalfWidths[r] * 2f, yaw, waterMat);
+                // Tall sheet pouring down the rocky mountainside from a notch high up, into the
+                // carved gorge (river bed ~-3). Base at the gorge, rising up the cliff.
+                BuildWaterfall(container, source + Vector3.up * (-3f), 26f, RiverHalfWidths[r] * 2f + 2f, yaw, waterMat);
             }
 
             // Ambient fish in the two biggest reaches.
@@ -1481,9 +1508,13 @@ namespace AldenFall.Editor
                 float yawRad = yaw * Mathf.Deg2Rad;
                 Vector3 rightDir = new Vector3(Mathf.Cos(yawRad), 0f, -Mathf.Sin(yawRad));
 
-                var bed = Cube($"River{riverIndex}_Bed", mid + Vector3.up * (bedY - 0.35f), new Vector3(halfW * 2f + 1f, 0.7f, len), bedMat, container);
-                bed.transform.rotation = rot; bed.isStatic = true;
-                if (groundLayer >= 0) bed.layer = groundLayer;
+                // Legacy flat-ground only: cube bed. In terrain mode the carved channel is the bed.
+                if (!UseUnityTerrain)
+                {
+                    var bed = Cube($"River{riverIndex}_Bed", mid + Vector3.up * (bedY - 0.35f), new Vector3(halfW * 2f + 1f, 0.7f, len), bedMat, container);
+                    bed.transform.rotation = rot; bed.isStatic = true;
+                    if (groundLayer >= 0) bed.layer = groundLayer;
+                }
 
                 var vol = new GameObject($"River{riverIndex}_WaterVolume");
                 vol.transform.SetParent(container);
@@ -1494,12 +1525,18 @@ namespace AldenFall.Editor
                 vbox.size = new Vector3(halfW * 2f, colH, len);
                 if (waterLayer >= 0) vol.layer = waterLayer;
 
-                var surf = Cube($"River{riverIndex}_Surface", mid + Vector3.up * WaterSurfaceY, new Vector3(halfW * 2f - 0.4f, 0.06f, len), waterMat, container);
-                surf.transform.rotation = rot;
-                Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
+                // River surface: legacy flat-ground only. In terrain mode the single WorldWater
+                // sheet fills every carved channel cleanly (no per-segment quads = no puddles).
+                if (!UseUnityTerrain)
+                {
+                    var surf = Cube($"River{riverIndex}_Surface", mid + Vector3.up * WaterSurfaceY, new Vector3(halfW * 2f - 0.4f, 0.06f, len), waterMat, container);
+                    surf.transform.rotation = rot;
+                    Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
+                }
 
-                // Wade-in shore steps each bank (skipped at fords, the road runs through).
-                if (!ford)
+                // Wade-in shore step cubes: legacy flat-ground only (the terrain carve gives
+                // natural gradient banks now, so these fixed-Y brown blocks are retired).
+                if (!ford && !UseUnityTerrain)
                 {
                     for (int side = -1; side <= 1; side += 2)
                     {
@@ -1510,7 +1547,7 @@ namespace AldenFall.Editor
                         if (groundLayer >= 0) stp.layer = groundLayer;
                     }
                 }
-                else
+                else if (!UseUnityTerrain)
                 {
                     // Stepping stones sell the crossing.
                     var stoneMat = Mat("FordStone", new Color(0.45f, 0.43f, 0.4f), smoothness: 0.1f);
