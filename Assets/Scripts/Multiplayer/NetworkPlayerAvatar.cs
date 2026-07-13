@@ -106,6 +106,7 @@ namespace AldenFall.Multiplayer
             Ensure<GatherController>();
             Ensure<CraftingController>();
             Ensure<PlayerInteractor>();
+            Ensure<Progression.PlayerProgress>();   // before PlayerSave: it reads this in Awake
             Ensure<Persistence.PlayerSave>();
         }
 

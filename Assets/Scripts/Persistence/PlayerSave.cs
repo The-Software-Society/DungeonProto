@@ -28,6 +28,7 @@ namespace AldenFall.Persistence
         private Inventory inventory;
         private Equipment equipment;
         private Quests.QuestLog quests;
+        private Progression.PlayerProgress progress;
 
         private bool loaded;
         private float nextSaveAt;
@@ -40,6 +41,7 @@ namespace AldenFall.Persistence
             inventory = GetComponent<Inventory>();
             equipment = GetComponent<Equipment>();
             quests = GetComponent<Quests.QuestLog>();
+            progress = GetComponent<Progression.PlayerProgress>();
         }
 
         /// <summary>Only the host/local player persists (see class note on account scope).</summary>
@@ -77,6 +79,7 @@ namespace AldenFall.Persistence
         {
             var data = new PlayerSaveData { accountId = AccountId };
             if (wallet != null) data.gold = wallet.Gold;
+            if (progress != null) data.floor1Cleared = progress.Floor1Cleared;
 
             data.skillLevels = new int[Skills.SkillCount];
             data.skillXp = new float[Skills.SkillCount];
@@ -119,6 +122,7 @@ namespace AldenFall.Persistence
             if (data == null) return;
 
             wallet?.SetGold(data.gold);
+            progress?.Restore(data.floor1Cleared);
 
             if (skills != null && data.skillLevels != null)
             {

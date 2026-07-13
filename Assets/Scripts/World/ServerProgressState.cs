@@ -95,6 +95,11 @@ namespace AldenFall.World
             bool wasFirst = !floorCleared;
             bossClears++;
 
+            // Personal clear credit: the killer and their party each record Floor 1 cleared
+            // (persisted per player, gates later floors).
+            MarkPersonalClear(killer);
+            Multiplayer.PartySystem.ForEachOtherMember(killer, MarkPersonalClear);
+
             if (wasFirst)
             {
                 floorCleared = true;
@@ -104,6 +109,12 @@ namespace AldenFall.World
             }
 
             OnProgressChanged?.Invoke();   // host-side boards
+        }
+
+        private static void MarkPersonalClear(GameObject player)
+        {
+            if (player != null)
+                player.GetComponent<Progression.PlayerProgress>()?.MarkFloor1Cleared();
         }
 
         private static string ResolveName(GameObject killer)

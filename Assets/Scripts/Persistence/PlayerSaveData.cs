@@ -14,6 +14,9 @@ namespace AldenFall.Persistence
         public string accountId = "";
         public int gold;
 
+        // Per-player world progress (which floors this player has personally cleared).
+        public bool floor1Cleared;
+
         // Skills, indexed by SkillType value.
         public int[] skillLevels = new int[0];
         public float[] skillXp = new float[0];

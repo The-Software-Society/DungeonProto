@@ -490,6 +490,17 @@ namespace AldenFall.DebugTools
 
                 progress.RegisterBossClear(player);
                 Check("later clears bump count, keep first-clearer", progress.BossClears == 2 && progress.FirstClearName == wanted);
+
+                // Per-player clear flag (11d): set on clear + persists through save/load.
+                var pProg = player.GetComponent<Progression.PlayerProgress>();
+                Check("boss clear marks player Floor1Cleared", pProg != null && pProg.Floor1Cleared);
+                if (pProg != null && pSave != null)
+                {
+                    pSave.ForceSave();
+                    pProg.Restore(false);
+                    pSave.ForceLoad();
+                    Check("Floor1Cleared persists through save/load", pProg.Floor1Cleared);
+                }
             }
 
             // Safe zones baked into the scene (pond + city peaceful, forest not).
