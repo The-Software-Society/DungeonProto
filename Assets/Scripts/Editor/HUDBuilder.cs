@@ -19,6 +19,13 @@ namespace AldenFall.Editor
     {
         private const string SpriteDir = "Assets/UI/Sprites";
 
+        // v9: skills grouped combat-first (then gather, then craft) instead of raw enum order.
+        private static readonly SkillType[] DisplayOrder =
+        {
+            SkillType.Attack, SkillType.Strength, SkillType.Defence, SkillType.Magic, SkillType.Ranged, SkillType.Health,
+            SkillType.Fishing, SkillType.Mining, SkillType.Woodcutting, SkillType.Cooking, SkillType.Smithing, SkillType.Fletching,
+        };
+
         private static Sprite S(string name) =>
             AssetDatabase.LoadAssetAtPath<Sprite>($"{SpriteDir}/{name}.png");
 
@@ -59,7 +66,8 @@ namespace AldenFall.Editor
             BuildCombatStyleCluster(canvasObj.transform);
             BuildTargetFrame(canvasObj.transform, hud);
             BuildFeedsAndToasts(canvasObj.transform, hud, xpFeed);
-            BuildSkillStrip(canvasObj.transform);
+            // v9: skills are window-only now (K / the bottom-right Skills button). The always-on
+            // left strip was removed per Jon's feedback; BuildSkillsPanel below is the window.
             hud.inventoryPanel = BuildCharacterPanel(canvasObj.transform);
             hud.skillsPanel = BuildSkillsPanel(canvasObj.transform);
             var treesPanel = BuildSkillTreePanel(canvasObj.transform);
@@ -495,13 +503,13 @@ namespace AldenFall.Editor
             treesRuleRect.anchorMin = new Vector2(0, 1); treesRuleRect.anchorMax = new Vector2(1, 1);
             treesRuleRect.offsetMin = new Vector2(24, -55); treesRuleRect.offsetMax = new Vector2(-24, -54);
 
-            var trees = new[] { SkillType.Attack, SkillType.Strength, SkillType.Defence, SkillType.Magic };
+            var trees = new[] { SkillType.Attack, SkillType.Strength, SkillType.Defence, SkillType.Magic, SkillType.Ranged };
             var tabActions = new UnityEngine.Events.UnityAction[]
             {
-                treeUI.SelectAttack, treeUI.SelectStrength, treeUI.SelectDefence, treeUI.SelectMagic,
+                treeUI.SelectAttack, treeUI.SelectStrength, treeUI.SelectDefence, treeUI.SelectMagic, treeUI.SelectRanged,
             };
 
-            float tabW = 150f, tabGap = 8f;
+            float tabW = 118f, tabGap = 6f;
             float tabStartX = -((trees.Length - 1) * (tabW + tabGap)) / 2f;
 
             for (int t = 0; t < trees.Length; t++)
@@ -529,12 +537,24 @@ namespace AldenFall.Editor
                     new Color(accent.r, accent.g, accent.b, 0.9f), stretch: false);
                 Anchor(tabUnderline.rectTransform, new Vector2(0.5f, 0f), new Vector2(0, 2), new Vector2(tabW - 20, 3));
 
-                // Content page: sections per weapon class, tiles stacked down
-                var page = Panel(panel, $"Page_{tree}", new Vector2(0.5f, 1f), new Vector2(0, -122), new Vector2(632, 320));
+                // Content page: a clipped, scrollable viewport so long trees (Magic has 8,
+                // Ranged 5) no longer spill over the action bar (v9 overflow fix).
+                var page = Panel(panel, $"Page_{tree}", new Vector2(0.5f, 1f), new Vector2(0, -122), new Vector2(632, 322));
                 page.pivot = new Vector2(0.5f, 1f);
+                page.gameObject.AddComponent<RectMask2D>();
+                var scroll = page.gameObject.AddComponent<ScrollRect>();
+                scroll.horizontal = false;
+                scroll.vertical = true;
+                scroll.movementType = ScrollRect.MovementType.Clamped;
+                scroll.scrollSensitivity = 28f;
+
+                var content = Panel(page, "Content", new Vector2(0.5f, 1f), new Vector2(0, 0), new Vector2(632, 322));
+                content.pivot = new Vector2(0.5f, 1f);
+                scroll.viewport = page;
+                scroll.content = content;
 
                 float y = 0f;
-                foreach (var weaponClass in new[] { Abilities.WeaponClass.Sword, Abilities.WeaponClass.Focus, Abilities.WeaponClass.Any })
+                foreach (var weaponClass in new[] { Abilities.WeaponClass.Sword, Abilities.WeaponClass.Focus, Abilities.WeaponClass.Bow, Abilities.WeaponClass.Any })
                 {
                     var defs = new List<Abilities.AbilityDef>();
                     foreach (var def in Abilities.AbilityDatabase.All)
@@ -544,7 +564,7 @@ namespace AldenFall.Editor
 
                     string section = weaponClass == Abilities.WeaponClass.Any
                         ? "ANY WEAPON" : weaponClass.ToString().ToUpperInvariant();
-                    var sectionLabel = Text(page, $"Section_{weaponClass}", section, 12, UITheme.TextDim, FontStyles.Bold);
+                    var sectionLabel = Text(content, $"Section_{weaponClass}", section, 12, UITheme.TextDim, FontStyles.Bold);
                     sectionLabel.characterSpacing = 3;
                     Anchor(sectionLabel.rectTransform, new Vector2(0, 1), new Vector2(86, y - 12), new Vector2(140, 16));
                     sectionLabel.alignment = TextAlignmentOptions.MidlineLeft;
@@ -552,11 +572,14 @@ namespace AldenFall.Editor
 
                     foreach (var def in defs)
                     {
-                        BuildAbilityTile(page, def, new Vector2(0, y - 45), accent);
+                        BuildAbilityTile(content, def, new Vector2(0, y - 45), accent);
                         y -= 96f;
                     }
                     y -= 8f;
                 }
+
+                // Size the scroll content to the stacked tiles so it scrolls when taller than the viewport.
+                content.sizeDelta = new Vector2(632, Mathf.Max(322f, -y + 20f));
 
                 treeUI.tabs.Add(new SkillTreePanelUI.Tab
                 {
@@ -729,7 +752,7 @@ namespace AldenFall.Editor
 
             var rows = new List<SkillsPanelUI.SkillRow>();
             float rowY = -92f;
-            foreach (SkillType skill in System.Enum.GetValues(typeof(SkillType)))
+            foreach (SkillType skill in DisplayOrder)
             {
                 rows.Add(BuildSkillRow(panel, skill, SkillRegistry.Get(skill).glyph, rowY));
                 rowY -= 82f;

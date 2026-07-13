@@ -54,6 +54,19 @@ namespace AldenFall.Editor
 
         // Back-compat alias for the earlier method name.
         public static void AddServerProgressState() => PatchScene();
+
+        /// <summary>Rebuild ONLY the GameUI HUD canvas in the scene (HUDBuilder destroys + rebuilds
+        /// it, and regenerates the UI sprite set), leaving the rest of the world untouched. Much
+        /// safer than a full BuildDemoHeadless world regen when only the HUD changed.</summary>
+        [MenuItem("AldenFall/World/Rebuild HUD", priority = 211)]
+        public static void RebuildHud()
+        {
+            var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            HUDBuilder.Build();
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log("ScenePatcher: rebuilt HUD (GameUI) + saved scene.");
+        }
     }
 }
 #endif

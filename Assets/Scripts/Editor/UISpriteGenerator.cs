@@ -65,6 +65,14 @@ namespace AldenFall.Editor
             Save("icon_bash", IconBash(64));
             Save("icon_veil", IconVeil(64));
 
+            // v9 glyphs: distinct skill icons (Jon: icons were reused/mismatched)
+            Save("icon_heart", IconHeart(64));      // Hitpoints
+            Save("icon_bow", IconBow(64));          // Ranged / Archery
+            Save("icon_pickaxe", IconPickaxe(64));  // Mining
+            Save("icon_axe", IconAxe(64));          // Woodcutting
+            Save("icon_anvil", IconAnvil(64));      // Smithing
+            Save("icon_arrow", IconArrow(64));      // Fletching + arrow ammo
+
             AssetDatabase.Refresh();
             Debug.Log("UI sprites generated → " + Dir);
         }
@@ -507,6 +515,92 @@ namespace AldenFall.Editor
         }
 
         // ==================== SDF HELPERS ====================
+
+        private static Color32[] IconHeart(int s)
+        {
+            Vector2 lL = new Vector2(s * 0.35f, s * 0.64f), lR = new Vector2(s * 0.65f, s * 0.64f);
+            Vector2 tip = new Vector2(s * 0.5f, s * 0.20f);
+            float r = s * 0.15f;
+            return Draw(s, s, (x, y) =>
+            {
+                Vector2 p = new Vector2(x, y);
+                float lobes = Mathf.Min(Vector2.Distance(p, lL) - r, Vector2.Distance(p, lR) - r);
+                float vL = Capsule(p, new Vector2(s * 0.22f, s * 0.60f), tip, s * 0.10f);
+                float vR = Capsule(p, new Vector2(s * 0.78f, s * 0.60f), tip, s * 0.10f);
+                return AA(-Mathf.Min(lobes, Mathf.Min(vL, vR)));
+            });
+        }
+
+        private static Color32[] IconBow(int s)
+        {
+            Vector2 top = new Vector2(s * 0.32f, s * 0.84f), mid = new Vector2(s * 0.16f, s * 0.5f), bot = new Vector2(s * 0.32f, s * 0.16f);
+            return Draw(s, s, (x, y) =>
+            {
+                Vector2 p = new Vector2(x, y);
+                float bowU = Capsule(p, top, mid, s * 0.045f);
+                float bowL = Capsule(p, mid, bot, s * 0.045f);
+                float str = Capsule(p, top, bot, s * 0.02f);
+                float shaft = Capsule(p, new Vector2(s * 0.24f, s * 0.5f), new Vector2(s * 0.86f, s * 0.5f), s * 0.028f);
+                float hd1 = Capsule(p, new Vector2(s * 0.74f, s * 0.60f), new Vector2(s * 0.88f, s * 0.5f), s * 0.03f);
+                float hd2 = Capsule(p, new Vector2(s * 0.74f, s * 0.40f), new Vector2(s * 0.88f, s * 0.5f), s * 0.03f);
+                return AA(-Mathf.Min(Mathf.Min(bowU, bowL), Mathf.Min(Mathf.Min(str, shaft), Mathf.Min(hd1, hd2))));
+            });
+        }
+
+        private static Color32[] IconPickaxe(int s)
+        {
+            Vector2 hTop = new Vector2(s * 0.5f, s * 0.80f), hBot = new Vector2(s * 0.5f, s * 0.16f);
+            Vector2 headL = new Vector2(s * 0.18f, s * 0.60f), headR = new Vector2(s * 0.82f, s * 0.60f), headC = new Vector2(s * 0.5f, s * 0.72f);
+            return Draw(s, s, (x, y) =>
+            {
+                Vector2 p = new Vector2(x, y);
+                float handle = Capsule(p, hTop, hBot, s * 0.04f);
+                float pickL = Capsule(p, headC, headL, s * 0.033f);
+                float pickR = Capsule(p, headC, headR, s * 0.033f);
+                return AA(-Mathf.Min(handle, Mathf.Min(pickL, pickR)));
+            });
+        }
+
+        private static Color32[] IconAxe(int s)
+        {
+            Vector2 hTop = new Vector2(s * 0.60f, s * 0.84f), hBot = new Vector2(s * 0.40f, s * 0.14f);
+            Vector2 bladeC = new Vector2(s * 0.66f, s * 0.70f);
+            return Draw(s, s, (x, y) =>
+            {
+                Vector2 p = new Vector2(x, y);
+                float handle = Capsule(p, hTop, hBot, s * 0.038f);
+                float blade = Vector2.Distance(p, bladeC) - s * 0.19f;
+                return AA(-Mathf.Min(handle, blade));
+            });
+        }
+
+        private static Color32[] IconAnvil(int s)
+        {
+            return Draw(s, s, (x, y) =>
+            {
+                Vector2 p = new Vector2(x, y);
+                float top = Capsule(p, new Vector2(s * 0.22f, s * 0.64f), new Vector2(s * 0.82f, s * 0.64f), s * 0.085f);
+                float horn = Capsule(p, new Vector2(s * 0.22f, s * 0.64f), new Vector2(s * 0.08f, s * 0.56f), s * 0.04f);
+                float waist = Capsule(p, new Vector2(s * 0.5f, s * 0.62f), new Vector2(s * 0.5f, s * 0.34f), s * 0.06f);
+                float baseCap = Capsule(p, new Vector2(s * 0.26f, s * 0.28f), new Vector2(s * 0.74f, s * 0.28f), s * 0.075f);
+                return AA(-Mathf.Min(Mathf.Min(top, horn), Mathf.Min(waist, baseCap)));
+            });
+        }
+
+        private static Color32[] IconArrow(int s)
+        {
+            Vector2 tail = new Vector2(s * 0.18f, s * 0.28f), head = new Vector2(s * 0.82f, s * 0.72f);
+            return Draw(s, s, (x, y) =>
+            {
+                Vector2 p = new Vector2(x, y);
+                float shaft = Capsule(p, tail, head, s * 0.03f);
+                float h1 = Capsule(p, head, new Vector2(s * 0.62f, s * 0.72f), s * 0.03f);
+                float h2 = Capsule(p, head, new Vector2(s * 0.82f, s * 0.52f), s * 0.03f);
+                float f1 = Capsule(p, tail, new Vector2(s * 0.30f, s * 0.18f), s * 0.028f);
+                float f2 = Capsule(p, tail, new Vector2(s * 0.10f, s * 0.34f), s * 0.028f);
+                return AA(-Mathf.Min(Mathf.Min(shaft, Mathf.Min(h1, h2)), Mathf.Min(f1, f2)));
+            });
+        }
 
         private static float RoundedRectSDF(float x, float y, float w, float h, float r)
         {

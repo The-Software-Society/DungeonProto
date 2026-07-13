@@ -36,6 +36,7 @@ namespace AldenFall.UI
         public void SelectStrength() => Select(SkillType.Strength);
         public void SelectDefence() => Select(SkillType.Defence);
         public void SelectMagic() => Select(SkillType.Magic);
+        public void SelectRanged() => Select(SkillType.Ranged);
 
         public void Select(SkillType tree)
         {
