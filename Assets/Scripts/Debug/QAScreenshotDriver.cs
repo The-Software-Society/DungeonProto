@@ -56,7 +56,9 @@ namespace AldenFall.DebugTools
             uiMode = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-qaui") >= 0;
 
             // Never let the intro cutscene hijack the QA run.
-            PlayerPrefs.SetInt("cutscene_intro_seen_v3", 1);
+            // Intro is skipped under -batchmode by IntroCutsceneTrigger itself now, so QA no
+            // longer needs to (and must not) set the seen-flag - that leaked into the shared
+            // PlayerPrefs store and blocked the intro in real same-machine builds.
             PlayerPrefs.Save();
 
             // Start each QA run from a clean save so the live PlayerSave auto-load is
@@ -192,10 +194,10 @@ namespace AldenFall.DebugTools
             var forge = player.GetComponent<UI.ForgePanel>();
             if (forge != null)
             {
-                forge.SendMessage("Toggle", SendMessageOptions.DontRequireReceiver);
+                forge.Open(null);
                 yield return new WaitForSeconds(0.6f);
                 yield return Capture("ui_06_forge");
-                forge.SendMessage("Toggle", SendMessageOptions.DontRequireReceiver);
+                forge.Close();
             }
 
             var vendorPanel = player.GetComponent<UI.VendorPanel>();
@@ -522,6 +524,20 @@ namespace AldenFall.DebugTools
                 combat13.ServerAdvanceKillQuest("grukmar");  // no active quest -> safe no-op
                 Check("ServerAdvanceKillQuest safe no-ops", true);
             }
+
+            // v9 Cluster 1: forge opens via typed Open()/Close() (no SendMessage broadcast that
+            // also toggled the F9 dev panel), and the intro seen-key was bumped to invalidate
+            // the contaminated flag so the intro replays.
+            var forgeP = player.GetComponent<UI.ForgePanel>();
+            Check("player has ForgePanel", forgeP != null);
+            if (forgeP != null)
+            {
+                forgeP.Open(null);
+                Check("forge Open() shows panel", forgeP.IsOpen);
+                forgeP.Close();
+                Check("forge Close() hides panel", !forgeP.IsOpen);
+            }
+            Check("intro seen-key bumped (v4)", Cinematics.IntroCutsceneTrigger.SeenKey == "cutscene_intro_seen_v4");
 
             // Safe zones baked into the scene (pond + city peaceful, forest not).
             Check("city center is a safe zone", World.SafeZone.IsInAnySafeZone(Vector3.zero));

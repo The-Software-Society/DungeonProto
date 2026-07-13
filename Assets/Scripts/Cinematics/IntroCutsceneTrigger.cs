@@ -11,17 +11,22 @@ namespace AldenFall.Cinematics
     /// the "seen" flag is only committed once the scene fully finishes, quitting
     /// mid-scene lets you choose again next login.
     ///
-    /// The seen-key is VERSIONED: bumping it (v1 -> v2) makes the reworked intro
-    /// replay once for everyone, even players whose old "cutscene_intro_seen" key
-    /// was already set from an earlier build.
-    /// F9 cheat mindset: delete the pref to rewatch ("cutscene_intro_seen_v2").
+    /// The seen-key is VERSIONED: bumping it makes the reworked intro replay once
+    /// for everyone, even players whose old key was already set from an earlier build.
+    /// The F9 "reset intro" cheat deletes this exact key (see DebugCheatPanel).
+    ///
+    /// IMPORTANT (why the intro stopped playing live): the Editor and a same-machine
+    /// standalone build SHARE one PlayerPrefs store. Previously the seen-flag was written
+    /// on completion even during Editor play, and the QA harness set it directly, so a
+    /// real build on the dev machine read "seen" and skipped. Fixes: (a) never persist the
+    /// flag during an Editor replay-bypass, (b) QA/batchmode skips WITHOUT touching the
+    /// flag, (c) bumped the key so stale flags are invalidated.
     /// </summary>
     [RequireComponent(typeof(CutsceneDirector))]
     public class IntroCutsceneTrigger : MonoBehaviour
     {
-        // v2: reworked "meet Aldric / choose a starting weapon" intro. A new key
-        // guarantees the new scene shows once even for veterans of older builds.
-        private const string SeenKey = "cutscene_intro_seen_v3";
+        // v4: bump invalidates the contaminated v3 flag so the intro plays once again.
+        public const string SeenKey = "cutscene_intro_seen_v4";
 
         [SerializeField] private bool replayEveryEditorPlay = true;
 
@@ -45,6 +50,10 @@ namespace AldenFall.Cinematics
                 }
                 if (!identity.isLocalPlayer) yield break;
             }
+
+            // QA / headless never plays the intro AND never touches the seen-flag, so the
+            // harness can't contaminate the shared PlayerPrefs store that a real build reads.
+            if (Application.isBatchMode) yield break;
 
 #if UNITY_EDITOR
             if (!replayEveryEditorPlay && PlayerPrefs.GetInt(SeenKey, 0) != 0) yield break;
@@ -78,6 +87,12 @@ namespace AldenFall.Cinematics
             while (director.IsPlaying)
                 yield return null;
 
+            // Persist "seen" only when the gate was genuinely honored. In the Editor with
+            // replayEveryEditorPlay we bypassed the read, so we must NOT write, or the flag
+            // leaks into the shared store and blocks a real same-machine build.
+#if UNITY_EDITOR
+            if (replayEveryEditorPlay) yield break;
+#endif
             PlayerPrefs.SetInt(SeenKey, 1);
             PlayerPrefs.Save();
         }

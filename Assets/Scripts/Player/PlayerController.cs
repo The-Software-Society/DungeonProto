@@ -44,6 +44,7 @@ namespace AldenFall.Player
         private Stats.StatBlock statBlock;
         private Vector3 velocity;
         private bool isGrounded;
+        private bool wasGrounded;
         private Transform cameraTransform;
 
         // Dodge roll state
@@ -207,6 +208,15 @@ namespace AldenFall.Player
                 velocity.y = -2f; // Small downward force to keep grounded
                 jumpsUsed = 0;    // refresh the double-jump on landing
             }
+
+            // Fall grace: walking off a ledge WITHOUT jumping should still leave you one
+            // air jump (this world has double-jump). On the grounded->airborne transition
+            // with no jump spent, consume the ground jump so exactly one air jump remains -
+            // otherwise HandleJump refuses both (jumpsUsed==0 && !isGrounded).
+            if (wasGrounded && !isGrounded && jumpsUsed == 0)
+                jumpsUsed = 1;
+
+            wasGrounded = isGrounded;
         }
 
         // ========== WATER DETECTION ==========

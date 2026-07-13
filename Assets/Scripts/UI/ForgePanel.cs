@@ -17,6 +17,7 @@ namespace AldenFall.UI
     public class ForgePanel : MonoBehaviour
     {
         [SerializeField] private KeyCode toggleKey = KeyCode.F7;
+        private const float WalkAwayDistance = 5f;
 
         private const float PanelWidth = 620f;
         private const float RowWidth = PanelWidth - UITheme.Pad * 2f;
@@ -28,6 +29,9 @@ namespace AldenFall.UI
         private RectTransform panel;
         private RectTransform listParent;
         private TMP_Text goldLabel;
+        private Transform forge;
+
+        public bool IsOpen => panelRoot != null && panelRoot.activeSelf;
 
         private void Awake()
         {
@@ -35,17 +39,32 @@ namespace AldenFall.UI
             wallet = GetComponent<Wallet>();
         }
 
+        /// <summary>Open the forge, anchored to an in-world anvil (walk-away closes). Called by
+        /// ForgeNPC via a DIRECT typed call - never SendMessage, which would also fire the
+        /// identically-named Toggle() on the F9 dev panel that shares this GameObject.</summary>
+        public void Open(Transform forgeTransform)
+        {
+            forge = forgeTransform;
+            if (panelRoot == null) BuildPanel();
+            panelRoot.SetActive(true);
+            Rebuild();
+        }
+
+        public void Close()
+        {
+            if (panelRoot != null) panelRoot.SetActive(false);
+        }
+
         private void Update()
         {
             if (InputFocusGuard.IsTyping) return;
-            if (Input.GetKeyDown(toggleKey)) Toggle();
-        }
+            // F7 is a convenience toggle (no anvil anchor, so only ESC closes it).
+            if (Input.GetKeyDown(toggleKey)) { if (IsOpen) Close(); else Open(null); }
 
-        private void Toggle()
-        {
-            if (panelRoot == null) BuildPanel();
-            else panelRoot.SetActive(!panelRoot.activeSelf);
-            if (panelRoot != null && panelRoot.activeSelf) Rebuild();
+            if (!IsOpen) return;
+            if (Input.GetKeyDown(KeyCode.Escape)) { Close(); return; }
+            if (forge != null && Vector3.Distance(transform.position, forge.position) > WalkAwayDistance)
+                Close();
         }
 
         // ==================== FORGEABLES ====================
@@ -87,7 +106,7 @@ namespace AldenFall.UI
 
             panel = PanelChrome.CreatePanel(canvasObj.transform, "Panel",
                 new Vector2(PanelWidth, 320f));
-            PanelChrome.Header(panel, "Forge", "F7 closes, fuse two identical items into +1");
+            PanelChrome.Header(panel, "Forge", "ESC or walk away to close, fuse two identical items into +1");
 
             goldLabel = PanelChrome.Text(panel, "Gold", "", UITheme.Pad, 62f,
                 RowWidth, 20f, UITheme.BodySize, UITheme.TextMain,

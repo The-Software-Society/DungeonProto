@@ -22,7 +22,10 @@ namespace AldenFall.World
         {
             var panel = player.GetComponent<UI.ForgePanel>();
             if (panel == null) return;
-            panel.SendMessage("Toggle", SendMessageOptions.DontRequireReceiver);
+            // DIRECT typed call, NOT SendMessage: a broadcast "Toggle" would also fire the
+            // identically-named Toggle() on the F9 DebugCheatPanel sharing this player object,
+            // which then renders on top of the forge (the "E opens dev panels" bug).
+            panel.Open(transform);
             CombatEvents.RaiseStatus(transform.position + Vector3.up * 2.2f,
                 $"{displayName}: Two of a kind and some coin, and I will make them one better.",
                 UI.UITheme.TextGold);

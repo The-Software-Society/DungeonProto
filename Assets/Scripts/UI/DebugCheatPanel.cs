@@ -393,7 +393,9 @@ namespace AldenFall.UI
                 "RESET INTRO FLAG (replays next login)",
                 (ContentWidth - 420f) / 2f, y, 420f, () =>
             {
-                PlayerPrefs.DeleteKey("cutscene_intro_seen_v2");
+                // Use the live key constant so this can never drift from the trigger again
+                // (it was hardcoded to the stale "_v2" and never cleared the real flag).
+                PlayerPrefs.DeleteKey(Cinematics.IntroCutsceneTrigger.SeenKey);
                 PlayerPrefs.DeleteKey("starter_path_v1");
                 PlayerPrefs.Save();
                 Say("Intro will replay on next login.");
