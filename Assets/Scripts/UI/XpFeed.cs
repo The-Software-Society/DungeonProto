@@ -151,15 +151,7 @@ namespace AldenFall.UI
             if (text != null) Destroy(text.gameObject);
         }
 
-        public static Color SkillColor(SkillType skill) => skill switch
-        {
-            SkillType.Attack => new Color(1f, 0.62f, 0.45f),
-            SkillType.Strength => new Color(1f, 0.45f, 0.4f),
-            SkillType.Defence => new Color(0.55f, 0.75f, 1f),
-            SkillType.Magic => new Color(0.72f, 0.55f, 1f),
-            SkillType.Fishing => new Color(0.45f, 0.85f, 0.9f),
-            SkillType.Cooking => new Color(1f, 0.75f, 0.4f),
-            _ => Color.white,
-        };
+        // Skill accent color now lives in skills.json (Progression.SkillRegistry).
+        public static Color SkillColor(SkillType skill) => SkillRegistry.Get(skill).Color;
     }
 }

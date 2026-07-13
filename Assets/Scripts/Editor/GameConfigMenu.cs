@@ -38,6 +38,11 @@ namespace AldenFall.Editor
             var mobs = AldenFall.Data.MonsterDatabase.LoadAll();
             Debug.Log($"[Validate] monsters loaded: {mobs.Count}");
 
+            var skills = AldenFall.Progression.SkillRegistry.All;
+            Debug.Log($"[Validate] skills loaded: {skills.Count}");
+            foreach (var sk in skills)
+                Debug.Log($"[Validate]   skill {sk.id}: '{sk.display}' cat={sk.category} glyph={sk.glyph} xpRate={sk.xpRate} color={(sk.Color)}");
+
             var itemList = new System.Collections.Generic.List<AldenFall.Items.ItemDef>(AldenFall.Items.ItemDatabase.All);
             Debug.Log($"[Validate] items loaded: {itemList.Count}");
             foreach (var it in itemList)

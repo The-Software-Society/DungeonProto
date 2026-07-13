@@ -73,6 +73,8 @@ namespace AldenFall.Progression
         public void AddXp(SkillType skill, float amount)
         {
             if (amount <= 0f) return;
+            amount *= SkillRegistry.Get(skill).xpRate;   // per-skill pacing from skills.json
+            if (amount <= 0f) return;
             int index = (int)skill;
             xp[index] += amount;
             OnXpGained?.Invoke(skill, amount);
@@ -101,15 +103,10 @@ namespace AldenFall.Progression
         // Combat formulas live in Stats.CombatMath (single source of truth) -
         // skill levels flow there through PlayerStatBridge → StatBlock.
 
-        public static string DisplayName(SkillType skill) => skill switch
+        public static string DisplayName(SkillType skill)
         {
-            SkillType.Attack => "Attack",
-            SkillType.Strength => "Strength",
-            SkillType.Defence => "Defence",
-            SkillType.Magic => "Magic",
-            SkillType.Fishing => "Fishing",
-            SkillType.Cooking => "Cooking",
-            _ => skill.ToString(),
-        };
+            var def = SkillRegistry.Get(skill);
+            return string.IsNullOrEmpty(def.display) ? skill.ToString() : def.display;
+        }
     }
 }

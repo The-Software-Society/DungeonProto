@@ -427,15 +427,7 @@ namespace AldenFall.Editor
             Image(strip, "Bg", S("panel_r16"), new Color(0.07f, 0.063f, 0.10f, 0.72f), stretch: true);
             Image(strip, "Border", S("panel_border_r16"), new Color(1f, 1f, 1f, 0.07f), stretch: true, padding: -1);
 
-            var glyphs = new Dictionary<SkillType, string>
-            {
-                { SkillType.Attack, "icon_sword" },
-                { SkillType.Strength, "icon_strength" },
-                { SkillType.Defence, "icon_shield" },
-                { SkillType.Magic, "icon_magic" },
-                { SkillType.Fishing, "icon_fish" },
-                { SkillType.Cooking, "icon_flame" },
-            };
+            // Skill glyphs come from skills.json (Progression.SkillRegistry).
 
             var rows = new List<SkillStripUI.Row>();
             float y = -34f;
@@ -448,7 +440,7 @@ namespace AldenFall.Editor
                 Anchor(flash.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(92, 48));
 
                 var iconColor = accent; iconColor.a = 0.95f;
-                var icon = Image(strip, $"Icon_{skill}", S(glyphs[skill]), iconColor, stretch: false);
+                var icon = Image(strip, $"Icon_{skill}", S(SkillRegistry.Get(skill).glyph), iconColor, stretch: false);
                 Anchor(icon.rectTransform, new Vector2(0.5f, 1f), new Vector2(-26, y + 4), new Vector2(26, 26));
 
                 var level = Text(strip, $"Lv_{skill}", "1", 20, UITheme.TextMain, FontStyles.Bold);
@@ -727,21 +719,13 @@ namespace AldenFall.Editor
             skillsRuleRect.anchorMin = new Vector2(0, 1); skillsRuleRect.anchorMax = new Vector2(1, 1);
             skillsRuleRect.offsetMin = new Vector2(24, -55); skillsRuleRect.offsetMax = new Vector2(-24, -54);
 
-            var glyphs = new Dictionary<SkillType, string>
-            {
-                { SkillType.Attack, "icon_sword" },
-                { SkillType.Strength, "icon_strength" },
-                { SkillType.Defence, "icon_shield" },
-                { SkillType.Magic, "icon_magic" },
-                { SkillType.Fishing, "icon_fish" },
-                { SkillType.Cooking, "icon_flame" },
-            };
+            // Skill glyphs come from skills.json (Progression.SkillRegistry).
 
             var rows = new List<SkillsPanelUI.SkillRow>();
             float rowY = -92f;
             foreach (SkillType skill in System.Enum.GetValues(typeof(SkillType)))
             {
-                rows.Add(BuildSkillRow(panel, skill, glyphs[skill], rowY));
+                rows.Add(BuildSkillRow(panel, skill, SkillRegistry.Get(skill).glyph, rowY));
                 rowY -= 82f;
             }
             skillsUI.rows = rows.ToArray();
