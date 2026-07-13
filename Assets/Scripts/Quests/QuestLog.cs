@@ -173,9 +173,9 @@ namespace AldenFall.Quests
             st.Status = QuestStatus.TurnedIn;
 
             if (def.Rewards != null)
-                foreach (var (itemId, count) in def.Rewards)
-                    for (int c = 0; c < Mathf.Max(1, count); c++)
-                        LootDrop.GiveOrDrop(inventory, itemId, transform);  // never silently lost
+                foreach (var reward in def.Rewards)
+                    for (int c = 0; c < Mathf.Max(1, reward.count); c++)
+                        LootDrop.GiveOrDrop(inventory, reward.itemId, transform);  // never silently lost
 
             if (def.GoldReward > 0)
                 wallet?.Add(def.GoldReward);
