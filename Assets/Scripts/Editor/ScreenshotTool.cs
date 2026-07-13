@@ -37,6 +37,18 @@ namespace AldenFall.Editor
             ("tavern_inside",   new Vector3(-32f, 2.0f, 37f),  new Vector3(-32f, 1.0f, 28f)),
         });
 
+        /// <summary>Lake + hydrology angles: the lake is centred at (-138,138), ~72m radius,
+        /// cradled by mountains, fed by the north feeder river.</summary>
+        public static void CaptureLake() => Run(new (string, Vector3, Vector3)[]
+        {
+            ("lake_birdseye",  new Vector3(-138f, 90f, 40f),   new Vector3(-138f, 0f, 138f)),   // whole lake + mtns
+            ("lake_vista_SE",  new Vector3(-78f, 7f, 82f),     new Vector3(-150f, 2f, 150f)),   // across water to mtns
+            ("lake_shore_S",   new Vector3(-138f, 5f, 74f),    new Vector3(-138f, 1f, 150f)),   // south shore looking N
+            ("lake_river_in",  new Vector3(-120f, 8f, 208f),   new Vector3(-135f, 0f, 175f)),   // north river inflow
+            ("lake_from_hill", new Vector3(-55f, 26f, 60f),    new Vector3(-138f, 0f, 138f)),   // hilltop over lake
+            ("lake_wide",      new Vector3(-138f, 45f, -10f),  new Vector3(-138f, 0f, 150f)),   // wide basin
+        });
+
         private static void Run((string name, Vector3 pos, Vector3 lookAt)[] shots)
         {
             string outDir = "Screenshots";

@@ -237,12 +237,14 @@ namespace AldenFall.Editor
                         h = Mathf.Max(h, Mathf.Sin(t * Mathf.PI) * 15f);    // up to 15m peaks, 0 at ends
                     }
 
-                    // Lake bowl: sit just under the built mud banks/bed with a WIDE soft blend.
-                    float lakeDx = Mathf.Max(Mathf.Abs(wx - LakeCenter.x), Mathf.Abs(wz - LakeCenter.z));
-                    if (lakeDx < LakeHalf - 6f)
-                        h = -2.9f;
-                    else if (lakeDx < LakeHalf + 12f)
-                        h = Mathf.Lerp(-2.9f, h, (lakeDx - (LakeHalf - 6f)) / 18f);
+                    // Lake: a NATURAL round basin carved into the terrain (deep centre ->
+                    // gentle shallows -> shore) so grass/sand meets the waterline like the
+                    // rivers do. No cube banks; the terrain IS the lakebed.
+                    if (lakeR < LakeHalf + 6f)
+                    {
+                        float d01 = Mathf.Clamp01(lakeR / (LakeHalf + 6f));
+                        h = Mathf.Min(h, Mathf.Lerp(-4.6f, 0.4f, Mathf.SmoothStep(0f, 1f, d01)));
+                    }
 
                     // Feeder river: WIDER + deeper (swimmable, crossable) with a gradient bank,
                     // cutting a gorge through the lake mountains from the north down to the lake.
@@ -1247,18 +1249,22 @@ namespace AldenFall.Editor
             var basinMat = Mat("LakeBasin", new Color(0.16f, 0.19f, 0.20f), smoothness: 0.25f);
             // Readable but TRANSLUCENT water — 0.82 alpha + strong emission rendered as
             // an opaque cyan slab in QA; this keeps the glint while letting the bed show.
-            var waterMat = Mat("LakeWater", new Color(0.13f, 0.38f, 0.5f, 0.62f),
-                smoothness: 0.95f, transparent: true, emission: new Color(0.02f, 0.07f, 0.09f));
+            var waterMat = Mat("LakeWater", new Color(0.16f, 0.40f, 0.44f, 0.48f),
+                smoothness: 0.9f, transparent: true, emission: new Color(0.015f, 0.05f, 0.06f));
 
             Vector3 c = LakeCenter;
             float w = LakeHalf * 2f, depth = WaterSurfaceY - LakeBedY;   // depth ~2.7m (>1.8 swim)
             const float openHalf = 30f;                                  // deep swimmable core half-width
 
-            // Deep bed under the open water (solid, Ground layer — touch bottom and you stand).
-            var bed = Cube("Lake_Bed", c + Vector3.up * (LakeBedY - 0.35f),
-                new Vector3(openHalf * 2f + 4f, 0.7f, openHalf * 2f + 4f), basinMat, container);
-            bed.isStatic = true;
-            if (groundLayer >= 0) bed.layer = groundLayer;
+            // Deep bed under the open water (solid, Ground layer). Legacy flat-ground only;
+            // in terrain mode the carved basin is the bed.
+            if (!UseUnityTerrain)
+            {
+                var bed = Cube("Lake_Bed", c + Vector3.up * (LakeBedY - 0.35f),
+                    new Vector3(openHalf * 2f + 4f, 0.7f, openHalf * 2f + 4f), basinMat, container);
+                bed.isStatic = true;
+                if (groundLayer >= 0) bed.layer = groundLayer;
+            }
 
             // Sloped MUD banks all around (no man-made steps, img 21): each side shelves
             // gently from the surrounding ground (y=0) down to the deep bed. Banks span the
@@ -1275,10 +1281,15 @@ namespace AldenFall.Editor
                 b.isStatic = true;
                 if (groundLayer >= 0) b.layer = groundLayer;
             }
-            MudBank("Lake_BankE", c + new Vector3(mid, midY, 0f), new Vector3(slabLen, 0.6f, w + 2f), new Vector3(0f, 0f, tilt));
-            MudBank("Lake_BankW", c + new Vector3(-mid, midY, 0f), new Vector3(slabLen, 0.6f, w + 2f), new Vector3(0f, 0f, -tilt));
-            MudBank("Lake_BankN", c + new Vector3(0f, midY, mid), new Vector3(w + 2f, 0.6f, slabLen), new Vector3(-tilt, 0f, 0f));
-            MudBank("Lake_BankS", c + new Vector3(0f, midY, -mid), new Vector3(w + 2f, 0.6f, slabLen), new Vector3(tilt, 0f, 0f));
+            // The cube bed + sloped mud banks are only for the legacy flat-ground path. In
+            // terrain mode the heightmap carves the natural basin, so skip them.
+            if (!UseUnityTerrain)
+            {
+                MudBank("Lake_BankE", c + new Vector3(mid, midY, 0f), new Vector3(slabLen, 0.6f, w + 2f), new Vector3(0f, 0f, tilt));
+                MudBank("Lake_BankW", c + new Vector3(-mid, midY, 0f), new Vector3(slabLen, 0.6f, w + 2f), new Vector3(0f, 0f, -tilt));
+                MudBank("Lake_BankN", c + new Vector3(0f, midY, mid), new Vector3(w + 2f, 0.6f, slabLen), new Vector3(-tilt, 0f, 0f));
+                MudBank("Lake_BankS", c + new Vector3(0f, midY, -mid), new Vector3(w + 2f, 0.6f, slabLen), new Vector3(tilt, 0f, 0f));
+            }
 
             // Water trigger volume (Water layer) — only the DEEP core, so you swim in the
             // middle and wade the mud shallows. Swim detection is depth-based.
