@@ -278,7 +278,7 @@ namespace AldenFall.Player
             isInWater = false;
             waterSurfaceY = 0f;
 
-            // No residual swim momentum on land — this was the source of the
+            // No residual swim momentum on land, this was the source of the
             // permanent post-swim drift bug.
             velocity.x = 0;
             velocity.z = 0;
@@ -296,7 +296,7 @@ namespace AldenFall.Player
             IsMoving = inputDirection.magnitude > 0.1f;
             IsRunning = false;
 
-            // Camera-relative horizontal swim — direct control, no lingering momentum.
+            // Camera-relative horizontal swim, direct control, no lingering momentum.
             Vector3 moveDir = Vector3.zero;
             if (IsMoving && cameraTransform != null)
             {
@@ -387,7 +387,7 @@ namespace AldenFall.Player
             }
 
             IsMoving = MoveDirection.sqrMagnitude > 0.01f;
-            externalMoveIntent = Vector3.zero; // consumed — must be re-set every frame
+            externalMoveIntent = Vector3.zero; // consumed, must be re-set every frame
             externalMoveRun = false;
 
             if (IsMoving)
@@ -539,7 +539,7 @@ namespace AldenFall.Player
         {
             velocity.y += gravity * Time.deltaTime;
             // Only the vertical component belongs to gravity. Horizontal motion is
-            // applied directly by movement/dodge/knockback — never persisted here.
+            // applied directly by movement/dodge/knockback, never persisted here.
             controller.Move(new Vector3(0, velocity.y, 0) * Time.deltaTime);
         }
 

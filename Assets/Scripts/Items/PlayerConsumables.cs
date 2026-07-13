@@ -5,7 +5,7 @@ namespace AldenFall.Items
 {
     /// <summary>
     /// Eating food: heals, consumes one from the stack, and applies an
-    /// "eating" combat lockout — while chewing you cannot attack or cast
+    /// "eating" combat lockout, while chewing you cannot attack or cast
     /// (PlayerAbilities / PlayerMelee both respect IsCombatLocked), but you
     /// can still move and dodge.
     /// </summary>

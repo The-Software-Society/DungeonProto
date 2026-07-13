@@ -92,7 +92,7 @@ namespace AldenFall.Data
 
     /// <summary>
     /// The master monster file: every mob's stats, movement, combat behavior,
-    /// loot, and spawns live in StreamingAssets/monsters.json — tuning is a
+    /// loot, and spawns live in StreamingAssets/monsters.json, tuning is a
     /// JSON edit + scene rebuild, no code. Read identically by the editor
     /// build pipeline (ArenaBuilder), playmode tests, and shipped builds.
     /// </summary>

@@ -9,7 +9,7 @@ namespace AldenFall.Combat
         /// <summary>worldPos, amount, dealtByPlayer</summary>
         public static event Action<Vector3, float, bool> DamageNumber;
 
-        /// <summary>worldPos, text, color — "Stunned!", "+25", "Burnt!"</summary>
+        /// <summary>worldPos, text, color, "Stunned!", "+25", "Burnt!"</summary>
         public static event Action<Vector3, string, Color> StatusText;
 
         public static void RaiseDamage(Vector3 worldPos, float amount, bool dealtByPlayer)

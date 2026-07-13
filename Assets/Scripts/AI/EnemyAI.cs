@@ -131,7 +131,7 @@ namespace AldenFall.AI
         public EnemyState CurrentState => currentState;
         public bool IsAlive => health != null && health.IsAlive;
 
-        /// <summary>Movement slow from statuses (Hamstring etc.) — 1 = unslowed.</summary>
+        /// <summary>Movement slow from statuses (Hamstring etc.), 1 = unslowed.</summary>
         private float SpeedFactor => statuses != null ? statuses.MoveSpeedFactor : 1f;
 
         /// <summary>
@@ -261,7 +261,7 @@ namespace AldenFall.AI
             if (agent != null && agent.isOnNavMesh)
                 agent.isStopped = true;
 
-            // Stagger react — every character's controller wires its Hit clip to ChargeHit
+            // Stagger react, every character's controller wires its Hit clip to ChargeHit
             if (animator != null)
                 PlayTrigger(ChargeHitHash);
         }
@@ -468,7 +468,7 @@ namespace AldenFall.AI
                     return;
                 }
 
-                // Veil: the target vanished from our senses — drop aggro
+                // Veil: the target vanished from our senses, drop aggro
                 var targetStatuses = playerTarget.GetComponent<Combat.StatusSystem>();
                 if (targetStatuses != null && targetStatuses.IsInvisible)
                 {
@@ -537,7 +537,7 @@ namespace AldenFall.AI
             float distance = Vector3.Distance(transform.position, playerTarget.position);
 
             // Specials move the body by writing transform.position directly (bypassing the
-            // agent), so they are only allowed while actually standing on the NavMesh —
+            // agent), so they are only allowed while actually standing on the NavMesh -
             // otherwise a mob that cannot path (no mesh under it) could still leap/charge
             // onto a distant player, which reads as "hit from range with no contact".
             bool canUseSpecials = agent != null && agent.isOnNavMesh;
@@ -722,9 +722,20 @@ namespace AldenFall.AI
                 return;
             }
 
-            // Parabolic arc movement
+            // Parabolic arc movement. The leap writes transform.position directly, so it
+            // must respect walls itself: if the step would pass through level geometry
+            // (Ground layer, triggers ignored), stop the arc at the wall instead of
+            // phasing through, then land where we are.
             Vector3 currentPos = Vector3.Lerp(jumpAttackStartPos, jumpAttackTargetPos, t);
             currentPos.y += jumpAttackArcHeight * 4f * t * (1f - t);
+            Vector3 step = currentPos - transform.position;
+            if (step.sqrMagnitude > 0.0001f &&
+                Physics.Raycast(transform.position + Vector3.up * 0.9f, step.normalized,
+                    step.magnitude + 0.4f, LayerMask.GetMask("Ground"), QueryTriggerInteraction.Ignore))
+            {
+                EndJumpAttack();
+                return;
+            }
             transform.position = currentPos;
 
             FaceTarget(jumpAttackTargetPos);
@@ -842,8 +853,12 @@ namespace AldenFall.AI
                 // Move forward
                 Vector3 movement = chargeDirection * chargeSpeed * Time.deltaTime;
 
-                // Check for obstacles ahead (wall collision)
-                if (Physics.Raycast(transform.position + Vector3.up, chargeDirection, out RaycastHit wallHit, 1f))
+                // Check for obstacles across the ACTUAL step this frame: a fixed 1m
+                // look-ahead tunnels through walls whenever chargeSpeed*dt exceeds it
+                // (any hitchy frame at 18 m/s), which is how the boss ran through walls.
+                float lookAhead = Mathf.Max(1f, movement.magnitude + 0.4f);
+                if (Physics.Raycast(transform.position + Vector3.up, chargeDirection, out RaycastHit wallHit,
+                        lookAhead, LayerMask.GetMask("Ground"), QueryTriggerInteraction.Ignore))
                 {
                     if (!wallHit.collider.CompareTag("Player"))
                     {

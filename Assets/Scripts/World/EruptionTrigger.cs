@@ -7,7 +7,7 @@ namespace AldenFall.World
     /// <summary>
     /// The main-quest climax tripwire: a world-space AABB at the volcano mouth.
     /// The first time any living PLAYER crosses it, the server flips the world
-    /// into the eruption (<see cref="EmberfallWorldState.BeginEruption"/>) —
+    /// into the eruption (<see cref="EmberfallWorldState.BeginEruption"/>) -
     /// embers spread toward the city until the Floor Boss falls.
     ///
     /// Polls like <see cref="SealableDoor"/>/<see cref="LavaHazard"/> instead of
@@ -45,7 +45,7 @@ namespace AldenFall.World
             if (world == null) return;
             if (world.CurrentPhase != EmberfallWorldState.Phase.Calm)
             {
-                fired = true; // already erupting/cleared — nothing left to trip
+                fired = true; // already erupting/cleared, nothing left to trip
                 return;
             }
 

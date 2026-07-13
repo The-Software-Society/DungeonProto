@@ -4,9 +4,9 @@ using AldenFall.Progression;
 namespace AldenFall.Combat
 {
     /// <summary>
-    /// Trains Defence from taking hits — but ONLY while the Defence combat
+    /// Trains Defence from taking hits, but ONLY while the Defence combat
     /// style is selected (you level what you choose). Actual mitigation happens
-    /// universally in Health via the StatBlock (Defence + Armor) — this
+    /// universally in Health via the StatBlock (Defence + Armor), this
     /// component only handles the XP side.
     /// </summary>
     [RequireComponent(typeof(Health))]

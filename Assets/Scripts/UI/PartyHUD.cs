@@ -8,9 +8,9 @@ namespace AldenFall.UI
 {
     /// <summary>
     /// Minimal party corner list (top-left, its own runtime canvas like
-    /// QuestTrackerHUD): one small name line + a thin HP bar per member — no panel
+    /// QuestTrackerHUD): one small name line + a thin HP bar per member, no panel
     /// background, so it never covers gameplay. Also hosts the party-invite / duel
-    /// prompts ("&lt;name&gt; invites you to a party — Y accept / N decline") and short
+    /// prompts ("&lt;name&gt; invites you to a party, Y accept / N decline") and short
     /// toasts raised by PartyMember / DuelMember on the same GameObject.
     /// </summary>
     public class PartyHUD : MonoBehaviour
@@ -222,7 +222,7 @@ namespace AldenFall.UI
             {
                 if (row.fill == null) continue;
 
-                // Resolve (and cache) the member's Health from the spawned lookup —
+                // Resolve (and cache) the member's Health from the spawned lookup -
                 // Health's SyncVar replicates globally, so the percent is always live.
                 if (row.health == null
                     && NetworkClient.spawned.TryGetValue(row.netId, out var identity) && identity != null)
@@ -243,11 +243,11 @@ namespace AldenFall.UI
             var lines = new List<string>(3);
 
             if (party != null && party.HasPendingInvite)
-                lines.Add($"<b>{party.PendingInviterName}</b> invites you to a party — <color=#5ED68C>Y</color> accept / <color=#E06060>N</color> decline");
+                lines.Add($"<b>{party.PendingInviterName}</b> invites you to a party, <color=#5ED68C>Y</color> accept / <color=#E06060>N</color> decline");
             if (duel != null && duel.HasPendingRequest)
-                lines.Add($"<b>{duel.PendingChallengerName}</b> challenges you to a duel — <color=#5ED68C>Y</color> accept / <color=#E06060>N</color> decline");
+                lines.Add($"<b>{duel.PendingChallengerName}</b> challenges you to a duel, <color=#5ED68C>Y</color> accept / <color=#E06060>N</color> decline");
             if (duel != null && duel.IsDueling)
-                lines.Add("<color=#E06060>DUEL</color> — first to 1 HP loses");
+                lines.Add("<color=#E06060>DUEL</color>, first to 1 HP loses");
             if (toast != null)
                 lines.Add($"<color=#C8C2CE>{toast}</color>");
 

@@ -10,7 +10,7 @@ namespace AldenFall.Combat
     ///   - walks into range on its own (pursuit via PlayerController intent)
     ///   - in melee range: swings on the StatBlock interval (sword auto)
     ///   - focus equipped + target at range: casts a weak Magic Bolt instead
-    /// Autos are deliberately low damage — abilities carry the fight.
+    /// Autos are deliberately low damage, abilities carry the fight.
     /// </summary>
     public class PlayerMelee : MonoBehaviour
     {
@@ -130,7 +130,8 @@ namespace AldenFall.Combat
 
             var target = targeting.CurrentTarget;
             float distance = Vector3.Distance(transform.position, target.position);
-            bool hasFocus = equipment != null && equipment.GetEquipped(EquipSlot.Focus) != null;
+            // Any magic implement (off-hand focus OR main-hand wand) enables magic autos at range.
+            bool hasFocus = equipment != null && equipment.HasMagicImplement;
             float autoRange = hasFocus ? magicAutoRange : meleeRange;
 
             bool onCooldown = Time.time - lastSwingTime < Stats.CombatMath.SwingInterval(stats);
@@ -147,7 +148,7 @@ namespace AldenFall.Combat
             }
             else if (engaged)
             {
-                // Walk into range on our own — no camera or clicking required
+                // Walk into range on our own, no camera or clicking required
                 playerController?.SetExternalMoveIntent(target.position - transform.position);
             }
         }
@@ -175,7 +176,7 @@ namespace AldenFall.Combat
 
         private System.Collections.IEnumerator SwingRoutine(Transform target)
         {
-            // Small lunge into the swing — sells the weight of the attack
+            // Small lunge into the swing, sells the weight of the attack
             Vector3 lungeDir = (target.position - transform.position);
             lungeDir.y = 0;
             lungeDir.Normalize();
@@ -200,7 +201,7 @@ namespace AldenFall.Combat
             float damage = Stats.CombatMath.MeleeDamage(stats);
 
             // XP is granted server-side the instant this damage actually lands (Health.TakeDamage),
-            // scaled by the damage dealt and routed to the SELECTED combat style — you level what
+            // scaled by the damage dealt and routed to the SELECTED combat style, you level what
             // you choose. Passing it through the hit means a whiff (Defence miss) or an
             // undamageable target awards nothing: no phantom XP, ever.
             var trained = combatStyle != null ? combatStyle.TrainedSkill : SkillType.Attack;

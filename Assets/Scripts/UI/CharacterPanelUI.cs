@@ -10,7 +10,7 @@ namespace AldenFall.UI
     /// <summary>
     /// Character panel: 5-slot paper doll (click to unequip), bag grid
     /// (click to equip), and an OSRS-style equipment bonuses readout that
-    /// reads straight from the StatBlock — one source of truth.
+    /// reads straight from the StatBlock, one source of truth.
     /// </summary>
     public class CharacterPanelUI : MonoBehaviour
     {
@@ -40,7 +40,30 @@ namespace AldenFall.UI
         private void Start()
         {
             EnsureBagGold();
+            EnsureHandLabels();
             TryBindPlayer();
+        }
+
+        /// <summary>
+        /// Renames the baked paper-doll labels for the two-hand rework (WEAPON ->
+        /// MAIN HAND, FOCUS -> OFF HAND) at runtime, so scenes built before the
+        /// rework read correctly without a rebuild.
+        /// </summary>
+        private void EnsureHandLabels()
+        {
+            RelabelDollSlot("DollLabel_Weapon", "MAIN HAND");
+            RelabelDollSlot("DollLabel_Focus", "OFF HAND (FOCUS)");
+        }
+
+        private void RelabelDollSlot(string objectName, string label)
+        {
+            var child = transform.Find(objectName);
+            var text = child != null ? child.GetComponent<TMP_Text>() : null;
+            if (text == null) return;
+            text.text = label;
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            // Widen the baked 70px rect so the longer names fit on one line.
+            text.rectTransform.sizeDelta = new Vector2(130f, text.rectTransform.sizeDelta.y);
         }
 
         /// <summary>Builds the gold readout in the bag corner if the scene doesn't have one.</summary>
@@ -146,12 +169,13 @@ namespace AldenFall.UI
         {
             if (bonusText == null || stats == null) return;
 
+            // <pos> pins every value to one column so the block reads as a table.
             string Line(string label, StatType type, string suffix = "")
             {
                 float bonus = stats.GetModifierTotal(type);
                 string color = bonus > 0 ? "#7FD98A" : "#8A8494";
-                string value = bonus > 0 ? $"+{bonus:0.#}" : "—";
-                return $"<color=#A79FB0>{label}</color>  <color={color}>{value}{suffix}</color>";
+                string value = bonus > 0 ? $"+{bonus:0.#}" : "-";
+                return $"<color=#A79FB0>{label}</color><pos=74%><color={color}>{value}{suffix}</color>";
             }
 
             bonusText.text =

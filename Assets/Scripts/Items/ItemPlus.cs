@@ -6,11 +6,11 @@ namespace AldenFall.Items
 {
     /// <summary>
     /// The +1..+10 gear upgrade layer. A plussed item is the base item id with
-    /// a "+N" suffix ("raider_saber+7") — the id IS the instance, so it flows
+    /// a "+N" suffix ("raider_saber+7"), the id IS the instance, so it flows
     /// through inventory, equipment, loot, and the action bar untouched;
     /// ItemDatabase.Get strips the suffix, and stat application scales here.
     ///
-    /// Balance anchor (Jon's spec): each + adds FLAT power per stat type —
+    /// Balance anchor (Jon's spec): each + adds FLAT power per stat type -
     /// +2 WeaponPower per plus means a Rusty Sword (2 power) at +8 equals
     /// Emberfang (18), and +10 (22) is godlike for its level.
     /// </summary>

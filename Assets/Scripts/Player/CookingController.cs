@@ -9,7 +9,7 @@ namespace AldenFall.Player
 {
     /// <summary>
     /// Cooking at a campfire: every cycle converts one raw fish. Burn chance
-    /// falls 5% per Cooking level — at level 11 fish stop burning entirely.
+    /// falls 5% per Cooking level, at level 11 fish stop burning entirely.
     /// Cancels the moment you walk off. RNG is injectable for tests.
     /// </summary>
     public class CookingController : MonoBehaviour
@@ -25,7 +25,13 @@ namespace AldenFall.Player
         private PlayerController controller;
         private Animator animator;
         private Coroutine loop;
+        private float cookStartedAt;
         private System.Random rng = new System.Random();
+
+        /// <summary>Fired when a cook SUCCEEDS (not burnt). Arg = cooked item id.
+        /// Quest hook: the tutorial requires cooking your own fish, vendor food
+        /// must not count.</summary>
+        public event System.Action<string> OnCooked;
 
         private static readonly int AttackHash = Animator.StringToHash("Attack");
 
@@ -70,6 +76,11 @@ namespace AldenFall.Player
                     transform.rotation = Quaternion.LookRotation(look.normalized);
             }
 
+            cookStartedAt = Time.time;
+            CombatEvents.RaiseStatus(transform.position + Vector3.up * 2f,
+                "Cooking...", UI.UITheme.Gold);
+            if (animator != null)
+                animator.SetTrigger(AttackHash);
             loop = StartCoroutine(CookLoop());
             return true;
         }
@@ -86,6 +97,10 @@ namespace AldenFall.Player
         private void Update()
         {
             if (!IsCooking) return;
+            // Grace window: the E press that starts cooking often lands while a
+            // movement key is still held for a frame or two; cancelling instantly
+            // (and silently) made cooking look completely broken.
+            if (Time.time - cookStartedAt < 0.35f) return;
             bool cancel =
                 (controller != null && (controller.HasManualMoveInput || controller.IsSwimming)) ||
                 (health != null && health.IsDead);
@@ -109,7 +124,7 @@ namespace AldenFall.Player
             {
                 yield return new WaitForSeconds(cookSeconds);
 
-                if (inventory.CountOf(raw) <= 0) continue;   // eaten/moved mid-cook — re-pick
+                if (inventory.CountOf(raw) <= 0) continue;   // eaten/moved mid-cook, re-pick
                 var def = ItemDatabase.Get(raw);
                 string cooked = def != null && !string.IsNullOrEmpty(def.CookedResult) ? def.CookedResult : "cooked_fish";
                 inventory.Remove(raw);
@@ -123,16 +138,17 @@ namespace AldenFall.Player
                     bool bagged = LootDrop.GiveOrDrop(inventory, "burnt_fish", transform);
                     skills?.AddXp(SkillType.Cooking, xpPerBurn);
                     CombatEvents.RaiseStatus(transform.position + Vector3.up * 2f,
-                        bagged ? "Burnt!" : "Burnt! (bag full — dropped)", UI.UITheme.TextDim);
+                        bagged ? "Burnt!" : "Burnt! (bag full, dropped)", UI.UITheme.TextDim);
                 }
                 else
                 {
                     bool bagged = LootDrop.GiveOrDrop(inventory, cooked, transform);
                     skills?.AddXp(SkillType.Cooking, xpPerCook);
+                    OnCooked?.Invoke(cooked);
                     var cdef = ItemDatabase.Get(cooked);
                     string label = cdef != null ? cdef.Name + "!" : "Cooked!";
                     CombatEvents.RaiseStatus(transform.position + Vector3.up * 2f,
-                        bagged ? label : label + " (bag full — dropped)", UI.UITheme.Gold);
+                        bagged ? label : label + " (bag full, dropped)", UI.UITheme.Gold);
                 }
             }
 

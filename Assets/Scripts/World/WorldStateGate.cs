@@ -5,7 +5,7 @@ namespace AldenFall.World
 {
     /// <summary>
     /// A sealed barrier that opens when the world reaches a given
-    /// <see cref="EmberfallWorldState.Phase"/> — the Floor-2 stairway gate opens
+    /// <see cref="EmberfallWorldState.Phase"/>, the Floor-2 stairway gate opens
     /// on Cleared. Like <see cref="SealableDoor"/> it is deliberately
     /// NON-networked: the phase itself is the replicated state, so every machine
     /// observes the same transition and opens its local copy in lock-step.

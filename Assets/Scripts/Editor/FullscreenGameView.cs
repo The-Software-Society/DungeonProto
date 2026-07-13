@@ -115,7 +115,7 @@ namespace AldenFall.Editor
             // Focus the game view so keyboard input flows to the game
             fullscreenWindow.Focus();
 
-            Debug.Log("Fullscreen Game view ON — F8 or the ✕ button (top-right) exits. Stopping play also exits.");
+            Debug.Log("Fullscreen Game view ON, F8 or the ✕ button (top-right) exits. Stopping play also exits.");
         }
 
         public static void Close()

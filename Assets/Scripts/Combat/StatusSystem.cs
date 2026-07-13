@@ -15,7 +15,7 @@ namespace AldenFall.Combat
     }
 
     /// <summary>
-    /// One active effect: stun, burn, buff, debuff, lockout. Plain data —
+    /// One active effect: stun, burn, buff, debuff, lockout. Plain data -
     /// created by whatever applies it (abilities, food, enemy attacks).
     /// </summary>
     public class StatusEffect
@@ -34,7 +34,7 @@ namespace AldenFall.Combat
     /// <summary>
     /// Per-entity status effects for player AND mobs. Stat changes are applied
     /// as StatBlock modifiers keyed "status:{id}", so buffs/debuffs flow through
-    /// the same single source of truth as gear — CombatMath never needs to know.
+    /// the same single source of truth as gear, CombatMath never needs to know.
     /// Damage ticks route through Health.TakeDamage (the one damage path).
     /// </summary>
     public class StatusSystem : MonoBehaviour
@@ -59,7 +59,7 @@ namespace AldenFall.Combat
         public bool IsSilenced => HasFlag(StatusFlags.Silenced);
         public bool IsCombatLocked => HasFlag(StatusFlags.CombatLocked);
 
-        /// <summary>"invisible" is the aggro-drop status (Veil) — EnemyAI checks it.</summary>
+        /// <summary>"invisible" is the aggro-drop status (Veil), EnemyAI checks it.</summary>
         public bool IsInvisible => Has("invisible");
 
         /// <summary>Combined movement slow: the strongest active slow wins (1 = unslowed).</summary>

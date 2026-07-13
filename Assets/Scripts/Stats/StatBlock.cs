@@ -22,8 +22,8 @@ namespace AldenFall.Stats
     /// Single source of truth for an entity's combat stats. Attached to the
     /// player AND every mob. Final value = base + all modifiers.
     ///
-    ///   base values  — what the entity IS (mob templates, player skill levels)
-    ///   modifiers    — what the entity HAS (equipment, buffs), keyed by source
+    ///   base values , what the entity IS (mob templates, player skill levels)
+    ///   modifiers   , what the entity HAS (equipment, buffs), keyed by source
     ///                  so a source can be cleanly replaced or removed
     ///
     /// Everything that deals or takes damage reads through this + CombatMath.

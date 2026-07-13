@@ -11,7 +11,7 @@ namespace AldenFall.AI
     /// gameplay components on remote player avatars.
     ///
     /// Least-invasive by design: EnemyAI/BossRageMode stay plain MonoBehaviours and
-    /// simply do not run on clients — no need to convert their large FSMs to
+    /// simply do not run on clients, no need to convert their large FSMs to
     /// NetworkBehaviour since they never issue Commands/Rpcs of their own.
     /// </summary>
     [RequireComponent(typeof(NetworkIdentity))]
@@ -19,7 +19,7 @@ namespace AldenFall.AI
     {
         public override void OnStartClient()
         {
-            // Host is also a client but IS the server — leave its full simulation running.
+            // Host is also a client but IS the server, leave its full simulation running.
             if (isServer) return;
 
             // Pure client: stop everything the server authoritatively simulates.

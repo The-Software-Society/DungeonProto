@@ -15,6 +15,7 @@ namespace AldenFall.Quests
         UseAbility,
         CatchFish,
         EatFood,
+        CookFood,
     }
 
     public class ObjectiveDef

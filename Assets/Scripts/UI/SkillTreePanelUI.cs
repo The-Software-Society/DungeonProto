@@ -9,7 +9,7 @@ namespace AldenFall.UI
     /// <summary>
     /// Combat skill trees: one tab per combat skill (Attack/Strength/Defence/
     /// Magic), abilities grouped by weapon class underneath. Tabs and tiles
-    /// are built by HUDBuilder from AbilityDatabase — adding a weapon branch
+    /// are built by HUDBuilder from AbilityDatabase, adding a weapon branch
     /// later is data, not UI code. Drag tiles onto the action bar.
     /// </summary>
     public class SkillTreePanelUI : MonoBehaviour
@@ -21,6 +21,7 @@ namespace AldenFall.UI
             public Button button;
             public Image buttonBg;
             public TMP_Text label;
+            public Image underline;      // accent bar under the active tab (optional)
             public GameObject content;   // the tree page this tab shows
         }
 
@@ -47,6 +48,8 @@ namespace AldenFall.UI
                     tab.buttonBg.color = on ? UITheme.PanelBgLight : new Color(0, 0, 0, 0.35f);
                 if (tab.label != null)
                     tab.label.color = on ? UITheme.TextGold : UITheme.TextDim;
+                if (tab.underline != null)
+                    tab.underline.enabled = on;
             }
         }
     }

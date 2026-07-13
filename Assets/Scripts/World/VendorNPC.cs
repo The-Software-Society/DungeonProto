@@ -5,7 +5,7 @@ namespace AldenFall.World
     /// <summary>
     /// The market vendor: press E to open the buy/sell <see cref="UI.VendorPanel"/>
     /// on the interacting player. Purely local-economy (Wallet + Inventory are
-    /// client-side), so no networking needed — same model as the F7 Forge.
+    /// client-side), so no networking needed, same model as the F7 Forge.
     /// </summary>
     public class VendorNPC : Interactable
     {
@@ -31,7 +31,7 @@ namespace AldenFall.World
             if (panel == null) return;
             panel.Open(transform, stock);
             Combat.CombatEvents.RaiseStatus(transform.position + Vector3.up * 2.2f,
-                $"{displayName}: Have a look — finest goods this side of the volcano.", UI.UITheme.TextGold);
+                $"{displayName}: Have a look, finest goods this side of the volcano.", UI.UITheme.TextGold);
         }
     }
 }

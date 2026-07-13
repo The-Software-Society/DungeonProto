@@ -6,7 +6,9 @@ using AldenFall.Stats;
 namespace AldenFall.Items
 {
     /// <summary>
-    /// Six-slot equipment (weapon/helm/chest/legs/cape/focus). Equipping:
+    /// Six-slot equipment (main hand/helm/chest/legs/cape/off hand). The Weapon
+    /// slot is the MAIN HAND and Focus is the OFF HAND: they are fully
+    /// independent, so a sword + focus (or wand + focus) both apply. Equipping:
     ///   1. writes the item's bonuses into the StatBlock (source = slot name)
     ///   2. attaches the item's model to the right bone so gear is VISIBLE
     /// Bone lookup is fuzzy so it works across differently-named Meshy rigs.
@@ -43,6 +45,32 @@ namespace AldenFall.Items
         // Convenience for older callers/UI
         public string WeaponId => GetEquipped(EquipSlot.Weapon);
         public float WeaponPower => stats != null ? stats.Get(StatType.WeaponPower) : 0f;
+
+        // ---------- two-hand queries (ability/auto gating) ----------
+
+        /// <summary>True when a Sword-class weapon is in the main hand (melee ability gate).</summary>
+        public bool HasSwordMainHand
+        {
+            get
+            {
+                var main = GetEquippedDef(EquipSlot.Weapon);
+                return main != null && main.WeaponKind == WeaponKind.Sword;
+            }
+        }
+
+        /// <summary>
+        /// True when the player holds ANY magic implement: a focus in the off
+        /// hand or a wand in the main hand (magic ability + magic auto gate).
+        /// </summary>
+        public bool HasMagicImplement
+        {
+            get
+            {
+                if (GetEquippedDef(EquipSlot.Focus) != null) return true;
+                var main = GetEquippedDef(EquipSlot.Weapon);
+                return main != null && main.WeaponKind == WeaponKind.Wand;
+            }
+        }
 
         /// <summary>Equip from inventory; the displaced item returns to the bag.</summary>
         public bool Equip(string itemId)
@@ -196,7 +224,7 @@ namespace AldenFall.Items
             visual.transform.localPosition = Vector3.zero;
 
             // Grip axis: from the hand bone toward its deepest descendant
-            // (the fingertips) — the natural "out of the fist" direction.
+            // (the fingertips), the natural "out of the fist" direction.
             Vector3 gripAxis = GripAxisWorld(hand);
 
             // Blade = the model's longest dimension. Rotate so it lies along

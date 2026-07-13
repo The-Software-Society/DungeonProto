@@ -13,10 +13,10 @@ namespace AldenFall.Combat
     /// the losing blow is clamped at 1 HP server-side, the duel ends, and both
     /// fighters are restored to full a few seconds later.
     ///
-    /// Keys (local player): O — challenge the nearest player within 8m;
-    /// Y / N — accept / decline (party invites get Y/N priority).
+    /// Keys (local player): O, challenge the nearest player within 8m;
+    /// Y / N, accept / decline (party invites get Y/N priority).
     ///
-    /// The opponent is a SyncVar so the CLIENT also knows its own pair — projectiles
+    /// The opponent is a SyncVar so the CLIENT also knows its own pair, projectiles
     /// are client-side visuals that normally fly through allies, and they need to know
     /// the duel opponent is a legitimate target.
     /// </summary>
@@ -56,7 +56,7 @@ namespace AldenFall.Combat
         public static void ServerReset() => pendingRequests.Clear();
 
         /// <summary>
-        /// True when these two players are BOTH locked into a duel with each other —
+        /// True when these two players are BOTH locked into a duel with each other -
         /// the exact pair Health.TakeDamage lets through the friendly-fire guard.
         /// </summary>
         public static bool IsActiveDuelPair(GameObject a, GameObject b)
@@ -93,7 +93,7 @@ namespace AldenFall.Combat
                 }
             }
 
-            // A pending PARTY invite owns Y/N first — never double-consume the keys.
+            // A pending PARTY invite owns Y/N first, never double-consume the keys.
             if (partyMember == null) partyMember = GetComponent<Multiplayer.PartyMember>();
             if (partyMember != null && partyMember.HasPendingInvite) return;
 
@@ -178,7 +178,7 @@ namespace AldenFall.Combat
         /// <summary>
         /// SERVER (from Health.TakeDamage): the losing blow just got clamped at 1 HP.
         /// Clear the pair, announce, and restore both to full after a beat.
-        /// (Explicit NetworkServer.active guard — the weaver's [Server] injection on
+        /// (Explicit NetworkServer.active guard, the weaver's [Server] injection on
         /// static methods can't be validated by the offline compile.)
         /// </summary>
         public static void ServerEndDuel(GameObject winner, GameObject loser)
@@ -196,7 +196,7 @@ namespace AldenFall.Combat
             loserDuel.TargetDuelEnded(false, Multiplayer.PartySystem.DisplayNameOf(winnerDuel.netId));
 
             // Runs on the winner's component; if the winner disconnects inside the delay
-            // the coroutine dies with them and the loser just regens — acceptable MVP edge.
+            // the coroutine dies with them and the loser just regens, acceptable MVP edge.
             winnerDuel.StartCoroutine(winnerDuel.RestoreBothAfterDelay(
                 winner.GetComponent<Health>(), loser.GetComponent<Health>()));
         }
@@ -242,7 +242,7 @@ namespace AldenFall.Combat
         [TargetRpc]
         private void TargetDuelStarted(string opponentName)
         {
-            Notice?.Invoke($"Duel started against {opponentName} — first to 1 HP loses!");
+            Notice?.Invoke($"Duel started against {opponentName}, first to 1 HP loses!");
             Changed?.Invoke();
         }
 
@@ -258,7 +258,7 @@ namespace AldenFall.Combat
         [TargetRpc]
         private void TargetDuelCancelled()
         {
-            Notice?.Invoke("Duel ended — your opponent left.");
+            Notice?.Invoke("Duel ended, your opponent left.");
             Changed?.Invoke();
         }
 

@@ -7,9 +7,9 @@ namespace AldenFall.Multiplayer
     /// Per-player party endpoint (lives on the player prefab next to PlayerCombat).
     /// The registry itself is the static server-side <see cref="PartySystem"/>; this
     /// component is the Command/TargetRpc bridge plus the local player's keys:
-    ///   P        — invite the nearest other player within 8m
-    ///   Shift+P  — leave your party
-    ///   Y / N    — accept / decline a pending invite
+    ///   P       , invite the nearest other player within 8m
+    ///   Shift+P , leave your party
+    ///   Y / N   , accept / decline a pending invite
     /// PartyHUD (same GameObject) renders the roster + prompts off the events here.
     /// </summary>
     public class PartyMember : NetworkBehaviour
@@ -83,7 +83,7 @@ namespace AldenFall.Multiplayer
         }
 
         /// <summary>
-        /// Nearest other player avatar within range. Runs only on a keypress —
+        /// Nearest other player avatar within range. Runs only on a keypress -
         /// NetworkClient.spawned is a dictionary walk, not a scene search.
         /// </summary>
         public NetworkIdentity FindNearestOtherPlayer(float range)

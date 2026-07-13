@@ -25,7 +25,7 @@ namespace AldenFall.AI
         private IEnumerator Start()
         {
             // Server-authoritative: only the server populates the camp (host counts).
-            // WAIT for the role instead of testing once — Start() runs at scene load,
+            // WAIT for the role instead of testing once, Start() runs at scene load,
             // which can precede StartServer()/StartHost() (host menu, batchmode boot
             // ordering), and a one-shot check leaves the world permanently empty.
             while (!NetworkServer.active && !NetworkClient.active)

@@ -9,7 +9,7 @@ namespace AldenFall.Items
     /// a player walks close. The WORLD drop is server-authoritative (spawned via
     /// NetworkServer.Spawn) so every player sees it; inventories stay client-local, so
     /// pickup routes through the server which grants the item to the requesting player.
-    /// First requester in range wins — no double pickups.
+    /// First requester in range wins, no double pickups.
     /// </summary>
     public class LootDrop : NetworkBehaviour
     {
@@ -44,7 +44,7 @@ namespace AldenFall.Items
             cachedPrefab != null ? cachedPrefab : (cachedPrefab = Resources.Load<GameObject>("NetLootDrop"));
 
         /// <summary>
-        /// Server-authoritative spawn — a networked world drop visible to everyone.
+        /// Server-authoritative spawn, a networked world drop visible to everyone.
         /// Pass <paramref name="owner"/> (the killer) to reserve the drop for them +
         /// their party for the first 60s; null = public immediately (bag drops, chests).
         /// </summary>
@@ -57,7 +57,7 @@ namespace AldenFall.Items
             var prefab = Prefab;
             if (prefab == null)
             {
-                Debug.LogWarning("LootDrop: NetLootDrop prefab missing from Resources — rebuild the demo (AldenFall > Build Emberfall Demo).");
+                Debug.LogWarning("LootDrop: NetLootDrop prefab missing from Resources, rebuild the demo (AldenFall > Build Emberfall Demo).");
                 return null;
             }
 
@@ -71,7 +71,7 @@ namespace AldenFall.Items
             {
                 drop.ownerNetId = ownerIdentity.netId;
                 drop.protectedUntil = NetworkTime.time + OwnershipSeconds;
-                // Party snapshot at SPAWN time — joining a party later doesn't grant
+                // Party snapshot at SPAWN time, joining a party later doesn't grant
                 // access to drops that were already on the ground.
                 drop.allowedNetIds = PartySystem.SnapshotMemberIds(ownerIdentity.netId);
             }
@@ -99,7 +99,7 @@ namespace AldenFall.Items
         }
 
         /// <summary>
-        /// Add to the bag if there's room, otherwise drop at the owner's feet — a created
+        /// Add to the bag if there's room, otherwise drop at the owner's feet, a created
         /// item must NEVER silently vanish (cooking with a full bag). Returns true when it
         /// went into the bag.
         /// </summary>
@@ -195,7 +195,7 @@ namespace AldenFall.Items
 
             if (!isClient) return;
 
-            // Cosmetic bob + spin + glow pulse (local only — position isn't networked past spawn).
+            // Cosmetic bob + spin + glow pulse (local only, position isn't networked past spawn).
             transform.position = new Vector3(
                 transform.position.x,
                 baseY + Mathf.Sin(Time.time * 2.2f) * 0.15f,
@@ -224,7 +224,7 @@ namespace AldenFall.Items
                 return;
 
             // Ask the server to grant it. Retry a couple times a second until granted (the
-            // object despawns on success) — a denial (someone else grabbed it) despawns it too.
+            // object despawns on success), a denial (someone else grabbed it) despawns it too.
             nextPickupRequestTime = Time.time + 0.4f;
             CmdTryPickup();
         }
@@ -232,7 +232,7 @@ namespace AldenFall.Items
         /// <summary>
         /// CLIENT: cheap pre-check so we never spam pickup requests for a drop that is
         /// still inside someone else's 60s ownership window. Approximate (uses the local
-        /// CURRENT party roster, not the server's spawn-time snapshot) — the server-side
+        /// CURRENT party roster, not the server's spawn-time snapshot), the server-side
         /// check in CmdTryPickup is the authoritative one.
         /// </summary>
         private bool IsProtectedFromLocalPlayer()

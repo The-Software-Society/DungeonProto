@@ -191,7 +191,7 @@ namespace AldenFall.Editor
             var avatar = AssetDatabase.LoadAllAssetsAtPath(path).OfType<Avatar>().FirstOrDefault();
             if (avatar != null && avatar.isValid && avatar.isHuman) return true;
 
-            Debug.LogWarning($"{Path.GetFileName(path)}: humanoid avatar mapping failed — falling back to Generic.");
+            Debug.LogWarning($"{Path.GetFileName(path)}: humanoid avatar mapping failed, falling back to Generic.");
             return false;
         }
 

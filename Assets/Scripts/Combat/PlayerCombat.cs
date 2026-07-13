@@ -10,7 +10,7 @@ namespace AldenFall.Combat
     /// Command and the server applies it, then the result replicates back via the Health
     /// SyncVar + damage-number RPC.
     ///
-    /// Damage is computed client-side and trusted by the server — fine for a co-op PvE
+    /// Damage is computed client-side and trusted by the server, fine for a co-op PvE
     /// test. If PvP/competitive ever matters, recompute damage server-side from the
     /// attacker's StatBlock instead.
     /// </summary>
@@ -20,7 +20,7 @@ namespace AldenFall.Combat
         /// Relay a player hit to the server. <paramref name="xpSkill"/> (a
         /// <see cref="Progression.SkillType"/> as int, -1 = none) and <paramref name="xpRate"/>
         /// travel with the hit so the SERVER can mint combat XP at the moment the damage lands
-        /// on the enemy's <see cref="Health"/> — the single, damage-integral XP source. Nothing
+        /// on the enemy's <see cref="Health"/>, the single, damage-integral XP source. Nothing
         /// on the swing/cast side grants XP anymore.
         /// </summary>
         public void DealDamage(Health target, float damage, bool canMiss = false,
@@ -65,7 +65,7 @@ namespace AldenFall.Combat
             GetComponent<Progression.Skills>()?.AddXp((Progression.SkillType)xpSkill, xp);
         }
 
-        // Healing (food, etc.) is server-authoritative like damage — a client calling Health.Heal
+        // Healing (food, etc.) is server-authoritative like damage, a client calling Health.Heal
         // directly no-ops (server guard), so route it through the server.
         public void Heal(float amount)
         {

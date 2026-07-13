@@ -31,7 +31,7 @@ namespace AldenFall.Cinematics
 
     /// <summary>
     /// Data-driven cutscene playback: loads StreamingAssets/cutscenes/&lt;id&gt;.json
-    /// and performs it — scripted camera, letterbox + subtitles, fades, actor
+    /// and performs it, scripted camera, letterbox + subtitles, fades, actor
     /// mocap states and movement. The authoring loop is "describe the scene →
     /// the script gets written → replay in-game" (edit JSON, no rebuild).
     /// SPACE skips. Player control is locked during playback and restored after.
@@ -40,7 +40,7 @@ namespace AldenFall.Cinematics
     {
         public static CutsceneDirector Instance { get; private set; }
 
-        /// <summary>True while a scene plays — EnemyAI and combat systems pause on this.</summary>
+        /// <summary>True while a scene plays, EnemyAI and combat systems pause on this.</summary>
         public static bool CombatPaused { get; private set; }
 
         public bool IsPlaying { get; private set; }
@@ -89,7 +89,7 @@ namespace AldenFall.Cinematics
 
         private void Update()
         {
-            // The weapon-choice panel is a mandatory beat — no skipping past it.
+            // The weapon-choice panel is a mandatory beat, no skipping past it.
             if (UI.WeaponChoicePanel.IsOpen) return;
 
             if (IsPlaying && (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Escape)))
@@ -145,7 +145,7 @@ namespace AldenFall.Cinematics
 
         private IEnumerator CameraStep(CutsceneStep step)
         {
-            if (cam == null) yield break; // no main camera — skip the shot rather than NRE mid-scene
+            if (cam == null) yield break; // no main camera, skip the shot rather than NRE mid-scene
 
             Vector3 targetPos = V3(step.pos, cam.transform.position);
             Quaternion targetRot = step.lookAt != null
@@ -206,7 +206,7 @@ namespace AldenFall.Cinematics
             if (animator != null && !string.IsNullOrEmpty(step.state))
                 animator.CrossFadeInFixedTime(step.state, 0.2f);
             else
-                Debug.LogWarning($"CutsceneDirector: anim step '{step.state}' skipped — " +
+                Debug.LogWarning($"CutsceneDirector: anim step '{step.state}' skipped, " +
                                  (actor == null ? $"actor '{step.actor}' not found in scene." : "actor has no Animator."));
         }
 
@@ -300,7 +300,7 @@ namespace AldenFall.Cinematics
         }
 
         /// <summary>
-        /// The camera is telling a story — the HUD gets out of the way. Disables
+        /// The camera is telling a story, the HUD gets out of the way. Disables
         /// every root gameplay canvas (health, action bar, quest tracker, panels,
         /// nameplates…) and remembers exactly which ones were on so Finish can
         /// restore them. The director's own overlay sits at sortingOrder 400 and
@@ -397,7 +397,7 @@ namespace AldenFall.Cinematics
             skip.fontSize = 15;
             skip.alignment = TextAlignmentOptions.MidlineRight;
             skip.color = new Color(1f, 1f, 1f, 0.45f);
-            skip.text = "SPACE — skip";
+            skip.text = "SPACE, skip";
         }
 
         private void SetFade(float alpha)

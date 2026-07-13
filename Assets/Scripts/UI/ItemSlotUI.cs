@@ -126,7 +126,7 @@ namespace AldenFall.UI
         public void OnEndDrag(PointerEventData e)
         {
             // A real drop target (action-bar slot) consumes the payload in its
-            // OnDrop, which runs before OnEndDrag — nothing left to do then.
+            // OnDrop, which runs before OnEndDrag, nothing left to do then.
             if (DragController.Instance == null || !DragController.Instance.IsDragging)
                 return;
 
@@ -147,7 +147,7 @@ namespace AldenFall.UI
             var inventory = playerObj.GetComponent<Inventory>();
             if (inventory == null || !inventory.Remove(id)) return;
 
-            // Toss it a couple of meters ahead — outside auto-pickup range —
+            // Toss it a couple of meters ahead, outside auto-pickup range -
             // with a short grace period so it isn't instantly re-collected.
             Vector3 pos = playerObj.transform.position + playerObj.transform.forward * 2.4f;
             LootDrop.Spawn(id, pos, pickupDelay: 1.25f);

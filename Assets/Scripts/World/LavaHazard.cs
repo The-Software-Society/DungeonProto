@@ -21,7 +21,7 @@ namespace AldenFall.World
     /// World-gen usage: create the GO, add a trigger BoxCollider sized to the lava pool, then
     ///   var lava = go.AddComponent&lt;LavaHazard&gt;();
     ///   lava.Configure(12f, 0.5f);
-    /// This component only applies damage — visuals (emissive lava mesh, particles) are built
+    /// This component only applies damage, visuals (emissive lava mesh, particles) are built
     /// separately by the world-gen.
     /// </summary>
     public class LavaHazard : MonoBehaviour

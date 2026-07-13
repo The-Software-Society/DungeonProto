@@ -3,7 +3,7 @@ using UnityEngine;
 namespace AldenFall.World
 {
     /// <summary>
-    /// The volcano's smoke-and-ember column — a landmark readable from the city so
+    /// The volcano's smoke-and-ember column, a landmark readable from the city so
     /// the threat is always on the horizon. Runtime-built particle systems (same
     /// pattern as <see cref="EmberAtmosphere"/>): a wide dark smoke column rising
     /// from the crater plus sparse bright embers spitting above it. Purely visual;

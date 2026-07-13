@@ -12,7 +12,7 @@ namespace AldenFall.Abilities
     /// The player's active-ability kit (replaces the old PlayerCombat).
     /// Abilities come from AbilityDatabase, cooldowns and weapon gates live
     /// here, damage flows through CombatMath + the target's Health, statuses
-    /// through StatusSystem, and every use feeds AbilityMastery — the
+    /// through StatusSystem, and every use feeds AbilityMastery, the
     /// Conquer-style "skills grow with use" loop.
     /// </summary>
     public class PlayerAbilities : MonoBehaviour
@@ -81,7 +81,7 @@ namespace AldenFall.Abilities
             }
         }
 
-        // Number-key input lives in ActionBar — the only number-key reader.
+        // Number-key input lives in ActionBar, the only number-key reader.
 
         /// <summary>Re-resolve the Animator onto the active body. After a gender/body swap on a
         /// remote avatar the Awake-cached ref points at the now-inactive body, so casts (and
@@ -121,14 +121,14 @@ namespace AldenFall.Abilities
             float distance = Vector3.Distance(transform.position, pendingTarget.position);
             if (distance <= def.Range * 0.95f)
             {
-                // In range — fire for real (TryActivate re-validates everything)
+                // In range, fire for real (TryActivate re-validates everything)
                 string id = pendingAbilityId;
                 ClearPendingCast();
                 TryActivate(id);
             }
             else
             {
-                // RUN in — same pursuit channel as auto-attack, sprint pace
+                // RUN in, same pursuit channel as auto-attack, sprint pace
                 playerController?.SetExternalMoveIntent(pendingTarget.position - transform.position, run: true);
             }
         }
@@ -154,13 +154,19 @@ namespace AldenFall.Abilities
             return true;
         }
 
+        /// <summary>
+        /// Reads BOTH hands. Sword abilities need a Sword-class MAIN hand (a wand
+        /// won't do); Focus abilities accept a focus OFF hand OR a wand main hand,
+        /// so a sword-and-focus fighter and a wand-only caster both keep their kit.
+        /// </summary>
         public bool HasRequiredWeapon(WeaponClass required)
         {
-            if (required == WeaponClass.Any || equipment == null) return required == WeaponClass.Any;
+            if (required == WeaponClass.Any) return true;
+            if (equipment == null) return false;
             return required switch
             {
-                WeaponClass.Sword => equipment.GetEquipped(EquipSlot.Weapon) != null,
-                WeaponClass.Focus => equipment.GetEquipped(EquipSlot.Focus) != null,
+                WeaponClass.Sword => equipment.HasSwordMainHand,
+                WeaponClass.Focus => equipment.HasMagicImplement,
                 _ => false,
             };
         }
@@ -172,7 +178,7 @@ namespace AldenFall.Abilities
 
             Transform target = targeting != null && targeting.HasTarget ? targeting.CurrentTarget : null;
 
-            // Target-required kinds: out of range doesn't fail — it queues a
+            // Target-required kinds: out of range doesn't fail, it queues a
             // pursue-then-cast (walk in, fire on arrival). No cooldown burned.
             switch (def.Kind)
             {
@@ -209,7 +215,7 @@ namespace AldenFall.Abilities
                 case AbilityKind.Blink: CastBlink(def); break;
             }
 
-            // Replicate this cast's visual + animation to other clients (cosmetic only —
+            // Replicate this cast's visual + animation to other clients (cosmetic only -
             // damage is already server-authoritative, so no double-damage).
             if (combat != null)
             {
@@ -282,7 +288,7 @@ namespace AldenFall.Abilities
 
         /// <summary>
         /// Spawns the fireball. Used by the local cast (deals damage) and by remote replay
-        /// (visualOnly = damage-free — the server already applied it). The SpecialAttack cast
+        /// (visualOnly = damage-free, the server already applied it). The SpecialAttack cast
         /// animation plays either way, so remote players see the caster point and the fireball fly.
         /// </summary>
         private void SpawnProjectile(AbilityDef def, Transform target, Vector3 spawnPos, Vector3 aimDirection, bool visualOnly)
@@ -295,7 +301,7 @@ namespace AldenFall.Abilities
 
             // A tint builds a coloured glow BEFORE the Projectile awakes, so its
             // EnsureVisibleProjectile sees an existing renderer and skips the default
-            // orange look — Frost Bolt reads icy-blue, Hex reads sickly-purple.
+            // orange look, Frost Bolt reads icy-blue, Hex reads sickly-purple.
             if (def.ProjectileTint.HasValue)
                 BuildBoltVisual(bolt, def.ProjectileTint.Value);
 
@@ -325,7 +331,7 @@ namespace AldenFall.Abilities
         /// Cosmetic replay of another player's cast on THIS observer. Damage is already
         /// server-authoritative, so this only spawns visuals + plays the cast animation.
         /// Runs on the remote avatar's (disabled) PlayerAbilities via PlayerCombat's Rpc, so it
-        /// must avoid coroutines — coroutine-heavy effects fall back to the swing animation.
+        /// must avoid coroutines, coroutine-heavy effects fall back to the swing animation.
         /// </summary>
         public void ReplayRemoteCast(string abilityId, Vector3 origin, Vector3 aimDir, Transform target)
         {
@@ -417,7 +423,7 @@ namespace AldenFall.Abilities
                 else if (def.Knockback < 0f)
                 {
                     // Negative knockback = yank toward the caster (Seismic
-                    // Slam). A dedicated pull, not knockback physics — the
+                    // Slam). A dedicated pull, not knockback physics, the
                     // upward pop and decay made the old version imperceptible.
                     StartCoroutine(PullEnemyRoutine(enemyHealth));
                 }
@@ -527,7 +533,7 @@ namespace AldenFall.Abilities
                 enemy.ForceAggro(transform);
             }
 
-            // Louder shout, more XP — but always something for using it
+            // Louder shout, more XP, but always something for using it
             skills?.AddXp(TreeSkill(def), 15f + taunted.Count * 10f);
             CombatEvents.RaiseStatus(transform.position + Vector3.up * 2f, def.Name, UI.UITheme.Gold);
             HitEffect.CreateNovaImpact(transform.position + Vector3.up);
@@ -542,7 +548,7 @@ namespace AldenFall.Abilities
 
             // Distance-budgeted dash: a wall-clock deadline could expire after a
             // single hitchy frame (shader compile, VFX spawn) and silently whiff
-            // the whole ability. The budget is generous — the target can back up
+            // the whole ability. The budget is generous, the target can back up
             // a bit and the dash still connects.
             float budget = def.Range + 4f;
             while (budget > 0f && target != null)

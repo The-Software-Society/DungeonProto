@@ -5,7 +5,7 @@ using UnityEngine;
 namespace AldenFall.Multiplayer
 {
     /// <summary>
-    /// SERVER-authoritative party registry. Pure static server-side state — the world
+    /// SERVER-authoritative party registry. Pure static server-side state, the world
     /// generator owns scene building, so there is no scene singleton to place; instead
     /// every player carries a <see cref="PartyMember"/> NetworkBehaviour whose Commands
     /// mutate this registry and whose TargetRpcs relay roster changes back to owners.
@@ -30,7 +30,7 @@ namespace AldenFall.Multiplayer
         private static readonly Dictionary<uint, PendingInvite> pendingInvites = new Dictionary<uint, PendingInvite>(); // key = invitee
         private static uint nextPartyId = 1;
 
-        /// <summary>Clear everything (server stop — statics outlive the network session).</summary>
+        /// <summary>Clear everything (server stop, statics outlive the network session).</summary>
         public static void ServerReset()
         {
             memberToParty.Clear();
@@ -146,7 +146,7 @@ namespace AldenFall.Multiplayer
         }
 
         /// <summary>
-        /// SERVER: run an action on every OTHER live party member's player object —
+        /// SERVER: run an action on every OTHER live party member's player object -
         /// the shared XP / gold / quest-credit fan-out. No-ops for solo players.
         /// </summary>
         public static void ForEachOtherMember(GameObject player, System.Action<GameObject> action)
@@ -202,7 +202,7 @@ namespace AldenFall.Multiplayer
         private static void SendRoster(uint netId, string[] names, uint[] ids)
         {
             if (!NetworkServer.spawned.TryGetValue(netId, out var identity) || identity == null) return;
-            if (identity.connectionToClient == null) return; // disconnecting — nobody to tell
+            if (identity.connectionToClient == null) return; // disconnecting, nobody to tell
             identity.GetComponent<PartyMember>()?.TargetPartyChanged(names, ids);
         }
     }

@@ -1,3 +1,5 @@
+using AldenFall.Data;
+
 namespace AldenFall.Items
 {
     /// <summary>
@@ -23,8 +25,16 @@ namespace AldenFall.Items
             return def != null && def.Slot != EquipSlot.None;
         }
 
-        /// <summary>Gold cost to forge from the given plus to plus+1 (50, 200, 450, 800, …).</summary>
-        public static int CostFor(int plus) => 50 * (plus + 1) * (plus + 1);
+        /// <summary>Gold cost to forge from the given plus to plus+1 (default 50, 200, 450, 800, …).
+        /// Curve = forgeCostCoef * (plus+1)^forgeCostExp, from config/economy.json.</summary>
+        public static int CostFor(int plus)
+        {
+            var e = GameConfig.Economy;
+            int p1 = plus + 1;
+            int pow = 1;
+            for (int i = 0; i < e.forgeCostExp; i++) pow *= p1;
+            return e.forgeCostCoef * pow;
+        }
 
         /// <summary>The resulting id (base at plus+1), or null if the pair can't combine.</summary>
         public static string Combine(string idA, string idB) =>
@@ -62,7 +72,7 @@ namespace AldenFall.Items
 
             if (!inv.Add(result))
             {
-                // Bag full for the upgrade — refund everything rather than destroy value.
+                // Bag full for the upgrade, refund everything rather than destroy value.
                 inv.Add(idA);
                 inv.Add(idB);
                 wallet.Add(cost);

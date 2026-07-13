@@ -49,7 +49,7 @@ namespace AldenFall.World
             {
                 log.Advance(ObjectiveKind.TalkToNpc, npcId);   // still satisfies any "talk to me" step
                 Say(log.IsActive(questId)
-                    ? $"{displayName}: You're still busy — off you go."
+                    ? $"{displayName}: You're still busy, off you go."
                     : $"{displayName}: Safe travels.");
             }
 
@@ -71,7 +71,7 @@ namespace AldenFall.World
 
         private void RefreshPrompt(Quests.QuestLog log)
         {
-            Prompt = log.IsComplete(questId) ? $"Turn in — {displayName}" : $"Talk to {displayName}";
+            Prompt = log.IsComplete(questId) ? $"Turn in, {displayName}" : $"Talk to {displayName}";
         }
 
         private void Say(string line) =>

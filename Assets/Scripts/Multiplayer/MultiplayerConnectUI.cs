@@ -286,7 +286,7 @@ namespace AldenFall.Multiplayer
 
         private static string DefaultServer()
         {
-            // Shipped clients (Mac, Windows) connect to the live server by default —
+            // Shipped clients (Mac, Windows) connect to the live server by default -
             // players never touch this. Only the editor defaults to localhost, for local
             // Host testing.
 #if UNITY_EDITOR

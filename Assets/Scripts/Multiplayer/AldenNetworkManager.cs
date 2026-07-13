@@ -87,7 +87,7 @@ namespace AldenFall.Multiplayer
         public override void OnStopServer()
         {
             // Static server-side registries outlive the network session inside one
-            // process (host stop/start in the editor) — never leak them across runs.
+            // process (host stop/start in the editor), never leak them across runs.
             PartySystem.ServerReset();
             Combat.DuelMember.ServerReset();
             base.OnStopServer();

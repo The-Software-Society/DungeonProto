@@ -5,7 +5,7 @@ namespace AldenFall.Combat
     /// <summary>
     /// Purely visual impact burst: flash light + emissive particle spray.
     /// Gameplay effects (damage, knockback) are the responsibility of whoever
-    /// dealt the hit — this class must never touch Health.
+    /// dealt the hit, this class must never touch Health.
     /// </summary>
     public class HitEffect : MonoBehaviour
     {

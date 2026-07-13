@@ -9,7 +9,7 @@ namespace AldenFall.UI
     /// <summary>
     /// One action-bar slot: wraps the AbilitySlotUI visuals with an index into
     /// the ActionBar model, a stack-count label, hover tooltips, and full
-    /// drag-and-drop — drag an ability/item ONTO it to bind, drag OFF it to
+    /// drag-and-drop, drag an ability/item ONTO it to bind, drag OFF it to
     /// clear or move. Validation lives in ActionBar.SetSlot; this just reports
     /// the attempt.
     /// </summary>

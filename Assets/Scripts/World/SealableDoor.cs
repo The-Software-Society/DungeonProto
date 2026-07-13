@@ -6,7 +6,7 @@ namespace AldenFall.World
 {
     /// <summary>
     /// A solid dungeon door that starts CLOSED (a Ground-layer collider that
-    /// blocks the passage — and, being present at NavMesh bake time, the navmesh
+    /// blocks the passage, and, being present at NavMesh bake time, the navmesh
     /// too) and OPENS once every enemy inside its guarded room is dead. While
     /// sealed the opaque slab also blocks line-of-sight into the next room, so a
     /// ranged player can't snipe / mage-cheese the room from the doorway.
@@ -15,7 +15,7 @@ namespace AldenFall.World
     /// compile-safe. Enemies are server-spawned but REPLICATED to every client,
     /// so each machine independently counts the room's live mobs and opens the
     /// door when it observes zero. Enemy death is server-authoritative, so all
-    /// machines converge on "cleared" within a poll of each other — no SyncVar
+    /// machines converge on "cleared" within a poll of each other, no SyncVar
     /// or scene NetworkIdentity required. Limitation: the open moment is decided
     /// per-client from replicated state rather than pushed by the server, so a
     /// client that hasn't yet received a mob's death can lag the door by up to
@@ -64,7 +64,7 @@ namespace AldenFall.World
             else if (failOpenSeconds > 0f && Time.time - watchStartedAt > failOpenSeconds)
             {
                 Debug.LogWarning($"SealableDoor '{name}': guarded room never received enemies " +
-                                 $"within {failOpenSeconds}s — failing open so the dungeon stays passable.");
+                                 $"within {failOpenSeconds}s, failing open so the dungeon stays passable.");
                 Open();
             }
         }

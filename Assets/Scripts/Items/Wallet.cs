@@ -9,7 +9,7 @@ namespace AldenFall.Items
     /// machine as its owning client, so a server-side grant (MobIdentity) lands
     /// on the right Wallet and the local HUD sees it. A dedicated-server split
     /// (no local client for that player) would need a SyncVar / TargetRpc bridge
-    /// — the same limitation noted on MobIdentity's kill credit.
+    ///, the same limitation noted on MobIdentity's kill credit.
     /// </summary>
     public class Wallet : MonoBehaviour
     {

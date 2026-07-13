@@ -49,6 +49,9 @@ namespace AldenFall.Quests
 
             var fishing = GetComponent<Player.FishingController>();
             if (fishing != null) fishing.OnFishCaught += id => Advance(ObjectiveKind.CatchFish, id);
+
+            var cooking = GetComponent<Player.CookingController>();
+            if (cooking != null) cooking.OnCooked += id => Advance(ObjectiveKind.CookFood, id);
         }
 
         // ReachLocation objectives are position-driven: poll the player's spot a few

@@ -25,6 +25,14 @@ namespace AldenFall.UI
         private CanvasGroup group;
         private RectTransform canvasRect;
 
+        // Panel is a single column by default and only widens for the
+        // equipped-item comparison, so ability tooltips don't drag around an
+        // empty right half. Values mirror the HUDBuilder layout.
+        private const float FullWidth = 560f;
+        private const float NarrowWidth = 320f;
+        private const float CompareColumnLeft = -294f;
+        private const float BodyRightPad = -16f;
+
         private void Awake()
         {
             Instance = this;
@@ -46,7 +54,9 @@ namespace AldenFall.UI
             var parts = new System.Collections.Generic.List<string>();
             if (ability.Cooldown > 0f) parts.Add($"{ability.Cooldown:0.#}s cooldown");
             if (ability.RequiredWeapon != Abilities.WeaponClass.Any)
-                parts.Add($"requires {ability.RequiredWeapon.ToString().ToLowerInvariant()}");
+                parts.Add(ability.RequiredWeapon == Abilities.WeaponClass.Focus
+                    ? "requires a focus or wand"
+                    : "requires a sword main hand");
             float bonus = (rank - 1) * 8f;
             if (bonus > 0f) parts.Add($"+{bonus:0}% mastery damage");
             statText.text = string.Join("   ", parts);
@@ -62,6 +72,7 @@ namespace AldenFall.UI
             }
 
             if (compareRoot != null) compareRoot.SetActive(false);
+            ApplyLayout(withCompare: false);
 
             group.alpha = 1f;
             Reposition();
@@ -112,10 +123,29 @@ namespace AldenFall.UI
                 border.color = c;
             }
 
-            ShowComparison(item, equipped);
+            bool compared = ShowComparison(item, equipped);
+            ApplyLayout(compared);
 
             group.alpha = 1f;
             Reposition();
+        }
+
+        /// <summary>Collapses to a single column unless the compare column is showing.</summary>
+        private void ApplyLayout(bool withCompare)
+        {
+            if (panel == null) return;
+            panel.sizeDelta = new Vector2(withCompare ? FullWidth : NarrowWidth, panel.sizeDelta.y);
+            float right = withCompare ? CompareColumnLeft : BodyRightPad;
+            SetRightEdge(nameText, right);
+            SetRightEdge(statText, right);
+            SetRightEdge(descText, right);
+        }
+
+        private static void SetRightEdge(TMP_Text text, float right)
+        {
+            if (text == null) return;
+            var rect = text.rectTransform;
+            rect.offsetMax = new Vector2(right, rect.offsetMax.y);
         }
 
         /// <summary>
@@ -123,9 +153,9 @@ namespace AldenFall.UI
         /// item's slot, so the player can weigh a swap. Hidden when the hovered
         /// item is itself equipped, occupies no slot, or nothing is worn there.
         /// </summary>
-        private void ShowComparison(ItemDef item, bool equipped)
+        private bool ShowComparison(ItemDef item, bool equipped)
         {
-            if (compareRoot == null) return;
+            if (compareRoot == null) return false;
 
             bool show = false;
             if (item.Slot != EquipSlot.None && !equipped)
@@ -155,6 +185,7 @@ namespace AldenFall.UI
             }
 
             compareRoot.SetActive(show);
+            return show;
         }
 
         public void Hide()

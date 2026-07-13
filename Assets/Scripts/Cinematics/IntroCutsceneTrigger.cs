@@ -8,7 +8,7 @@ namespace AldenFall.Cinematics
     /// Plays the intro cutscene on FIRST LOGIN only (PlayerPrefs flag), for the
     /// local player only. Waits a beat after scene load so the camera, HUD, and
     /// mobs are settled first. The intro ends on Aldric's weapon-choice beat, so
-    /// the "seen" flag is only committed once the scene fully finishes — quitting
+    /// the "seen" flag is only committed once the scene fully finishes, quitting
     /// mid-scene lets you choose again next login.
     ///
     /// The seen-key is VERSIONED: bumping it (v1 -> v2) makes the reworked intro
@@ -29,7 +29,7 @@ namespace AldenFall.Cinematics
         {
             // Networked avatars: only the local player watches their own intro.
             // On a fresh client spawn Start can run the same frame the object
-            // arrives, before Mirror has finished assigning local authority — so
+            // arrives, before Mirror has finished assigning local authority, so
             // wait a short window for the identity to spawn before deciding.
             var identity = GetComponent<NetworkIdentity>();
             if (identity != null)
@@ -54,7 +54,7 @@ namespace AldenFall.Cinematics
 
             // Let the camera, HUD, and mobs settle before the director seizes the
             // camera. The director reads Camera.main in TakeControl, so make sure
-            // one exists first — a null main camera would break the scripted shots.
+            // one exists first, a null main camera would break the scripted shots.
             yield return new WaitForSeconds(0.6f);
             float camWait = 0f;
             while (Camera.main == null && camWait < 5f)
@@ -67,7 +67,7 @@ namespace AldenFall.Cinematics
                 // Playing without a camera would NRE mid-scene and strand the player
                 // on a black screen with input disabled. Skip and leave the seen-flag
                 // unset so the intro retries next login.
-                Debug.LogWarning("IntroCutsceneTrigger: no main camera after 5s — skipping intro this session.");
+                Debug.LogWarning("IntroCutsceneTrigger: no main camera after 5s, skipping intro this session.");
                 yield break;
             }
 

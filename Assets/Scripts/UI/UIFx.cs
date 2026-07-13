@@ -7,7 +7,7 @@ namespace AldenFall.UI
     /// Lightweight UI micro-animation helpers (no external tween library).
     /// All easing is exponential ease-out for a crisp, expensive feel.
     /// The component classes (HoverScale, ReadyPulse, SlidePanel) live in
-    /// their own files — MonoBehaviours in a mismatched file lose their
+    /// their own files, MonoBehaviours in a mismatched file lose their
     /// script reference when a built scene reloads.
     /// </summary>
     public static class UIFx

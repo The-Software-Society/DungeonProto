@@ -26,7 +26,7 @@ namespace AldenFall.Combat
         [SerializeField] private float knockbackResistance = 0f; // 0 = full knockback, 1 = immune
 
         [Header("Regen")]
-        [Tooltip("Always-on trickle, % of max health per second. Slow and steady — not a combat factor.")]
+        [Tooltip("Always-on trickle, % of max health per second. Slow and steady, not a combat factor.")]
         [SerializeField] private float regenPercentPerSecond = 0.25f;
         [Tooltip("Faster recovery rate once no damage has been taken for restedDelay seconds.")]
         [SerializeField] private float restedRegenPercentPerSecond = 2f;
@@ -171,7 +171,7 @@ namespace AldenFall.Combat
         ///
         /// XP is INTEGRAL to damage: <paramref name="xpSkill"/> (a <see cref="Progression.SkillType"/>
         /// cast to int, or -1 for none) plus <paramref name="xpRate"/> let a player attacker earn
-        /// combat XP the instant real damage lands on an enemy here — never on the swing/cast.
+        /// combat XP the instant real damage lands on an enemy here, never on the swing/cast.
         /// A miss, a dead/invulnerable/undamageable target, or hitting another player all yield
         /// zero XP because control never reaches the grant, or the mitigated damage is 0.
         /// </summary>
@@ -182,7 +182,7 @@ namespace AldenFall.Combat
             if (IsDead || damage <= 0 || isInvulnerable) return;
 
             // Friendly-fire guard: one player's attack can't hurt another player while
-            // PvP is off. Single authoritative chokepoint — melee, spells and DoT ticks
+            // PvP is off. Single authoritative chokepoint, melee, spells and DoT ticks
             // all pass through here. Toggle CombatRules.PvpEnabled to re-enable PvP.
             // The ONE exception is an active duel: exactly that mutually-locked pair may
             // damage each other (DuelMember), without flipping the global switch.
@@ -221,7 +221,7 @@ namespace AldenFall.Combat
                 OnAttacked?.Invoke(attacker);
 
             // Mitigation is universal: any entity with a StatBlock gets its
-            // Defence + Armor applied here — one damage path for everything.
+            // Defence + Armor applied here, one damage path for everything.
             var stats = GetComponent<Stats.StatBlock>();
             if (stats != null)
                 damage *= 1f - Stats.CombatMath.DamageReduction(stats);
@@ -244,8 +244,8 @@ namespace AldenFall.Combat
             bool fromPlayer = attacker != null && CombatRules.IsPlayer(attacker);
             RpcDamageNumber(transform.position + Vector3.up * 1.6f, damage, fromPlayer);
 
-            // Combat XP is minted HERE — the exact instant a player's blow reduces an enemy's
-            // health — so it can never desync from the fight: no damage, no XP; damage, XP;
+            // Combat XP is minted HERE, the exact instant a player's blow reduces an enemy's
+            // health, so it can never desync from the fight: no damage, no XP; damage, XP;
             // regardless of who started it or whether the target was manually selected. It is
             // scaled by the damage ACTUALLY dealt (post-mitigation) and routed to the offensive
             // skill the attacker chose (melee style / Magic / ability tree). We skip player
@@ -259,7 +259,7 @@ namespace AldenFall.Combat
                     attackerCombat.ServerGrantCombatXp(xpSkill, xp);
 
                 // Party share: every OTHER party member earns the same FULL XP
-                // (Jon's decision — optimize later). Disconnected members are simply
+                // (Jon's decision, optimize later). Disconnected members are simply
                 // absent from the server registry, so the fan-out skips them.
                 Multiplayer.PartySystem.ForEachOtherMember(attacker, member =>
                     member.GetComponent<PlayerCombat>()?.ServerGrantCombatXp(xpSkill, xp));
@@ -306,12 +306,12 @@ namespace AldenFall.Combat
         }
 
         // ClientRpc has no interest management, so a hit anywhere reaches every client. Only
-        // show floating combat text for fights near the local player — otherwise you'd see
+        // show floating combat text for fights near the local player, otherwise you'd see
         // other zones' damage numbers on your screen.
         private static bool NearLocalPlayer(Vector3 worldPos)
         {
             var local = Multiplayer.LocalPlayerLocator.Find();
-            if (local == null) return true; // no local player resolved yet — don't suppress
+            if (local == null) return true; // no local player resolved yet, don't suppress
             return (local.transform.position - worldPos).sqrMagnitude <= 40f * 40f;
         }
 

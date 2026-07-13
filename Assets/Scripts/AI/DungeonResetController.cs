@@ -37,7 +37,7 @@ namespace AldenFall.AI
             var wallMat = RuntimeDungeonMaterial("RuntimeDungeonWall", new Color(0.10f, 0.09f, 0.11f));
             var floorMat = RuntimeDungeonMaterial("RuntimeDungeonFloor", new Color(0.14f, 0.13f, 0.15f));
 
-            // V2: the dungeon is the Emberfall Volcano to the SOUTH — interior x[-56,56],
+            // V2: the dungeon is the Emberfall Volcano to the SOUTH, interior x[-56,56],
             // z[-450,-318] with the entrance mouth (12m gap) on the north face. This safety
             // envelope mirrors the built volcano walls so a death-reset can never drop the
             // player into the void; the north wall is split around the entrance.
@@ -59,9 +59,12 @@ namespace AldenFall.AI
             obj.transform.localScale = scale;
             obj.layer = layer;
 
+            // Collider-only safety net: rendering these slabs painted a giant dark wall
+            // across the volcano's north face (players read the mouth as "locked off")
+            // and doubled every real wall with a phantom copy at a larger radius.
             var renderer = obj.GetComponent<Renderer>();
             if (renderer != null)
-                renderer.material = material;
+                Destroy(renderer);
         }
 
         private static Material RuntimeDungeonMaterial(string name, Color color)

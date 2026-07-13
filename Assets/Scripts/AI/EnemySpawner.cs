@@ -27,7 +27,7 @@ namespace AldenFall.AI
         private System.Collections.IEnumerator Start()
         {
             // Enemies are server-authoritative: only the server spawns and simulates them.
-            // WAIT for the role instead of testing once — Start() runs at scene load, which
+            // WAIT for the role instead of testing once, Start() runs at scene load, which
             // can precede StartServer()/StartHost() (host menu, batchmode boot ordering),
             // and a one-shot check leaves the world permanently empty.
             while (!NetworkServer.active && !NetworkClient.active)
@@ -36,7 +36,7 @@ namespace AldenFall.AI
 
             if (!NavMesh.SamplePosition(spawnPosition, out _, 5f, NavMesh.AllAreas))
             {
-                Debug.LogWarning("EnemySpawner: No NavMesh at spawn position — bake the scene first.");
+                Debug.LogWarning("EnemySpawner: No NavMesh at spawn position, bake the scene first.");
             }
 
             if (spawnOnStart && currentEnemy == null)

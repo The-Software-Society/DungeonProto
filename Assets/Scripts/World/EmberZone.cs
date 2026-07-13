@@ -8,7 +8,7 @@ namespace AldenFall.World
     /// Ember Approach with rising intensities (e.g. 0.2 → 0.45 → 0.7 → 1.0) so the walk
     /// toward the volcano visibly darkens. While the LOCAL player is inside, the zone
     /// registers itself with <see cref="EmberAtmosphere"/>, which blends the strongest
-    /// active zone with the global (eruption) intensity — so overlapping zones and the
+    /// active zone with the global (eruption) intensity, so overlapping zones and the
     /// world-state never fight; the loudest one simply wins.
     ///
     /// Purely cosmetic and client-local: the trigger only reacts to THIS machine's local
@@ -41,7 +41,7 @@ namespace AldenFall.World
 
         private void Awake()
         {
-            // Guarantee the collider is a trigger — this volume must never block movement.
+            // Guarantee the collider is a trigger, this volume must never block movement.
             foreach (var col in GetComponents<Collider>())
                 col.isTrigger = true;
         }
@@ -76,7 +76,7 @@ namespace AldenFall.World
 
         /// <summary>
         /// Is this collider the LOCAL player? Resolves the local player the same way the
-        /// rest of the project does (<see cref="LocalPlayerLocator"/> — Mirror's local
+        /// rest of the project does (<see cref="LocalPlayerLocator"/>, Mirror's local
         /// player, then the "Player" tag) and matches the entering collider against it,
         /// walking up from a child collider / rigidbody to the player root.
         /// </summary>

@@ -10,7 +10,7 @@ namespace AldenFall.UI
     /// Quest UI, built at runtime on its own canvas (like DebugCheatPanel) so it
     /// never touches the authored HUD. Two surfaces:
     ///   • a MINIMAL always-on tracker (top-right): no panel, one small line per
-    ///     active quest (max 2) — "◆ name — current objective" — so it never
+    ///     active quest (max 2), "◆ name, current objective", so it never
     ///     covers gameplay;
     ///   • a full quest log toggled with <b>Q</b> that holds ALL the detail:
     ///     descriptions, every objective, direction hints, completed history.
@@ -98,49 +98,21 @@ namespace AldenFall.UI
         {
             if (canvas == null) return;
 
-            logPanel = new GameObject("QuestLogPanel");
-            var rect = logPanel.AddComponent<RectTransform>();
-            rect.SetParent(canvas.transform, false);
-            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = Vector2.zero;
-            rect.sizeDelta = new Vector2(720f, 640f);
+            // Log panels need clicks blocked from the world underneath.
+            if (canvas.GetComponent<GraphicRaycaster>() == null)
+                canvas.gameObject.AddComponent<GraphicRaycaster>();
 
-            var bg = logPanel.AddComponent<Image>();
-            bg.color = new Color(0.05f, 0.045f, 0.075f, 0.97f);
+            var panel = PanelChrome.CreatePanel(canvas.transform, "QuestLogPanel",
+                new Vector2(680f, 560f));
+            logPanel = panel.gameObject;
 
-            var header = new GameObject("Header").AddComponent<RectTransform>();
-            header.SetParent(rect, false);
-            header.anchorMin = new Vector2(0f, 1f); header.anchorMax = new Vector2(1f, 1f);
-            header.pivot = new Vector2(0.5f, 1f);
-            header.offsetMin = new Vector2(28f, -52f); header.offsetMax = new Vector2(-28f, -16f);
-            var headerText = header.gameObject.AddComponent<TextMeshProUGUI>();
-            headerText.text = "QUEST LOG";
-            headerText.fontSize = 22;
-            headerText.fontStyle = FontStyles.Bold;
-            headerText.characterSpacing = 6;
-            headerText.color = UITheme.TextGold;
-            headerText.alignment = TextAlignmentOptions.MidlineLeft;
-            headerText.raycastTarget = false;
+            PanelChrome.Header(panel, "Quest Log", "Q closes");
 
-            var hint = new GameObject("Hint").AddComponent<RectTransform>();
-            hint.SetParent(rect, false);
-            hint.anchorMin = new Vector2(0f, 1f); hint.anchorMax = new Vector2(1f, 1f);
-            hint.pivot = new Vector2(0.5f, 1f);
-            hint.offsetMin = new Vector2(28f, -52f); hint.offsetMax = new Vector2(-28f, -16f);
-            var hintText = hint.gameObject.AddComponent<TextMeshProUGUI>();
-            hintText.text = "press Q to close";
-            hintText.fontSize = 13;
-            hintText.fontStyle = FontStyles.Italic;
-            hintText.color = UITheme.TextDim;
-            hintText.alignment = TextAlignmentOptions.MidlineRight;
-            hintText.raycastTarget = false;
-
-            var textObj = new GameObject("LogBody").AddComponent<RectTransform>();
-            textObj.SetParent(rect, false);
-            textObj.anchorMin = Vector2.zero; textObj.anchorMax = Vector2.one;
-            textObj.offsetMin = new Vector2(28f, 24f); textObj.offsetMax = new Vector2(-28f, -64f);
-            logBody = textObj.gameObject.AddComponent<TextMeshProUGUI>();
-            logBody.fontSize = 16;
+            var body = PanelChrome.Item(panel, "LogBody", UITheme.Pad,
+                PanelChrome.HeaderHeight + 8f, 680f - UITheme.Pad * 2f,
+                560f - PanelChrome.HeaderHeight - 8f - UITheme.Pad);
+            logBody = body.gameObject.AddComponent<TextMeshProUGUI>();
+            logBody.fontSize = UITheme.BodySize;
             logBody.color = UITheme.TextMain;
             logBody.alignment = TextAlignmentOptions.TopLeft;
             logBody.raycastTarget = false;
@@ -157,7 +129,7 @@ namespace AldenFall.UI
         {
             if (body != null)
             {
-                // One compact line per active quest, max 2 — everything else
+                // One compact line per active quest, max 2, everything else
                 // (descriptions, hints, completed history) lives in the Q log.
                 const int MaxTracked = 2;
                 var sb = new StringBuilder();
@@ -183,12 +155,12 @@ namespace AldenFall.UI
                     }
 
                     if (shown > 0) sb.Append('\n');
-                    sb.Append($"<color=#F2CC8C>◆</color> <b>{def.Name}</b> — {tail}");
+                    sb.Append($"<color=#F2CC8C>◆</color> <b>{def.Name}</b>, {tail}");
                     shown++;
                 }
 
                 if (shown == 0)
-                    sb.Append("<color=#8A8494>No quest — find Aldric</color>");
+                    sb.Append("<color=#8A8494>No quest, find Aldric</color>");
 
                 body.text = sb.ToString();
             }
@@ -225,7 +197,7 @@ namespace AldenFall.UI
                     string tag = status == QuestStatus.Complete ? " <color=#5ED68C>(ready to hand in)</color>" : "";
                     active.Append($"<b>{def.Name}</b>{tag}\n");
                     if (!string.IsNullOrEmpty(def.Description))
-                        active.Append($"<size=13><color=#9A93A4>{def.Description}</color></size>\n");
+                        active.Append($"<size=12><color=#9A93A4>{def.Description}</color></size>\n");
 
                     int cur = CurrentObjective(def);
                     for (int i = 0; i < def.Objectives.Count; i++)
@@ -250,10 +222,10 @@ namespace AldenFall.UI
             }
 
             var sb = new StringBuilder();
-            sb.Append("<size=15><color=#F2CC8C><b>ACTIVE</b></color></size>\n\n");
+            sb.Append("<size=12><cspace=3><color=#F2CC8C><b>ACTIVE</b></color></cspace></size>\n\n");
             sb.Append(activeCount > 0 ? active.ToString()
                                       : "<color=#8A8494>No active quests. Seek out Aldric in the clearing.</color>\n\n");
-            sb.Append("<size=15><color=#A69BB0><b>COMPLETED</b></color></size>\n\n");
+            sb.Append("<size=12><cspace=3><color=#A69BB0><b>COMPLETED</b></color></cspace></size>\n\n");
             sb.Append(doneCount > 0 ? done.ToString()
                                     : "<color=#8A8494>None yet.</color>");
 

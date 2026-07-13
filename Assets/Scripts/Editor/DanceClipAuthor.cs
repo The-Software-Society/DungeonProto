@@ -41,7 +41,7 @@ namespace AldenFall.Editor
             var rig = Discover(modelRoot.transform);
             if (rig.Hips == null)
             {
-                Debug.Log($"{charName}: no hips bone found — skipping authored dances.");
+                Debug.Log($"{charName}: no hips bone found, skipping authored dances.");
                 return results;
             }
 

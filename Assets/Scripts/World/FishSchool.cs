@@ -5,7 +5,7 @@ namespace AldenFall.World
 {
     /// <summary>
     /// Decorative shoal of fish that patrol and bob just under the water surface within a
-    /// box volume — pure ambiance for the lake and its feeder rivers. There is NO networking,
+    /// box volume, pure ambiance for the lake and its feeder rivers. There is NO networking,
     /// NO collision with the player and NO Health here: every client runs its own independent
     /// copy of the motion, which is fine because nothing about it is gameplay-authoritative.
     ///
@@ -24,7 +24,7 @@ namespace AldenFall.World
         [SerializeField] private float surfaceY = 0f;
 
         [Header("Shoal")]
-        [Tooltip("Number of fish spawned. Keep it modest — this is decoration.")]
+        [Tooltip("Number of fish spawned. Keep it modest, this is decoration.")]
         [SerializeField] private int count = 10;
 
         [Header("Motion tuning")]
@@ -105,7 +105,7 @@ namespace AldenFall.World
         private Fish CreateFish(int index)
         {
             // Elongated body: a stretched cube reads as a fish at ambiance distance and is
-            // the cheapest possible primitive. Collider stripped — this never touches gameplay.
+            // the cheapest possible primitive. Collider stripped, this never touches gameplay.
             var body = GameObject.CreatePrimitive(PrimitiveType.Cube);
             body.name = "Fish_" + index;
             var col = body.GetComponent<Collider>();

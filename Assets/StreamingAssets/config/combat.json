@@ -1,0 +1,31 @@
+{
+  "_doc": [
+    "COMBAT TUNING. Every combat formula reads these knobs (Stats/CombatMath.cs).",
+    "Damage = (baseMeleeDamage + weaponPower) * levelGrowth^(level-1), then defender mitigation.",
+    "levelGrowth is THE master curve. Mob HP in monsters.json is tuned to 40 * levelGrowth^(level-1).",
+    "If you raise levelGrowth, high levels scale up fast; keep mob HP on the same curve.",
+    "All fields must be present (JsonUtility zeroes any omitted field)."
+  ],
+  "baseMeleeDamage": 5.0,
+  "baseSwingInterval": 1.9,
+  "levelGrowth": 1.085,
+
+  "spellFocusGateBase": 0.60,
+  "spellFocusGatePerPower": 0.04,
+  "spellFocusPowerCap": 10.0,
+
+  "mitigationPerDefence": 0.01,
+  "mitigationPerArmor": 0.03,
+  "mitigationCap": 0.75,
+
+  "missBase": 0.10,
+  "missPerDefenceLead": 0.035,
+  "missFloor": 0.05,
+  "missCeil": 0.95,
+
+  "swingSpeedPerAttack": 0.008,
+  "cooldownReductionPerLevel": 0.0046,
+  "cooldownFloor": 0.55,
+
+  "damageVariance": 0.15
+}

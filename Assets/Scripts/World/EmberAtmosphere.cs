@@ -12,9 +12,9 @@ namespace AldenFall.World
     ///
     /// Intensity has two independent sources that are blended by MAX so neither can
     /// cancel the other:
-    ///   - GLOBAL   — set by <see cref="EmberfallWorldState"/> when the world flips
+    ///   - GLOBAL  , set by <see cref="EmberfallWorldState"/> when the world flips
     ///                into the eruption phase (whole map goes apocalyptic).
-    ///   - LOCAL    — the strongest <see cref="EmberZone"/> the local player is
+    ///   - LOCAL   , the strongest <see cref="EmberZone"/> the local player is
     ///                standing in (a positional gradient darkening toward the volcano).
     /// effective = max(global, strongest active zone). The displayed intensity eases
     /// toward that target every frame so transitions never pop.
@@ -249,7 +249,7 @@ namespace AldenFall.World
             col.color = new ParticleSystem.MinMaxGradient(grad);
 
             // Sprites/Default is the shader the rest of the project relies on for
-            // runtime-built line/trail visuals — it survives build shader stripping.
+            // runtime-built line/trail visuals, it survives build shader stripping.
             var renderer = ps.GetComponent<ParticleSystemRenderer>();
             renderer.material = new Material(Shader.Find("Sprites/Default")) { name = psName + "Mat" };
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
@@ -257,7 +257,7 @@ namespace AldenFall.World
             renderer.receiveShadows = false;
             renderer.sortingFudge = -10f;   // draw in front of most world geometry
             // A particle drifting right past the lens must never blow up into a
-            // screen-corner square — clamp billboard size to ~2% of the viewport
+            // screen-corner square, clamp billboard size to ~2% of the viewport
             // (Unity's default is 50%).
             renderer.maxParticleSize = 0.02f;
 
@@ -308,7 +308,7 @@ namespace AldenFall.World
             ApplySkybox(t);
         }
 
-        // The procedural skybox ignores fog entirely — without this the horizon stays
+        // The procedural skybox ignores fog entirely, without this the horizon stays
         // cheerful blue while the world burns (exactly what playtests showed).
         private void ApplySkybox(float t)
         {

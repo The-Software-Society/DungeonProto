@@ -5,7 +5,7 @@ namespace AldenFall.Player
 {
     /// <summary>
     /// The game's first interaction hook: polls the nearest Interactable in
-    /// range, surfaces its prompt to the HUD ("E — Fish"), and fires it on E.
+    /// range, surfaces its prompt to the HUD ("E, Fish"), and fires it on E.
     /// </summary>
     public class PlayerInteractor : MonoBehaviour
     {
@@ -17,9 +17,9 @@ namespace AldenFall.Player
         private Interactable current;
         private float nextPollAt;
 
-        /// <summary>Prompt text for the HUD chip, null when nothing is in range.</summary>
+        /// <summary>Prompt text for the HUD chip ("[E] Fish"), null when nothing is in range.</summary>
         public string CurrentPrompt =>
-            current != null ? $"{interactKey} — {current.Prompt}" : null;
+            current != null ? $"[{interactKey}] {current.Prompt}" : null;
 
         public Interactable Current => current;
 

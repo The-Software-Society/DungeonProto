@@ -8,7 +8,7 @@ using AldenFall.World;
 namespace AldenFall.Player
 {
     /// <summary>
-    /// OSRS-style AFK fishing: interact once and the character keeps casting —
+    /// OSRS-style AFK fishing: interact once and the character keeps casting -
     /// a catch tick every few seconds grants a raw fish + Fishing XP until you
     /// move, get hit, dodge, die, or the bag fills. Requires a fishing pole.
     /// </summary>
@@ -96,7 +96,7 @@ namespace AldenFall.Player
         }
 
         /// <summary>
-        /// Fish anywhere while swimming: no FishingSpot needed — the bobber lands on the
+        /// Fish anywhere while swimming: no FishingSpot needed, the bobber lands on the
         /// water surface a cast ahead of the swimmer. Same loop, tools, and level-gated
         /// catch table as bank fishing.
         /// </summary>

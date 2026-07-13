@@ -9,7 +9,7 @@ namespace AldenFall.Abilities
     /// <summary>
     /// What kind of weapon an ability needs. This is the scaling hook for
     /// future branches (dual-wield, 2h, staves): new WeaponClass values +
-    /// new defs — the tree UI and action bar are data-driven off this.
+    /// new defs, the tree UI and action bar are data-driven off this.
     /// </summary>
     public enum WeaponClass
     {
@@ -77,8 +77,8 @@ namespace AldenFall.Abilities
     }
 
     /// <summary>
-    /// Code-defined ability registry. Demo content is deliberately minimal —
-    /// one ability per weapon class per tree — but everything downstream
+    /// Code-defined ability registry. Demo content is deliberately minimal -
+    /// one ability per weapon class per tree, but everything downstream
     /// (tree UI, action bar, mastery) iterates this, so growth is data-only.
     /// </summary>
     public static class AbilityDatabase
@@ -282,7 +282,7 @@ namespace AldenFall.Abilities
             {
                 Id = "veil",
                 Name = "Veil of Shadows",
-                Description = "Fade from sight for 6 seconds — enemies forget you. Attacking breaks the veil.",
+                Description = "Fade from sight for 6 seconds, enemies forget you. Attacking breaks the veil.",
                 IconSprite = "icon_veil",
                 Tree = SkillType.Magic,
                 RequiredWeapon = WeaponClass.Focus,
@@ -292,17 +292,17 @@ namespace AldenFall.Abilities
                 BuffDuration = 6f,
             });
 
-            // ---- v7: magic depth — a full magic-only kit ----
+            // ---- v7: magic depth, a full magic-only kit ----
             // A single-target filler nuke, a ranged ground AoE, a curse/DoT debuff,
-            // a blink mobility, and a magic ward — so a pure caster has real options.
+            // a blink mobility, and a magic ward, so a pure caster has real options.
 
             // Fast, low-cooldown bolt: less punch than Fireball but spammable and
-            // it CHILLS (a movement slow, no burn) — the caster's kiting tool.
+            // it CHILLS (a movement slow, no burn), the caster's kiting tool.
             Register(new AbilityDef
             {
                 Id = "frost_bolt",
                 Name = "Frost Bolt",
-                Description = "A darting shard of ice — quick to cast and it chills the target, slowing them.",
+                Description = "A darting shard of ice, quick to cast and it chills the target, slowing them.",
                 IconSprite = "icon_bolt",
                 Tree = SkillType.Magic,
                 RequiredWeapon = WeaponClass.Any,
@@ -335,7 +335,7 @@ namespace AldenFall.Abilities
                 ImpactDelay = 0.7f,
             });
 
-            // Curse: light direct hit, a lingering arcane DoT, and — the point —
+            // Curse: light direct hit, a lingering arcane DoT, and, the point -
             // it SHREDS the target's Defence/Armor, amplifying all incoming damage.
             Register(new AbilityDef
             {
@@ -358,13 +358,13 @@ namespace AldenFall.Abilities
                 StatusStatMods = { (StatType.Defence, -6f), (StatType.Armor, -4f) },
             });
 
-            // Mobility: instant short teleport in the facing direction. No damage —
+            // Mobility: instant short teleport in the facing direction. No damage -
             // the caster's escape / gap-closer so magic isn't rooted in place.
             Register(new AbilityDef
             {
                 Id = "blink",
                 Name = "Arcane Blink",
-                Description = "Wink out and reappear a short distance ahead — a caster's escape.",
+                Description = "Wink out and reappear a short distance ahead, a caster's escape.",
                 IconSprite = "icon_dash",
                 Tree = SkillType.Magic,
                 RequiredWeapon = WeaponClass.Any,
@@ -373,7 +373,7 @@ namespace AldenFall.Abilities
                 Range = 8f,
             });
 
-            // Defensive ward: the caster's answer to Bulwark — a timed Armor/Defence
+            // Defensive ward: the caster's answer to Bulwark, a timed Armor/Defence
             // buff so a mage can turtle a burst instead of only kiting.
             Register(new AbilityDef
             {

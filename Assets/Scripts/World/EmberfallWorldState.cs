@@ -6,7 +6,7 @@ namespace AldenFall.World
 {
     /// <summary>
     /// The networked world-state for Floor 1's eruption climax. A single scene object
-    /// (server-authoritative) holds one SyncVar — the current <see cref="Phase"/> — and
+    /// (server-authoritative) holds one SyncVar, the current <see cref="Phase"/>, and
     /// replicates it to every client. The hook runs on all clients and drives the
     /// (cosmetic, client-side) <see cref="EmberAtmosphere"/> global intensity, so the
     /// whole world flips into apocalypse and back in lock-step:
@@ -15,8 +15,8 @@ namespace AldenFall.World
     ///   Erupting → intensity 0.85  (embers + soot rain, hellish sky, city under threat)
     ///   Cleared  → intensity 0.15  (settling embers after the Floor Boss falls, calm returning)
     ///
-    /// The server API is deliberately tiny — <see cref="BeginEruption"/> and
-    /// <see cref="MarkDungeonCleared"/> — and is called by the main-quest hooks the quest /
+    /// The server API is deliberately tiny, <see cref="BeginEruption"/> and
+    /// <see cref="MarkDungeonCleared"/>, and is called by the main-quest hooks the quest /
     /// world-gen agents wire (climax cutscene → BeginEruption; Floor Boss death →
     /// MarkDungeonCleared). Other systems (near-city lava, spawns, quest UI) subscribe to
     /// <see cref="OnPhaseChanged"/> rather than reaching in here.
@@ -113,7 +113,7 @@ namespace AldenFall.World
             ApplyPhase(phase);   // host + server-side listeners (pure clients get it via the hook)
         }
 
-        /// <summary>Server: the Floor Boss is dead — settle the world (Erupting → Cleared).
+        /// <summary>Server: the Floor Boss is dead, settle the world (Erupting → Cleared).
         /// No-op otherwise. Wired to the boss death.</summary>
         [Server]
         public void MarkDungeonCleared()
@@ -158,7 +158,7 @@ namespace AldenFall.World
             OnPhaseChanged?.Invoke(p);
 
             // Climax beats: text cutscene on the LOCAL player's director. Only on a live
-            // transition — a client logging in mid-eruption gets the atmosphere, not a
+            // transition, a client logging in mid-eruption gets the atmosphere, not a
             // replay of the moment. Headless servers have no local player and skip this.
             if (isTransition && p != Phase.Calm)
             {

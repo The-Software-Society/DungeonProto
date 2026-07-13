@@ -5,8 +5,8 @@ namespace AldenFall.Quests
 {
     /// <summary>
     /// Code-defined quest registry (mirrors ItemDatabase). Ships the Aldric
-    /// tutorial line — a self-teaching chain (talk → use an ability → fish →
-    /// eat) — plus a stub rescue quest for the next content pass.
+    /// tutorial line, a self-teaching chain (talk → use an ability → fish →
+    /// eat), plus a stub rescue quest for the next content pass.
     /// </summary>
     public static class QuestDatabase
     {
@@ -57,7 +57,7 @@ namespace AldenFall.Quests
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.UseAbility, TargetId = "", Count = 1,
                         Description = "Use any ability (keys 1-5)",
-                        LocationHint = "Right here in the glade — press keys 1-5" },
+                        LocationHint = "Right here in the glade, press keys 1-5" },
                 },
                 GoldReward = 15,
                 PrereqQuestId = "q_intro",
@@ -72,7 +72,7 @@ namespace AldenFall.Quests
                 {
                     new ObjectiveDef { Kind = ObjectiveKind.CatchFish, TargetId = "", Count = 1,
                         Description = "Catch a fish at Emberfall Lake",
-                        LocationHint = "The lake lies northwest of the city — fish from its east bank, or swim right in" },
+                        LocationHint = "The lake lies northwest of the city, fish from its east bank, or swim right in" },
                 },
                 GoldReward = 15,
                 PrereqQuestId = "q_learn_skill",
@@ -82,12 +82,15 @@ namespace AldenFall.Quests
             {
                 Id = "q_learn_eat",
                 Name = "Cook, Then Eat",
-                Description = "Cook your catch at the campfire and eat it to mend your wounds.",
+                Description = "Cook your catch at the campfire and eat it to mend your wounds. Store-bought meals teach you nothing.",
                 Objectives =
                 {
+                    new ObjectiveDef { Kind = ObjectiveKind.CookFood, TargetId = "", Count = 1,
+                        Description = "Cook a fish yourself",
+                        LocationHint = "Use the lakeside campfire with a raw fish in your bag" },
                     new ObjectiveDef { Kind = ObjectiveKind.EatFood, TargetId = "", Count = 1,
-                        Description = "Eat any cooked food",
-                        LocationHint = "Cook your catch at the lakeside campfire, then eat it" },
+                        Description = "Eat something cooked",
+                        LocationHint = "Eat from your bag once your fish is cooked" },
                 },
                 GoldReward = 20,
                 Rewards = { ("cooked_fish", 3) },

@@ -9,7 +9,7 @@ namespace AldenFall.Player
     /// Visual_Female, Meshy-generated) are both built into the player at scene
     /// build; this activates the chosen one BEFORE other components cache
     /// their animator (DefaultExecutionOrder). Armor/weapons attach onto the
-    /// active skeleton via Equipment exactly as before — gear goes ON the
+    /// active skeleton via Equipment exactly as before, gear goes ON the
     /// baseline, never baked into it.
     ///
     /// Gender applies on next play session (equipment/animator rebind);
@@ -120,7 +120,7 @@ namespace AldenFall.Player
 
             // Both base bodies present: enable the chosen one only. If the
             // Meshy bases haven't been generated yet there is just the legacy
-            // "Hero" visual — nothing to switch, everything still works.
+            // "Hero" visual, nothing to switch, everything still works.
             if (male != null && female != null)
             {
                 bool isFemale = Gender == 1;
@@ -139,7 +139,7 @@ namespace AldenFall.Player
             var body = ActiveBodyRoot();
             if (body == null) return;
 
-            // Tint via property block — never instantiates materials
+            // Tint via property block, never instantiates materials
             var block = new MaterialPropertyBlock();
             foreach (var renderer in body.GetComponentsInChildren<Renderer>())
             {

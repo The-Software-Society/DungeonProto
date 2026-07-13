@@ -38,12 +38,12 @@ namespace AldenFall.AI
         /// <summary>
         /// SERVER-side: fired when any mob with a MobId dies (Health death is
         /// server-authoritative, so this never fires on pure clients). World-state
-        /// hooks subscribe here — e.g. the Floor Boss death settling the eruption —
+        /// hooks subscribe here, e.g. the Floor Boss death settling the eruption -
         /// without every mob needing a bespoke watcher component.
         /// </summary>
         public static event System.Action<string, GameObject> OnAnyMobKilled;
 
-        // Last thing to hurt us — tracked server-side so death can credit the killer.
+        // Last thing to hurt us, tracked server-side so death can credit the killer.
         private GameObject lastAttacker;
 
         private void Start()
@@ -62,14 +62,14 @@ namespace AldenFall.AI
         }
 
         /// <summary>
-        /// Gold + KillMob quest credit go to the last attacker (the killer) — and, when
+        /// Gold + KillMob quest credit go to the last attacker (the killer), and, when
         /// the killer is partied, the same FULL gold + quest credit go to every other
         /// party member (Jon's decision: full shares, optimize later). Death runs on
         /// the SERVER, and in the host-authoritative demo each player object lives on
         /// the same machine as its owning client, so the Wallet/QuestLog updated here
         /// are the very ones the local HUD reads. A dedicated-server split (no local
         /// client for that player) would need a SyncVar / TargetRpc bridge to push
-        /// these to the owning client — an accepted limitation for now.
+        /// these to the owning client, an accepted limitation for now.
         /// </summary>
         private void GrantKillRewards()
         {

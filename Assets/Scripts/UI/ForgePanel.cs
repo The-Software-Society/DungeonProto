@@ -11,14 +11,21 @@ namespace AldenFall.UI
     /// canvas so it never touches the authored HUD. Lists every gear item you
     /// hold two identical copies of and lets you fuse them into the next +tier
     /// for gold. Lives on the player; reads the sibling Inventory + Wallet.
+    /// Uses the shared <see cref="PanelChrome"/> so it matches the market:
+    /// zebra rows, right-aligned costs, FORGE disabled when unaffordable.
     /// </summary>
     public class ForgePanel : MonoBehaviour
     {
         [SerializeField] private KeyCode toggleKey = KeyCode.F7;
 
+        private const float PanelWidth = 620f;
+        private const float RowWidth = PanelWidth - UITheme.Pad * 2f;
+        private const float ListTop = 96f;
+
         private Inventory inventory;
         private Wallet wallet;
         private GameObject panelRoot;
+        private RectTransform panel;
         private RectTransform listParent;
         private TMP_Text goldLabel;
 
@@ -78,19 +85,15 @@ namespace AldenFall.UI
             canvasObj.AddComponent<GraphicRaycaster>();
             panelRoot = canvasObj;
 
-            var panel = Rect(canvasObj.transform, "Panel", new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(560, 520));
-            panel.gameObject.AddComponent<Image>().color = new Color(0.07f, 0.06f, 0.10f, 0.97f);
+            panel = PanelChrome.CreatePanel(canvasObj.transform, "Panel",
+                new Vector2(PanelWidth, 320f));
+            PanelChrome.Header(panel, "Forge", "F7 closes, fuse two identical items into +1");
 
-            MakeText(panel, "Title", "FORGE  <size=12><color=#8A8494>(F7 — fuse two identical items into +1)</color></size>",
-                new Vector2(0.5f, 1f), new Vector2(0, -26), new Vector2(520, 30), 19, UITheme.TextGold,
-                TextAlignmentOptions.Center);
+            goldLabel = PanelChrome.Text(panel, "Gold", "", UITheme.Pad, 62f,
+                RowWidth, 20f, UITheme.BodySize, UITheme.TextMain,
+                TextAlignmentOptions.MidlineRight);
 
-            goldLabel = MakeText(panel, "Gold", "", new Vector2(0.5f, 1f), new Vector2(0, -54),
-                new Vector2(520, 24), 15, UITheme.TextMain, TextAlignmentOptions.Center);
-
-            listParent = Rect(panel, "List", new Vector2(0.5f, 1f), new Vector2(0, -300),
-                new Vector2(520, 440));
+            listParent = PanelChrome.Item(panel, "List", UITheme.Pad, ListTop, RowWidth, 400f);
         }
 
         private void Rebuild()
@@ -100,86 +103,60 @@ namespace AldenFall.UI
                 Destroy(listParent.GetChild(i).gameObject);
 
             if (goldLabel != null)
-                goldLabel.text = $"<color=#F2CC8C>Gold: {(wallet != null ? wallet.Gold : 0)}</color>";
+                goldLabel.text = $"<color={UITheme.DimHex}>Gold</color>  {UITheme.Price(wallet != null ? wallet.Gold : 0)}";
 
             var forgeables = Collect();
-            float y = 0f;
             if (forgeables.Count == 0)
             {
-                MakeText(listParent, "Empty",
-                    "<color=#8A8494>Hold two identical items of the same +tier to forge.</color>",
-                    new Vector2(0.5f, 1f), new Vector2(0, -10), new Vector2(500, 40), 15,
-                    UITheme.TextDim, TextAlignmentOptions.Top);
+                PanelChrome.Text(listParent, "Empty",
+                    "Hold two identical items of the same +tier to forge.",
+                    0f, 10f, RowWidth, 22f, UITheme.BodySize, UITheme.TextDim,
+                    TextAlignmentOptions.MidlineLeft);
+                panel.sizeDelta = new Vector2(PanelWidth, ListTop + 40f + UITheme.Pad);
                 return;
             }
 
+            int rowIndex = 0;
             foreach (var f in forgeables)
             {
                 var def = ItemDatabase.Get(f.id);
                 int plus = ItemPlus.PlusOf(f.id);
                 int cost = Forge.CostFor(plus);
                 bool canAfford = wallet != null && wallet.Gold >= cost;
-
                 string name = ItemPlus.DisplayName(def, plus);
-                MakeText(listParent, $"lbl_{f.id}",
-                    $"{name}  <color=#8A8494>x{f.count}</color>   →  +{plus + 1}   <color={(canAfford ? "#F2CC8C" : "#B06A6A")}>{cost}g</color>",
-                    new Vector2(0f, 1f), new Vector2(20, y - 20), new Vector2(360, 30), 15,
-                    UITheme.TextMain, TextAlignmentOptions.MidlineLeft);
+
+                var row = PanelChrome.Row(listParent, $"row_{f.id}", rowIndex,
+                    rowIndex * UITheme.RowHeight, RowWidth);
+
+                PanelChrome.Text(row, "Name",
+                    $"{name}  <color={UITheme.DimHex}><size=80%>x{f.count}</size></color>",
+                    12f, 10f, 244f, 20f, UITheme.BodySize, UITheme.TextMain,
+                    TextAlignmentOptions.MidlineLeft);
+                PanelChrome.Text(row, "Result", $"→ +{plus + 1}", 264f, 10f, 68f, 20f,
+                    UITheme.CaptionSize, UITheme.TextDim, TextAlignmentOptions.Midline);
+                PanelChrome.Text(row, "Cost", UITheme.Price(cost, canAfford),
+                    340f, 10f, 120f, 20f, UITheme.BodySize, UITheme.TextMain,
+                    TextAlignmentOptions.MidlineRight);
 
                 string captured = f.id;
-                MakeButton(listParent, $"btn_{f.id}", "FORGE", new Vector2(400, y - 20), 110, () =>
+                var button = PanelChrome.MakeButton(row, "ForgeBtn", "FORGE",
+                    RowWidth - 100f, 3f, 96f, () =>
                 {
                     if (Forge.DoCombine(inventory, wallet, captured, captured))
                         CombatEvents_Say("Forge success!");
                     else
                         CombatEvents_Say("Can't forge that.");
                     Rebuild();
-                });
-
-                y -= 40f;
+                }, primary: true);
+                PanelChrome.SetEnabled(button, canAfford);
+                rowIndex++;
             }
+
+            float height = ListTop + rowIndex * UITheme.RowHeight + UITheme.Pad;
+            panel.sizeDelta = new Vector2(PanelWidth, Mathf.Max(height, 240f));
         }
 
         private void CombatEvents_Say(string msg) =>
             Combat.CombatEvents.RaiseStatus(transform.position + Vector3.up * 2.4f, msg, UITheme.TextGold);
-
-        // ---- primitives (mirrors DebugCheatPanel) ----
-
-        private static RectTransform Rect(Transform parent, string name, Vector2 anchor, Vector2 pos, Vector2 size)
-        {
-            var obj = new GameObject(name);
-            obj.transform.SetParent(parent, false);
-            var rect = obj.AddComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = anchor;
-            rect.anchoredPosition = pos;
-            rect.sizeDelta = size;
-            return rect;
-        }
-
-        private static TMP_Text MakeText(RectTransform parent, string name, string content, Vector2 anchor,
-            Vector2 pos, Vector2 size, float fontSize, Color color, TextAlignmentOptions alignment)
-        {
-            var rect = Rect(parent, name, anchor, pos, size);
-            var text = rect.gameObject.AddComponent<TextMeshProUGUI>();
-            text.text = content;
-            text.fontSize = fontSize;
-            text.color = color;
-            text.alignment = alignment;
-            text.raycastTarget = false;
-            return text;
-        }
-
-        private void MakeButton(RectTransform parent, string name, string label, Vector2 pos, float width,
-            UnityEngine.Events.UnityAction onClick)
-        {
-            var rect = Rect(parent, name, new Vector2(0f, 1f), pos, new Vector2(width, 32));
-            var bg = rect.gameObject.AddComponent<Image>();
-            bg.color = new Color(0.16f, 0.14f, 0.22f, 1f);
-            var button = rect.gameObject.AddComponent<Button>();
-            button.targetGraphic = bg;
-            button.onClick.AddListener(onClick);
-            MakeText(rect, "Label", label, new Vector2(0.5f, 0.5f), Vector2.zero,
-                new Vector2(width, 32), 13, UITheme.TextMain, TextAlignmentOptions.Center);
-        }
     }
 }

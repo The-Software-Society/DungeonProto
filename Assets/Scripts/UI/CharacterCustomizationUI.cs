@@ -6,7 +6,7 @@ using AldenFall.Player;
 namespace AldenFall.UI
 {
     /// <summary>
-    /// F10: character appearance panel — gender, skin tone, hair style, hair
+    /// F10: character appearance panel, gender, skin tone, hair style, hair
     /// color. Runtime-built on its own canvas (same pattern as the cheat
     /// panel). Skin/hair apply live; gender applies next session.
     /// </summary>

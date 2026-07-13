@@ -14,7 +14,7 @@ namespace AldenFall.Combat
 
         [Header("Tab Targeting")]
         [SerializeField] private KeyCode tabTargetKey = KeyCode.Tab;
-        [Tooltip("TAB only considers enemies within this range — without a cap it grabs the nearest monster anywhere on the map, through walls.")]
+        [Tooltip("TAB only considers enemies within this range, without a cap it grabs the nearest monster anywhere on the map, through walls.")]
         [SerializeField] private float tabAcquireRange = 30f;
 
         [Header("Click Forgiveness")]
@@ -244,7 +244,7 @@ namespace AldenFall.Combat
                 if (nearbyTargets.Contains(targetHealth.transform)) continue;
 
                 // No facing cone: TAB should find the closest monster no matter
-                // which way the player is looking — that's what makes it reliable.
+                // which way the player is looking, that's what makes it reliable.
                 nearbyTargets.Add(targetHealth.transform);
             }
 

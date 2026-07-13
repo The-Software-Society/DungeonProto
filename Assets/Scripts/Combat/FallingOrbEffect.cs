@@ -5,7 +5,7 @@ namespace AldenFall.Combat
     /// <summary>
     /// Purely visual falling projectile (Meteor Strike): a glowing orb streaks
     /// down from above onto a ground point, then bursts into a HitEffect + ground
-    /// ring. Self-animating in Update — no coroutine — so the same call works on
+    /// ring. Self-animating in Update, no coroutine, so the same call works on
     /// the local caster AND on a remote observer replaying the cast (where the
     /// PlayerAbilities component is disabled and cannot run coroutines).
     /// Never touches Health: damage is the caster's responsibility.

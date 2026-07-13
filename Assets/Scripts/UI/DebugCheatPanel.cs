@@ -9,13 +9,13 @@ using AldenFall.Progression;
 namespace AldenFall.UI
 {
     /// <summary>
-    /// F9 dev tester: a tabbed panel covering everything a playtest needs to poke —
+    /// F9 dev tester: a tabbed panel covering everything a playtest needs to poke -
     /// SKILLS (level editing), WORLD (eruption phase, atmosphere, teleports),
     /// SCENES (play any StreamingAssets cutscene, reset the intro flag),
     /// ANIMS (CrossFade any animator state on the local player), and
     /// ITEMS (gold + test gear). Built entirely at runtime on its own canvas so it
     /// never touches the real HUD build. Lives on the player. HEAL/GOD live in a
-    /// footer visible on every tab.
+    /// footer visible on every tab. Chrome comes from <see cref="PanelChrome"/>.
     ///
     /// World phase is server-authoritative: on a host we call the world-state
     /// directly, on a pure client it relays through
@@ -24,6 +24,10 @@ namespace AldenFall.UI
     public class DebugCheatPanel : MonoBehaviour
     {
         [SerializeField] private KeyCode toggleKey = KeyCode.F9;
+
+        private const float PanelWidth = 580f;
+        private const float PanelHeight = 648f;
+        private const float ContentWidth = PanelWidth - UITheme.Pad * 2f;
 
         private Skills skills;
         private Health health;
@@ -35,6 +39,7 @@ namespace AldenFall.UI
         private bool godMode;
         private string activeTab = "SKILLS";
         private readonly Dictionary<string, TMP_Text> tabLabels = new Dictionary<string, TMP_Text>();
+        private readonly Dictionary<string, Button> tabButtons = new Dictionary<string, Button>();
         private readonly Dictionary<SkillType, TMP_Text> levelLabels = new Dictionary<SkillType, TMP_Text>();
         private TMP_Text godLabel;
 
@@ -45,7 +50,7 @@ namespace AldenFall.UI
         {
             ("Glade (spawn)",  new Vector3(0f, 1.5f, 84f)),
             ("City Plaza",     new Vector3(0f, 1.5f, 8f)),
-            ("Lake Bank",      new Vector3(-103f, 1.5f, 154f)),
+            ("Lake Bank",      new Vector3(-74f, 1.5f, 140f)),
             ("Dark Woods",     new Vector3(0f, 1.5f, 195f)),
             ("Goblin Camp",    new Vector3(-190f, 1.5f, 0f)),
             ("Bandit Camp",    new Vector3(190f, 1.5f, 0f)),
@@ -56,7 +61,7 @@ namespace AldenFall.UI
         };
 
         // The shared mocap vocabulary (MeshyCharacterImporter states). Missing states
-        // just log "State could not be found" — harmless in a dev tool.
+        // just log "State could not be found", harmless in a dev tool.
         private static readonly string[] AnimStates =
         {
             "Locomotion", "Attack", "Cast", "Dodge", "Jump", "Hit", "Eat", "Death",
@@ -168,6 +173,12 @@ namespace AldenFall.UI
 
         // ==================== RUNTIME UI ====================
 
+        private static TMP_Text LabelOf(Button button)
+        {
+            var child = button.transform.Find("Label");
+            return child != null ? child.GetComponent<TMP_Text>() : null;
+        }
+
         private void BuildPanel()
         {
             var canvasObj = new GameObject("DebugCheatCanvas");
@@ -181,34 +192,46 @@ namespace AldenFall.UI
 
             panelRoot = canvasObj;
 
-            var panel = Rect(canvasObj.transform, "Panel", new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(580, 640));
-            var bg = panel.gameObject.AddComponent<Image>();
-            bg.color = new Color(0.06f, 0.05f, 0.09f, 0.96f);
+            var panel = PanelChrome.CreatePanel(canvasObj.transform, "Panel",
+                new Vector2(PanelWidth, PanelHeight));
+            PanelChrome.Header(panel, "Dev Tester", "F9 closes, testing only");
 
-            MakeText(panel, "Title", "DEV TESTER  <size=12><color=#8A8494>(F9 to close — testing only)</color></size>",
-                new Vector2(0.5f, 1f), new Vector2(0, -24), new Vector2(540, 30), 19, UITheme.TextGold, TextAlignmentOptions.Center);
-
-            // Tab strip
-            float tx = 60f;
+            // Tab strip: five tabs on the 8px grid, centered as one block.
+            const float tabW = 100f, tabGap = 8f;
+            float tabX = (PanelWidth - (Tabs.Length * tabW + (Tabs.Length - 1) * tabGap)) / 2f;
             foreach (var tab in Tabs)
             {
                 string captured = tab;
-                var label = MakeButton(panel, $"tab_{tab}", tab, new Vector2(tx, -56f), 92, () =>
+                var button = PanelChrome.MakeButton(panel, $"tab_{tab}", tab, tabX, 64f, tabW, () =>
                 {
                     activeTab = captured;
                     RebuildContent();
                 });
+                var label = LabelOf(button);
+                if (label != null) label.fontSize = UITheme.CaptionSize;
                 tabLabels[tab] = label;
-                tx += 98f;
+                tabButtons[tab] = button;
+                tabX += tabW + tabGap;
             }
 
-            contentParent = Rect(panel, "Content", new Vector2(0.5f, 1f), new Vector2(0, -330),
-                new Vector2(560, 480));
+            contentParent = PanelChrome.Item(panel, "Content", UITheme.Pad, 122f,
+                ContentWidth, PanelHeight - 122f - 82f);
 
-            // Footer: always-available survival cheats
-            MakeButton(panel, "Heal", "HEAL", new Vector2(160, -600f), 120, () => health?.ResetHealth());
-            godLabel = MakeButton(panel, "God", "GOD: OFF", new Vector2(300, -600f), 120, () =>
+            // Footer: always-available survival cheats, centered above a thin rule.
+            var rule = PanelChrome.Item(panel, "FooterRule", UITheme.Pad,
+                PanelHeight - 74f, ContentWidth, 1f);
+            var ruleImage = rule.gameObject.AddComponent<Image>();
+            ruleImage.color = UITheme.HeaderRule;
+            ruleImage.raycastTarget = false;
+
+            float footerY = PanelHeight - 58f;
+            float footerX = (PanelWidth - (140f * 2f + 16f)) / 2f;
+            PanelChrome.MakeButton(panel, "Heal", "HEAL", footerX, footerY, 140f,
+                () => health?.ResetHealth(), primary: true);
+            var god = PanelChrome.MakeButton(panel, "God", "GOD: OFF",
+                footerX + 156f, footerY, 140f, null);
+            godLabel = LabelOf(god);
+            god.onClick.AddListener(() =>
             {
                 godMode = !godMode;
                 health?.SetInvulnerable(godMode);
@@ -223,7 +246,15 @@ namespace AldenFall.UI
         {
             foreach (var (tab, label) in tabLabels)
                 if (label != null)
-                    label.color = tab == activeTab ? UITheme.TextGold : UITheme.TextMain;
+                    label.color = tab == activeTab ? UITheme.TextGold : UITheme.TextDim;
+            foreach (var (tab, button) in tabButtons)
+            {
+                if (button == null) continue;
+                var colors = button.colors;
+                colors.normalColor = tab == activeTab ? UITheme.ButtonHover : UITheme.ButtonBg;
+                colors.selectedColor = colors.normalColor;
+                button.colors = colors;
+            }
 
             levelLabels.Clear();
             for (int i = contentParent.childCount - 1; i >= 0; i--)
@@ -241,33 +272,39 @@ namespace AldenFall.UI
 
         private void BuildSkillsTab()
         {
-            float y = -14f;
+            // Right-aligned button block on the 8px grid: 4 x 48 + 3 x 8 = 216.
+            float bx = ContentWidth - 216f;
+            float y = 0f;
+            int rowIndex = 0;
             foreach (SkillType skill in System.Enum.GetValues(typeof(SkillType)))
             {
                 var captured = skill; // avoid foreach-variable capture surprises
-                var label = MakeText(contentParent, $"Lv_{skill}", "", new Vector2(0f, 1f),
-                    new Vector2(120, y), new Vector2(180, 30), 15, UITheme.TextMain, TextAlignmentOptions.MidlineLeft);
+                var row = PanelChrome.Row(contentParent, $"Row_{skill}", rowIndex, y, ContentWidth);
+                var label = PanelChrome.Text(row, $"Lv_{skill}", "", 12f, 10f, 180f, 20f,
+                    UITheme.BodySize, UITheme.TextMain, TextAlignmentOptions.MidlineLeft);
                 levelLabels[skill] = label;
 
-                MakeButton(contentParent, $"{skill}_minus", "−1", new Vector2(268, y), 48,
+                PanelChrome.MakeButton(row, "minus", "−1", bx, 3f, 48f,
                     () => skills?.SetLevel(captured, skills.Level(captured) - 1));
-                MakeButton(contentParent, $"{skill}_plus", "+1", new Vector2(322, y), 48,
+                PanelChrome.MakeButton(row, "plus", "+1", bx + 56f, 3f, 48f,
                     () => skills?.SetLevel(captured, skills.Level(captured) + 1));
-                MakeButton(contentParent, $"{skill}_plus10", "+10", new Vector2(376, y), 48,
+                PanelChrome.MakeButton(row, "plus10", "+10", bx + 112f, 3f, 48f,
                     () => skills?.SetLevel(captured, skills.Level(captured) + 10));
-                MakeButton(contentParent, $"{skill}_max", "99", new Vector2(430, y), 48,
+                PanelChrome.MakeButton(row, "max", "99", bx + 168f, 3f, 48f,
                     () => skills?.SetLevel(captured, Skills.MaxLevel));
 
-                y -= 44f;
+                y += UITheme.RowHeight;
+                rowIndex++;
             }
 
-            y -= 8f;
-            MakeButton(contentParent, "AllMax", "ALL 99", new Vector2(200, y), 110, () =>
+            y += 16f;
+            float allX = (ContentWidth - (120f * 2f + 16f)) / 2f;
+            PanelChrome.MakeButton(contentParent, "AllMax", "ALL 99", allX, y, 120f, () =>
             {
                 foreach (SkillType s in System.Enum.GetValues(typeof(SkillType)))
                     skills?.SetLevel(s, Skills.MaxLevel);
             });
-            MakeButton(contentParent, "AllReset", "ALL 1", new Vector2(330, y), 110, () =>
+            PanelChrome.MakeButton(contentParent, "AllReset", "ALL 1", allX + 136f, y, 120f, () =>
             {
                 foreach (SkillType s in System.Enum.GetValues(typeof(SkillType)))
                     skills?.SetLevel(s, 1);
@@ -278,71 +315,83 @@ namespace AldenFall.UI
 
         private void BuildWorldTab()
         {
-            float y = -14f;
+            float y = 0f;
             var world = World.EmberfallWorldState.Instance;
-            MakeText(contentParent, "PhaseHdr",
-                $"World phase: <b>{(world != null ? world.CurrentPhase.ToString() : "—")}</b>  <size=11><color=#8A8494>(server-wide, replicated to everyone)</color></size>",
-                new Vector2(0f, 1f), new Vector2(20, y), new Vector2(520, 26), 15, UITheme.TextGold, TextAlignmentOptions.MidlineLeft);
-            y -= 34f;
-            MakeButton(contentParent, "PhaseCalm", "CALM", new Vector2(90, y), 140,
+            PanelChrome.Section(contentParent, "PhaseHdr",
+                $"World phase: {(world != null ? world.CurrentPhase.ToString() : "-")}", 0f, y, ContentWidth);
+            PanelChrome.Text(contentParent, "PhaseSub", "server-wide, replicated to everyone",
+                0f, y + 18f, ContentWidth, 16f, UITheme.CaptionSize, UITheme.TextDim,
+                TextAlignmentOptions.MidlineLeft);
+            y += 42f;
+            PanelChrome.MakeButton(contentParent, "PhaseCalm", "CALM", 0f, y, 168f,
                 () => { SetWorldPhase(World.EmberfallWorldState.Phase.Calm); RebuildContent(); });
-            MakeButton(contentParent, "PhaseErupt", "ERUPTING", new Vector2(250, y), 140,
+            PanelChrome.MakeButton(contentParent, "PhaseErupt", "ERUPTING", 182f, y, 168f,
                 () => { SetWorldPhase(World.EmberfallWorldState.Phase.Erupting); RebuildContent(); });
-            MakeButton(contentParent, "PhaseClear", "CLEARED", new Vector2(410, y), 140,
+            PanelChrome.MakeButton(contentParent, "PhaseClear", "CLEARED", 364f, y, 168f,
                 () => { SetWorldPhase(World.EmberfallWorldState.Phase.Cleared); RebuildContent(); });
 
-            y -= 46f;
-            MakeText(contentParent, "AtmoHdr",
-                "Atmosphere override  <size=11><color=#8A8494>(this screen only — the phase above resets it)</color></size>",
-                new Vector2(0f, 1f), new Vector2(20, y), new Vector2(520, 26), 15, UITheme.TextGold, TextAlignmentOptions.MidlineLeft);
-            y -= 34f;
-            foreach (var (label, v) in new[] { ("CLEAR 0%", 0f), ("HAZE 35%", 0.35f), ("HEAVY 70%", 0.7f), ("MAX 100%", 1f) })
+            y += 58f;
+            PanelChrome.Section(contentParent, "AtmoHdr", "Atmosphere override", 0f, y, ContentWidth);
+            PanelChrome.Text(contentParent, "AtmoSub", "this screen only, the phase above resets it",
+                0f, y + 18f, ContentWidth, 16f, UITheme.CaptionSize, UITheme.TextDim,
+                TextAlignmentOptions.MidlineLeft);
+            y += 42f;
+            var atmos = new[] { ("CLEAR 0%", 0f), ("HAZE 35%", 0.35f), ("HEAVY 70%", 0.7f), ("MAX 100%", 1f) };
+            for (int i = 0; i < atmos.Length; i++)
             {
-                float captured = v;
-                float bx = 90f + System.Array.IndexOf(new[] { 0f, 0.35f, 0.7f, 1f }, v) * 122f;
-                MakeButton(contentParent, $"Atmo_{v}", label, new Vector2(bx, y), 112,
+                float captured = atmos[i].Item2;
+                PanelChrome.MakeButton(contentParent, $"Atmo_{i}", atmos[i].Item1,
+                    i * 136f, y, 128f,
                     () => World.EmberAtmosphere.Instance?.SetGlobalIntensity(captured));
             }
 
-            y -= 46f;
-            MakeText(contentParent, "TpHdr", "Teleport",
-                new Vector2(0f, 1f), new Vector2(20, y), new Vector2(520, 26), 15, UITheme.TextGold, TextAlignmentOptions.MidlineLeft);
-            y -= 34f;
+            y += 58f;
+            PanelChrome.Section(contentParent, "TpHdr", "Teleport", 0f, y, ContentWidth);
+            y += 26f;
             for (int i = 0; i < Teleports.Length; i++)
             {
                 var (label, pos) = Teleports[i];
                 Vector3 captured = pos;
-                float bx = 100f + (i % 3) * 175f;
-                MakeButton(contentParent, $"Tp_{i}", label, new Vector2(bx, y), 165, () => Teleport(captured));
-                if (i % 3 == 2) y -= 38f;
+                PanelChrome.MakeButton(contentParent, $"Tp_{i}", label,
+                    (i % 3) * 180f, y, 172f, () => Teleport(captured));
+                if (i % 3 == 2) y += 42f;
             }
         }
 
         private void BuildScenesTab()
         {
-            float y = -14f;
-            MakeText(contentParent, "SceneHdr",
-                "Cutscenes  <size=11><color=#8A8494>(plays on this client; SPACE/ESC skips; F9 reopens after)</color></size>",
-                new Vector2(0f, 1f), new Vector2(20, y), new Vector2(520, 26), 15, UITheme.TextGold, TextAlignmentOptions.MidlineLeft);
-            y -= 36f;
+            float y = 0f;
+            PanelChrome.Section(contentParent, "SceneHdr", "Cutscenes", 0f, y, ContentWidth);
+            PanelChrome.Text(contentParent, "SceneSub",
+                "plays on this client; SPACE/ESC skips; F9 reopens after",
+                0f, y + 18f, ContentWidth, 16f, UITheme.CaptionSize, UITheme.TextDim,
+                TextAlignmentOptions.MidlineLeft);
+            y += 46f;
 
             int shown = 0;
             foreach (var id in CutsceneIds())
             {
                 string captured = id;
-                MakeText(contentParent, $"cs_lbl_{id}", captured, new Vector2(0f, 1f),
-                    new Vector2(30, y), new Vector2(300, 28), 14, UITheme.TextMain, TextAlignmentOptions.MidlineLeft);
-                MakeButton(contentParent, $"cs_btn_{id}", "PLAY", new Vector2(420, y), 100,
-                    () => PlayCutscene(captured));
-                y -= 36f;
+                var row = PanelChrome.Row(contentParent, $"cs_{id}", shown, y, ContentWidth);
+                PanelChrome.Text(row, "Name", captured, 12f, 10f, ContentWidth - 130f, 20f,
+                    UITheme.BodySize, UITheme.TextMain, TextAlignmentOptions.MidlineLeft);
+                PanelChrome.MakeButton(row, "Play", "PLAY", ContentWidth - 100f, 3f, 96f,
+                    () => PlayCutscene(captured), primary: true);
+                y += UITheme.RowHeight;
                 shown++;
             }
             if (shown == 0)
-                MakeText(contentParent, "NoScenes", "<color=#8A8494>No cutscene JSONs found.</color>",
-                    new Vector2(0f, 1f), new Vector2(30, y), new Vector2(400, 28), 14, UITheme.TextDim, TextAlignmentOptions.MidlineLeft);
+            {
+                PanelChrome.Text(contentParent, "NoScenes", "No cutscene JSONs found.",
+                    0f, y, ContentWidth, 20f, UITheme.BodySize, UITheme.TextDim,
+                    TextAlignmentOptions.MidlineLeft);
+                y += UITheme.RowHeight;
+            }
 
-            y -= 14f;
-            MakeButton(contentParent, "ResetIntro", "RESET INTRO FLAG (replays next login)", new Vector2(230, y), 420, () =>
+            y += 16f;
+            PanelChrome.MakeButton(contentParent, "ResetIntro",
+                "RESET INTRO FLAG (replays next login)",
+                (ContentWidth - 420f) / 2f, y, 420f, () =>
             {
                 PlayerPrefs.DeleteKey("cutscene_intro_seen_v2");
                 PlayerPrefs.DeleteKey("starter_path_v1");
@@ -353,91 +402,48 @@ namespace AldenFall.UI
 
         private void BuildAnimsTab()
         {
-            float y = -14f;
-            MakeText(contentParent, "AnimHdr",
-                "Animator states  <size=11><color=#8A8494>(CrossFade on YOUR avatar; Locomotion recovers; missing states just log)</color></size>",
-                new Vector2(0f, 1f), new Vector2(20, y), new Vector2(540, 26), 15, UITheme.TextGold, TextAlignmentOptions.MidlineLeft);
-            y -= 36f;
+            float y = 0f;
+            PanelChrome.Section(contentParent, "AnimHdr", "Animator states", 0f, y, ContentWidth);
+            PanelChrome.Text(contentParent, "AnimSub",
+                "CrossFade on YOUR avatar; Locomotion recovers; missing states just log",
+                0f, y + 18f, ContentWidth, 16f, UITheme.CaptionSize, UITheme.TextDim,
+                TextAlignmentOptions.MidlineLeft);
+            y += 46f;
 
             for (int i = 0; i < AnimStates.Length; i++)
             {
                 string captured = AnimStates[i];
-                float bx = 100f + (i % 3) * 175f;
-                MakeButton(contentParent, $"anim_{captured}", captured, new Vector2(bx, y), 165,
-                    () => PlayAnim(captured));
-                if (i % 3 == 2) y -= 38f;
+                PanelChrome.MakeButton(contentParent, $"anim_{captured}", captured,
+                    (i % 3) * 180f, y, 172f, () => PlayAnim(captured));
+                if (i % 3 == 2) y += 42f;
             }
         }
 
         private void BuildItemsTab()
         {
-            float y = -14f;
-            MakeText(contentParent, "GoldHdr",
-                $"Gold: <b>{(wallet != null ? wallet.Gold : 0)}</b>",
-                new Vector2(0f, 1f), new Vector2(20, y), new Vector2(300, 26), 15, UITheme.TextGold, TextAlignmentOptions.MidlineLeft);
-            MakeButton(contentParent, "Gold100", "+100g", new Vector2(300, y), 90,
+            float y = 0f;
+            PanelChrome.Section(contentParent, "GoldHdr",
+                $"Gold: {(wallet != null ? wallet.Gold : 0)}", 0f, y + 8f, 240f);
+            PanelChrome.MakeButton(contentParent, "Gold100", "+100g", 280f, y, 120f,
                 () => { wallet?.Add(100); RebuildContent(); });
-            MakeButton(contentParent, "Gold1000", "+1000g", new Vector2(400, y), 90,
+            PanelChrome.MakeButton(contentParent, "Gold1000", "+1000g", 412f, y, 120f,
                 () => { wallet?.Add(1000); RebuildContent(); });
 
-            y -= 44f;
-            MakeText(contentParent, "GiveHdr", "Give items",
-                new Vector2(0f, 1f), new Vector2(20, y), new Vector2(300, 26), 15, UITheme.TextGold, TextAlignmentOptions.MidlineLeft);
-            y -= 34f;
+            y += 50f;
+            PanelChrome.Section(contentParent, "GiveHdr", "Give items", 0f, y, 240f);
+            y += 26f;
             for (int i = 0; i < TestItems.Length; i++)
             {
                 var (label, id) = TestItems[i];
                 string captured = id;
-                float bx = 100f + (i % 3) * 175f;
-                MakeButton(contentParent, $"give_{id}", label, new Vector2(bx, y), 165, () =>
+                PanelChrome.MakeButton(contentParent, $"give_{id}", label,
+                    (i % 3) * 180f, y, 172f, () =>
                 {
                     if (inventory != null && inventory.Add(captured)) Say($"+ {captured}");
                     else Say("Bag full.");
                 });
-                if (i % 3 == 2) y -= 38f;
+                if (i % 3 == 2) y += 42f;
             }
-        }
-
-        // ---- primitives ----
-
-        private static RectTransform Rect(Transform parent, string name, Vector2 anchor,
-            Vector2 pos, Vector2 size)
-        {
-            var obj = new GameObject(name);
-            obj.transform.SetParent(parent, false);
-            var rect = obj.AddComponent<RectTransform>();
-            rect.anchorMin = rect.anchorMax = anchor;
-            rect.anchoredPosition = pos;
-            rect.sizeDelta = size;
-            return rect;
-        }
-
-        private static TMP_Text MakeText(RectTransform parent, string name, string content,
-            Vector2 anchor, Vector2 pos, Vector2 size, float fontSize, Color color,
-            TextAlignmentOptions alignment)
-        {
-            var rect = Rect(parent, name, anchor, pos, size);
-            var text = rect.gameObject.AddComponent<TextMeshProUGUI>();
-            text.text = content;
-            text.fontSize = fontSize;
-            text.color = color;
-            text.alignment = alignment;
-            text.raycastTarget = false;
-            return text;
-        }
-
-        private TMP_Text MakeButton(RectTransform parent, string name, string label,
-            Vector2 pos, float width, UnityEngine.Events.UnityAction onClick)
-        {
-            var rect = Rect(parent, name, new Vector2(0f, 1f), pos, new Vector2(width, 32));
-            var bg = rect.gameObject.AddComponent<Image>();
-            bg.color = new Color(0.16f, 0.14f, 0.22f, 1f);
-            var button = rect.gameObject.AddComponent<Button>();
-            button.targetGraphic = bg;
-            button.onClick.AddListener(onClick);
-
-            return MakeText(rect, "Label", label, new Vector2(0.5f, 0.5f), Vector2.zero,
-                new Vector2(width, 32), 13, UITheme.TextMain, TextAlignmentOptions.Center);
         }
     }
 }

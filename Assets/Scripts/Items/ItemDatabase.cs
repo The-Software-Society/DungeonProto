@@ -15,6 +15,20 @@ namespace AldenFall.Items
         Focus,   // off-hand magic implement (append-only enum!)
     }
 
+    /// <summary>
+    /// What a weapon-ish item actually IS, independent of which hand holds it.
+    /// Ability gating reads this (PlayerAbilities.HasRequiredWeapon): melee
+    /// abilities want a Sword-class main hand; magic abilities accept a Focus
+    /// off hand OR a Wand-class main hand.
+    /// </summary>
+    public enum WeaponKind
+    {
+        None,
+        Sword,
+        Wand,    // main-hand magic weapon
+        Focus,   // off-hand magic implement
+    }
+
     public enum ItemRarity
     {
         Common,
@@ -30,6 +44,7 @@ namespace AldenFall.Items
         public string Name;
         public string Description;
         public EquipSlot Slot;
+        public WeaponKind WeaponKind;   // Sword/Wand/Focus for equip-gated abilities; None for everything else
         public ItemRarity Rarity;
         public List<(StatType type, float value)> Bonuses = new List<(StatType, float)>();
         public string ModelProp;    // Assets/Models/Props/<name> for visuals + icon
@@ -102,9 +117,23 @@ namespace AldenFall.Items
                 Name = "Rusty Sword",
                 Description = "Chipped, corroded, and barely a weapon. It's a start.",
                 Slot = EquipSlot.Weapon,
+                WeaponKind = WeaponKind.Sword,
                 Rarity = ItemRarity.Common,
                 Bonuses = { (StatType.WeaponPower, 2f) },
                 ModelProp = "RustySword",
+            });
+
+            Register(new ItemDef
+            {
+                Id = "apprentice_wand",
+                Name = "Apprentice Wand",
+                Description = "A slim training wand, warm to the touch. Channels magic from the main hand.",
+                Slot = EquipSlot.Weapon,
+                WeaponKind = WeaponKind.Wand,
+                Rarity = ItemRarity.Common,
+                Bonuses = { (StatType.SpellPower, 3f) },
+                ModelProp = "MagicFocus",
+                Tint = new Color(0.62f, 0.55f, 0.85f),
             });
 
             // ---- Goblin tier (leather) ----
@@ -137,6 +166,7 @@ namespace AldenFall.Items
                 Name = "Raider Saber",
                 Description = "A cruel curved blade taken from a field bandit.",
                 Slot = EquipSlot.Weapon,
+                WeaponKind = WeaponKind.Sword,
                 Rarity = ItemRarity.Uncommon,
                 Bonuses = { (StatType.WeaponPower, 8f), (StatType.AttackSpeed, 0.1f) },
                 ModelProp = "RaiderSaber",
@@ -192,6 +222,7 @@ namespace AldenFall.Items
                 Name = "Knight's Sword",
                 Description = "A proper blade with a blue-silver crossguard. How did an orc get this?",
                 Slot = EquipSlot.Weapon,
+                WeaponKind = WeaponKind.Sword,
                 Rarity = ItemRarity.Rare,
                 Bonuses = { (StatType.WeaponPower, 12f), (StatType.AttackSpeed, 0.05f) },
                 ModelProp = "KnightSword",
@@ -204,6 +235,7 @@ namespace AldenFall.Items
                 Name = "Emberfang",
                 Description = "An obsidian blade veined with living fire. The troll guarded it well.",
                 Slot = EquipSlot.Weapon,
+                WeaponKind = WeaponKind.Sword,
                 Rarity = ItemRarity.Epic,
                 Bonuses = { (StatType.WeaponPower, 18f), (StatType.Strength, 3f) },
                 ModelProp = "Emberfang",
@@ -217,6 +249,7 @@ namespace AldenFall.Items
                 Name = "Apprentice Focus",
                 Description = "A chipped crystal on a stick. It hums, faintly.",
                 Slot = EquipSlot.Focus,
+                WeaponKind = WeaponKind.Focus,
                 Rarity = ItemRarity.Uncommon,
                 Bonuses = { (StatType.SpellPower, 4f) },
                 ModelProp = "MagicFocus",
@@ -228,6 +261,7 @@ namespace AldenFall.Items
                 Name = "Adept Focus",
                 Description = "The crystal floats now. That feels important.",
                 Slot = EquipSlot.Focus,
+                WeaponKind = WeaponKind.Focus,
                 Rarity = ItemRarity.Rare,
                 Bonuses = { (StatType.SpellPower, 7f) },
                 ModelProp = "MagicFocus",
@@ -239,6 +273,7 @@ namespace AldenFall.Items
                 Name = "Ember Focus",
                 Description = "A shard of the troll's fire, tamed into an orb. Spells hit like they mean it.",
                 Slot = EquipSlot.Focus,
+                WeaponKind = WeaponKind.Focus,
                 Rarity = ItemRarity.Epic,
                 Bonuses = { (StatType.SpellPower, 10f) },
                 ModelProp = "MagicFocus",
@@ -271,7 +306,7 @@ namespace AldenFall.Items
             {
                 Id = "cooked_fish",
                 Name = "Cooked Fish",
-                Description = "Golden and flaky. Restores health — chewing takes a moment.",
+                Description = "Golden and flaky. Restores health, chewing takes a moment.",
                 Slot = EquipSlot.None,
                 Rarity = ItemRarity.Common,
                 MaxStack = 50,
@@ -292,7 +327,7 @@ namespace AldenFall.Items
                 Tint = new Color(0.22f, 0.2f, 0.18f),
             });
 
-            // Higher fishing tiers — level-gated in FishingController; more healing when cooked.
+            // Higher fishing tiers, level-gated in FishingController; more healing when cooked.
             Register(new ItemDef { Id = "raw_trout", Name = "Raw Trout", Description = "A river trout, still wriggling.", MaxStack = 50, ModelProp = "Fish", Tint = new Color(0.6f, 0.75f, 0.7f), CookedResult = "cooked_trout" });
             Register(new ItemDef { Id = "cooked_trout", Name = "Cooked Trout", Description = "Flaky and hearty. Restores solid health.", MaxStack = 50, HealAmount = 40f, EatLockout = 2.0f, ModelProp = "Fish", Tint = new Color(0.95f, 0.66f, 0.4f) });
             Register(new ItemDef { Id = "raw_bass", Name = "Raw Bass", Description = "A fat river bass.", MaxStack = 50, ModelProp = "Fish", Tint = new Color(0.5f, 0.6f, 0.45f), CookedResult = "cooked_bass" });
@@ -305,13 +340,13 @@ namespace AldenFall.Items
 
         public static string SlotName(EquipSlot slot) => slot switch
         {
-            EquipSlot.Weapon => "Weapon",
+            EquipSlot.Weapon => "Main Hand",
             EquipSlot.Helm => "Helm",
             EquipSlot.Chest => "Chest",
             EquipSlot.Legs => "Legs",
             EquipSlot.Cape => "Cape",
-            EquipSlot.Focus => "Focus",
-            _ => "—",
+            EquipSlot.Focus => "Off Hand (Focus)",
+            _ => "-",
         };
     }
 }

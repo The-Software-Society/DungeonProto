@@ -7,17 +7,23 @@ namespace AldenFall.Editor
 {
     /// <summary>
     /// Generates the UI sprite set procedurally: rounded 9-slice panels, borders,
-    /// circles, glows, and skill/ability glyph icons — SDF-style per-pixel drawing
+    /// circles, glows, and skill/ability glyph icons, SDF-style per-pixel drawing
     /// with anti-aliased edges. Everything the HUD uses comes from here, so the
     /// whole visual language is regenerable and consistent.
     /// </summary>
     public static class UISpriteGenerator
     {
         private const string Dir = "Assets/UI/Sprites";
+        // Runtime-built panels (vendor, forge, quest log, dev tester) load the
+        // core chrome set through Resources so they match the baked HUD.
+        private const string ResourcesDir = "Assets/UI/Resources/UISprites";
+        private static readonly string[] RuntimeShared =
+            { "panel_r16", "panel_border_r16", "slot_r10", "slot_border_r10", "bar_r6" };
 
         public static void GenerateAll()
         {
             Directory.CreateDirectory(Dir);
+            Directory.CreateDirectory(ResourcesDir);
 
             // Panels & structure
             Save("panel_r16", RoundedRect(64, 64, 16, filled: true), border: 24);
@@ -25,6 +31,7 @@ namespace AldenFall.Editor
             Save("slot_r10", RoundedRect(48, 48, 10, filled: true), border: 16);
             Save("slot_border_r10", RoundedRect(48, 48, 10, filled: false, strokeWidth: 2f), border: 16);
             Save("bar_r6", RoundedRect(48, 48, 12, filled: true), border: 16);
+            Save("bar_border_r6", RoundedRect(48, 48, 12, filled: false, strokeWidth: 2f), border: 16);
             Save("circle", Circle(64, filled: true));
             Save("circle_border", Circle(64, filled: false, strokeWidth: 2.5f));
             Save("glow_soft", RadialGlow(96));
@@ -541,10 +548,17 @@ namespace AldenFall.Editor
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
             tex.SetPixels32(pixels);
             tex.Apply();
-
-            string path = $"{Dir}/{name}.png";
-            File.WriteAllBytes(path, tex.EncodeToPNG());
+            byte[] png = tex.EncodeToPNG();
             Object.DestroyImmediate(tex);
+
+            WriteSprite($"{Dir}/{name}.png", png, border);
+            if (System.Array.IndexOf(RuntimeShared, name) >= 0)
+                WriteSprite($"{ResourcesDir}/{name}.png", png, border);
+        }
+
+        private static void WriteSprite(string path, byte[] png, int border)
+        {
+            File.WriteAllBytes(path, png);
 
             AssetDatabase.ImportAsset(path);
             var importer = (TextureImporter)AssetImporter.GetAtPath(path);

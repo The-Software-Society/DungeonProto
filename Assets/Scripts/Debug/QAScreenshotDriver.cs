@@ -38,7 +38,7 @@ namespace AldenFall.DebugTools
             ("02_city_north_gate",new Vector3(0f, 1.5f, 62f),     180f),  // approach the city wall
             ("03_city_plaza",     new Vector3(0f, 1.5f, 14f),     180f),  // fountain + streets
             ("04_city_market",    new Vector3(24f, 1.5f, 20f),    20f),   // market row + vendor
-            ("05_lake_bank",      new Vector3(-100f, 1.5f, 148f), 315f),  // lake + goblins + fishing
+            ("05_lake_bank",      new Vector3(-74f, 1.5f, 140f), 315f),  // lake + goblins + fishing
             ("06_dark_woods",     new Vector3(0f, 1.5f, 180f),    0f),
             ("07_goblin_camp",    new Vector3(-180f, 1.5f, 0f),   270f),
             ("08_orc_warcamp",    new Vector3(-98f, 1.5f, -108f), 225f),  // grukmar + cage
@@ -48,8 +48,13 @@ namespace AldenFall.DebugTools
             ("12_boss_chamber",   new Vector3(0f, 1.5f, -426f),   180f),  // boss + sealed door behind
         };
 
+        private bool uiMode;
+
         private IEnumerator Start()
         {
+            // -qaui: capture every UI panel/popup instead of world locations.
+            uiMode = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-qaui") >= 0;
+
             // Never let the intro cutscene hijack the QA run.
             PlayerPrefs.SetInt("cutscene_intro_seen_v2", 1);
             PlayerPrefs.Save();
@@ -83,6 +88,15 @@ namespace AldenFall.DebugTools
 
             // Let the runtime NavMesh bake, spawners, and atmosphere settle.
             yield return new WaitForSeconds(5f);
+
+            if (uiMode)
+            {
+                yield return CaptureUiPanels(player);
+                Debug.Log("QAScreenshotDriver: UI pass done.");
+                yield return new WaitForSeconds(0.5f);
+                Application.Quit(0);
+                yield break;
+            }
 
             foreach (var (name, pos, yaw) in Shots)
             {
@@ -122,6 +136,88 @@ namespace AldenFall.DebugTools
             Application.Quit(0);
         }
 
+        /// <summary>
+        /// -qaui: seed a believable bag/wallet, then open and capture every player-facing
+        /// panel one at a time (the source material for UI quality passes).
+        /// </summary>
+        private IEnumerator CaptureUiPanels(GameObject player)
+        {
+            // Believable state so panels aren't empty husks.
+            var inventory = player.GetComponent<Items.Inventory>();
+            var wallet = player.GetComponent<Items.Wallet>();
+            wallet?.Add(347);
+            foreach (var id in new[] { "knight_sword+2", "knight_sword+2", "iron_helm", "raw_trout", "cooked_fish", "fishing_pole", "apprentice_focus" })
+                inventory?.Add(id);
+
+            yield return Capture("ui_01_hud_baseline");
+
+            var hotkeys = FindFirstObjectByType<UI.PanelHotkeys>();
+            if (hotkeys != null)
+            {
+                hotkeys.ToggleCharacter();
+                yield return new WaitForSeconds(0.6f);
+                yield return Capture("ui_02_character_inventory");
+                hotkeys.ToggleCharacter();
+
+                hotkeys.ToggleSkills();
+                yield return new WaitForSeconds(0.6f);
+                yield return Capture("ui_03_skills");
+                hotkeys.ToggleSkills();
+
+                hotkeys.ToggleTrees();
+                yield return new WaitForSeconds(0.6f);
+                yield return Capture("ui_04_combat_trees");
+                hotkeys.ToggleTrees();
+                yield return new WaitForSeconds(0.4f);
+            }
+
+            var tracker = player.GetComponent<UI.QuestTrackerHUD>();
+            if (tracker != null)
+            {
+                tracker.SendMessage("ToggleLog", SendMessageOptions.DontRequireReceiver);
+                yield return new WaitForSeconds(0.6f);
+                yield return Capture("ui_05_quest_log");
+                tracker.SendMessage("ToggleLog", SendMessageOptions.DontRequireReceiver);
+            }
+
+            var forge = player.GetComponent<UI.ForgePanel>();
+            if (forge != null)
+            {
+                forge.SendMessage("Toggle", SendMessageOptions.DontRequireReceiver);
+                yield return new WaitForSeconds(0.6f);
+                yield return Capture("ui_06_forge");
+                forge.SendMessage("Toggle", SendMessageOptions.DontRequireReceiver);
+            }
+
+            var vendorPanel = player.GetComponent<UI.VendorPanel>();
+            if (vendorPanel != null)
+            {
+                vendorPanel.Open(player.transform,
+                    new[] { "cooked_fish", "cooked_trout", "fishing_pole", "leather_cap", "iron_helm", "apprentice_focus" });
+                yield return new WaitForSeconds(0.6f);
+                yield return Capture("ui_07_vendor");
+                vendorPanel.Close();
+            }
+
+            bool chosen = false;
+            UI.WeaponChoicePanel.Present(player, () => chosen = true);
+            yield return new WaitForSeconds(0.8f);
+            yield return Capture("ui_08_weapon_choice");
+            // Close it by picking melee via reflection-free SendMessage fallback.
+            var choice = FindFirstObjectByType<UI.WeaponChoicePanel>();
+            choice?.SendMessage("ChooseMelee", SendMessageOptions.DontRequireReceiver);
+            yield return new WaitForSeconds(0.4f);
+
+            var cheats = player.GetComponent<UI.DebugCheatPanel>();
+            if (cheats != null)
+            {
+                cheats.SendMessage("Toggle", SendMessageOptions.DontRequireReceiver);
+                yield return new WaitForSeconds(0.6f);
+                yield return Capture("ui_09_dev_tester");
+                cheats.SendMessage("Toggle", SendMessageOptions.DontRequireReceiver);
+            }
+        }
+
         private IEnumerator WaitForCutsceneEnd(Cinematics.CutsceneDirector director)
         {
             float t = 0f;
@@ -152,7 +248,7 @@ namespace AldenFall.DebugTools
 
         private void Fail(string why)
         {
-            Debug.LogError($"QAScreenshotDriver: FAILED — {why}");
+            Debug.LogError($"QAScreenshotDriver: FAILED, {why}");
             Application.Quit(2);
         }
     }

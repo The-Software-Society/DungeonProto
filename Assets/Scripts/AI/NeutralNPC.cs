@@ -12,7 +12,7 @@ namespace AldenFall.AI
     }
 
     /// <summary>
-    /// A neutral mob that dances instead of hunting — but it's no pushover:
+    /// A neutral mob that dances instead of hunting, but it's no pushover:
     /// hurt it and it retaliates (ForceAggro on its EnemyAI, which must be
     /// configured with detectionRange 0 so it never aggros on its own). While
     /// the EnemyAI is fighting, the dance pauses so walk/attack animations and
@@ -39,7 +39,7 @@ namespace AldenFall.AI
         private bool dancePoseDirty;
 
         // Real mocap mode: the imported Dance* animator states (Meshy library
-        // clips) — the transform puppetry below is only the fallback for
+        // clips), the transform puppetry below is only the fallback for
         // builds where the clips haven't been generated/imported yet.
         private Animator animator;
         private int danceStateHash;
@@ -49,17 +49,17 @@ namespace AldenFall.AI
 
         /// <summary>
         /// Candidate animator states per style, best first. Mocap library
-        /// clips ALWAYS beat hand-authored ones — authored euler curves fight
+        /// clips ALWAYS beat hand-authored ones, authored euler curves fight
         /// unknown rig axis conventions and read as broken (learned the hard
         /// way on the pond troupe).
         /// </summary>
         private string[] DanceStateCandidates => danceStyle switch
         {
-            // "DanceRobot"/"DanceTwerk" are reserved for video-mocap clips —
+            // "DanceRobot"/"DanceTwerk" are reserved for video-mocap clips -
             // drop GoblinDancer@DanceRobot.fbx into the Animations folder and
             // they take over automatically. Until then: least-wrong library
             // picks (Breakdance_1990 = nonstop spin, Shake_It_Off = arm pumps
-            // — both voted off the island by Jon).
+            //, both voted off the island by Jon).
             DanceStyle.Robot => new[] { "DanceRobot", "DanceGangnam", "DanceBreak" },
             DanceStyle.Twerk => new[] { "DanceTwerk", "DanceFunny", "DanceShake" },
             _ => new[] { "DanceHipHop", "DanceBounce" },
@@ -90,7 +90,7 @@ namespace AldenFall.AI
             if (hasDanceClip)
                 animator.speed = Random.Range(0.92f, 1.08f); // troupe desync
 
-            // Peaceful until provoked — then it's personal
+            // Peaceful until provoked, then it's personal
             health.OnAttacked.AddListener(OnHurt);
         }
 
@@ -128,7 +128,7 @@ namespace AldenFall.AI
             }
 
             // Real mocap: cross-fade into the looping dance state and let the
-            // skeleton do the work. No transform tricks — they read as stiff.
+            // skeleton do the work. No transform tricks, they read as stiff.
             if (hasDanceClip)
             {
                 if (!inDanceState)
@@ -178,10 +178,10 @@ namespace AldenFall.AI
             }
         }
 
-        /// <summary>Stiff quantized snaps with robotic holds — no smooth motion at all.</summary>
+        /// <summary>Stiff quantized snaps with robotic holds, no smooth motion at all.</summary>
         private void DanceRobot()
         {
-            // Step time: hold a pose, SNAP to the next — square waves, no lerp
+            // Step time: hold a pose, SNAP to the next, square waves, no lerp
             float step = Mathf.Floor((Time.time + seed) / 0.55f);
 
             // Deterministic pseudo-random pose per step
@@ -200,7 +200,7 @@ namespace AldenFall.AI
 
             // Leaned WAY forward, bouncing from the hips. NOTE: the visual pivot
             // is at the feet, so a negative Y offset drives the mesh THROUGH the
-            // terrain and the goblin vanishes. Keep Y clamped at/above ground —
+            // terrain and the goblin vanishes. Keep Y clamped at/above ground -
             // the crouch reads from the deep forward lean, not from sinking.
             float bounce = Mathf.Abs(Mathf.Sin(t)) * 0.09f;
             visual.localPosition = new Vector3(0f, bounce, -0.06f);

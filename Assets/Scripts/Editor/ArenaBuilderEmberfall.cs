@@ -34,9 +34,12 @@ namespace AldenFall.Editor
         private const float CityGate = 10f;         // gate opening width
 
         // ---- Lake (NW) ----
-        private static readonly Vector3 LakeCenter = new Vector3(-150f, 0f, 150f);
-        private const float LakeHalf = 44f;         // half-width of the open water (~88m across)
-        private const float LakeBedY = -2.6f;       // depth = WaterSurfaceY - LakeBedY = 2.7m (>1.3 swim)
+        // v8: Jon called the old 88m lake "a puddle at best". Genuinely big and DEEP now,
+        // sized against the NW quadrant (edges x[-196,-80], z[80,196]) with the whole
+        // river network draining into it.
+        private static readonly Vector3 LakeCenter = new Vector3(-138f, 0f, 138f);
+        private const float LakeHalf = 58f;         // half-width of the open water (~116m across)
+        private const float LakeBedY = -5.0f;       // depth = WaterSurfaceY - LakeBedY = 4.65m (deep swim)
 
         // ---- Ember approach (south corridor) ----
         private const float ApproachHalfW = 62f;    // corridor half-width in x
@@ -104,9 +107,60 @@ namespace AldenFall.Editor
         /// <summary>Feeder-river centre X at a given z (winds gently down into the lake).</summary>
         private static float FeederRiverX(float z) => LakeCenter.x + 5f * Mathf.Sin((z - 194f) / 22f);
 
-        private static bool InFeederRiver(float x, float z)
-            => z <= 252f && z >= LakeCenter.z + LakeHalf - 6f
-               && Mathf.Abs(x - FeederRiverX(z)) < 11f;
+        // ==================== RIVER NETWORK (v8 hydrology) ====================
+        // Four waterfall SOURCES on the mountain ring feed seven river reaches
+        // (two splits) that all drain into Emberfall Lake: a real water system
+        // from mountain to lake, not a single fenced channel.
+        //   R1  north feeder     (-150,250) -> lake north shore
+        //   R2  northeast river  (85,248) -> through the dark woods -> north shore
+        //   R2b   split of R2    -> east shore
+        //   R3  west river       (-248,92) -> west shore
+        //   R4  east river       (245,62) -> across the north forest
+        //   R4a   split of R4    -> east shore (fords the main road at x~0)
+        //   R4b   split of R4    -> southeast corner
+        private static readonly Vector3[][] RiverPaths =
+        {
+            new[] { new Vector3(-150f,0f,250f), new Vector3(-146f,0f,220f), new Vector3(-140f,0f,204f), new Vector3(-138f,0f,192f) },
+            new[] { new Vector3(85f,0f,248f), new Vector3(40f,0f,238f), new Vector3(-8f,0f,228f), new Vector3(-40f,0f,205f), new Vector3(-70f,0f,196f), new Vector3(-78f,0f,188f) },
+            new[] { new Vector3(-40f,0f,205f), new Vector3(-56f,0f,180f), new Vector3(-72f,0f,162f), new Vector3(-78f,0f,155f) },
+            new[] { new Vector3(-248f,0f,92f), new Vector3(-224f,0f,102f), new Vector3(-206f,0f,118f), new Vector3(-196f,0f,130f) },
+            new[] { new Vector3(245f,0f,62f), new Vector3(198f,0f,76f), new Vector3(150f,0f,92f), new Vector3(104f,0f,106f), new Vector3(56f,0f,116f), new Vector3(18f,0f,124f) },
+            new[] { new Vector3(18f,0f,124f), new Vector3(0f,0f,142f), new Vector3(-30f,0f,156f), new Vector3(-60f,0f,162f), new Vector3(-78f,0f,158f) },
+            new[] { new Vector3(18f,0f,124f), new Vector3(-16f,0f,112f), new Vector3(-52f,0f,98f), new Vector3(-84f,0f,88f) },
+        };
+        private static readonly float[] RiverHalfWidths = { 7f, 6f, 4.5f, 6f, 6f, 5f, 4.5f };
+        // Waterfall sources: index into RiverPaths whose first point sits at the ring.
+        private static readonly int[] RiverSourceFalls = { 0, 1, 3, 4 };
+
+        /// <summary>Fords: shallow wading crossings where a river meets the main road.</summary>
+        private static bool IsRiverFord(Vector3 p) => Mathf.Abs(p.x) < 10f && Mathf.Abs(p.z - 140f) < 14f;
+
+        private static float DistToSegment(Vector2 p, Vector2 a, Vector2 b)
+        {
+            Vector2 ab = b - a;
+            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / Mathf.Max(0.0001f, ab.sqrMagnitude));
+            return Vector2.Distance(p, a + ab * t);
+        }
+
+        /// <summary>True when (x,z) lies inside any river channel footprint (+1m shoulder).</summary>
+        private static bool InAnyRiver(float x, float z)
+        {
+            var pt = new Vector2(x, z);
+            for (int r = 0; r < RiverPaths.Length; r++)
+            {
+                var path = RiverPaths[r];
+                float reach = RiverHalfWidths[r] + 2.5f;
+                for (int i = 0; i < path.Length - 1; i++)
+                {
+                    if (DistToSegment(pt, new Vector2(path[i].x, path[i].z),
+                            new Vector2(path[i + 1].x, path[i + 1].z)) < reach)
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool InFeederRiver(float x, float z) => InAnyRiver(x, z);
 
         /// <summary>
         /// How charred/sooty the ground is at (x,z), 0 (lush) → 1 (volcano rim). A WIDE
@@ -601,8 +655,7 @@ namespace AldenFall.Editor
             // ---- Districts (Meshy props, auto-colored fallback) ----
             var buildings = new (string name, Vector3 pos, float yaw, float h)[]
             {
-                // Tavern + party/quest board (NW)
-                ("TownHall",       new Vector3(-34f, 0f, 34f),  135f, 9f),
+                // NW district: the Ember Rest tavern is BUILT (enterable), not placed.
                 ("Cottage",        new Vector3(-38f, 0f, 12f),  90f,  7f),
                 ("TownHouse",      new Vector3(-46f, 0f, 46f),  140f, 8f),
                 // Residential lane (W of the plaza)
@@ -731,6 +784,105 @@ namespace AldenFall.Editor
             // so the existing q_rescue_start/complete cutscenes still frame correctly.
             BuildRescueGiver(container, groundLayer);
             BuildVendorNPC(container, groundLayer);
+            BuildEmberRestTavern(container, groundLayer);
+        }
+
+        /// <summary>
+        /// The Ember Rest: a real ENTERABLE tavern in the NW district. Constructed
+        /// room (door gap, windows, bar, tables, fireplace) with an innkeeper vendor
+        /// and patrons inside: proof the city is a place, not a diorama.
+        /// </summary>
+        private static void BuildEmberRestTavern(Transform parent, int groundLayer)
+        {
+            var container = Child(parent, "EmberRestTavern");
+            Vector3 c = new Vector3(-32f, 0f, 32f);
+            const float halfX = 9f, halfZ = 7f, wallH = 4.6f;
+
+            var timberMat = Mat("TavernTimber", new Color(0.34f, 0.24f, 0.15f), smoothness: 0.08f);
+            var plasterMat = Mat("TavernPlaster", new Color(0.72f, 0.66f, 0.55f), smoothness: 0.06f);
+            var roofMat = Mat("TavernRoof", new Color(0.4f, 0.2f, 0.14f), smoothness: 0.05f);
+            var floorMat = Mat("TavernFloor", new Color(0.3f, 0.22f, 0.13f), smoothness: 0.1f);
+            var windowMat = Mat("TavernWindow", new Color(1f, 0.75f, 0.4f), smoothness: 0.4f,
+                emission: new Color(1f, 0.62f, 0.25f) * 1.6f);
+
+            void Solid(string n, Vector3 pos, Vector3 size, Material m)
+            {
+                var o = Cube(n, pos, size, m, container);
+                o.isStatic = true;
+                if (groundLayer >= 0) o.layer = groundLayer;
+            }
+
+            // Floor + walls. South wall splits around a 2.6m doorway facing the plaza.
+            Solid("Tav_Floor", c + new Vector3(0f, 0.06f, 0f), new Vector3(halfX * 2f, 0.12f, halfZ * 2f), floorMat);
+            Solid("Tav_WallN", c + new Vector3(0f, wallH / 2f, halfZ), new Vector3(halfX * 2f, wallH, 0.5f), plasterMat);
+            Solid("Tav_WallW", c + new Vector3(-halfX, wallH / 2f, 0f), new Vector3(0.5f, wallH, halfZ * 2f), plasterMat);
+            Solid("Tav_WallE", c + new Vector3(halfX, wallH / 2f, 0f), new Vector3(0.5f, wallH, halfZ * 2f), plasterMat);
+            float doorHalf = 1.3f, segW = (halfX * 2f - doorHalf * 2f) / 2f;
+            Solid("Tav_WallS_L", c + new Vector3(-(doorHalf + segW / 2f), wallH / 2f, -halfZ), new Vector3(segW, wallH, 0.5f), plasterMat);
+            Solid("Tav_WallS_R", c + new Vector3(doorHalf + segW / 2f, wallH / 2f, -halfZ), new Vector3(segW, wallH, 0.5f), plasterMat);
+            Solid("Tav_DoorLintel", c + new Vector3(0f, wallH - 0.5f, -halfZ), new Vector3(doorHalf * 2f + 0.6f, 1f, 0.5f), timberMat);
+
+            // Roof: two pitched slabs + ridge beam.
+            foreach (var (sx, yaw) in new[] { (-1f, 24f), (1f, -24f) })
+            {
+                var slab = Cube($"Tav_Roof{(sx < 0 ? "W" : "E")}",
+                    c + new Vector3(sx * halfX * 0.5f, wallH + 1.3f, 0f), new Vector3(halfX * 1.25f, 0.35f, halfZ * 2f + 1.2f), roofMat, container);
+                slab.transform.rotation = Quaternion.Euler(0f, 0f, yaw * sx >= 0 ? yaw : yaw);
+                slab.transform.rotation = Quaternion.Euler(0f, 0f, sx * -24f);
+                slab.isStatic = true;
+                if (groundLayer >= 0) slab.layer = groundLayer;
+            }
+            Solid("Tav_Ridge", c + new Vector3(0f, wallH + 2.4f, 0f), new Vector3(0.6f, 0.4f, halfZ * 2f + 1.4f), timberMat);
+
+            // Corner timbers + glowing windows on the plaza face.
+            foreach (var (wx, wz) in new[] { (-halfX, -halfZ), (halfX, -halfZ), (-halfX, halfZ), (halfX, halfZ) })
+                Solid("Tav_Corner", c + new Vector3(wx, wallH / 2f, wz), new Vector3(0.7f, wallH, 0.7f), timberMat);
+            foreach (float wx in new[] { -5.4f, 5.4f })
+            {
+                var win = Cube("Tav_Window", c + new Vector3(wx, 2.2f, -halfZ - 0.05f), new Vector3(1.6f, 1.3f, 0.15f), windowMat, container);
+                Object.DestroyImmediate(win.GetComponent<BoxCollider>());
+            }
+
+            // ---- Interior: bar, tables, fireplace ----
+            Solid("Tav_Bar", c + new Vector3(0f, 0.62f, halfZ - 2f), new Vector3(8f, 1.1f, 1.1f), timberMat);
+            foreach (var tp in new[] { new Vector3(-4.5f, 0f, -2f), new Vector3(4.5f, 0f, -2f), new Vector3(0f, 0f, 1.5f) })
+            {
+                Solid("Tav_Table", c + tp + Vector3.up * 0.5f, new Vector3(1.7f, 0.12f, 1.7f), timberMat);
+                Solid("Tav_TableLeg", c + tp + Vector3.up * 0.25f, new Vector3(0.3f, 0.5f, 0.3f), timberMat);
+                foreach (var bp in new[] { new Vector3(1.4f, 0f, 0f), new Vector3(-1.4f, 0f, 0f) })
+                    Solid("Tav_Bench", c + tp + bp + Vector3.up * 0.28f, new Vector3(0.5f, 0.55f, 1.5f), timberMat);
+            }
+
+            // Fireplace on the east wall with a warm flicker.
+            Solid("Tav_Hearth", c + new Vector3(halfX - 0.9f, 1f, 3.5f), new Vector3(1.4f, 2f, 2.4f), Mat("TavernHearth", new Color(0.32f, 0.3f, 0.3f), smoothness: 0.1f));
+            var fireLight = new GameObject("Tav_FireLight");
+            fireLight.transform.SetParent(container);
+            fireLight.transform.position = c + new Vector3(halfX - 1.6f, 1.2f, 3.5f);
+            var fl = fireLight.AddComponent<Light>();
+            fl.type = LightType.Point; fl.color = new Color(1f, 0.6f, 0.3f); fl.range = 11f; fl.intensity = 2.2f;
+            fl.shadows = LightShadows.None;
+            fireLight.AddComponent<World.TorchFlicker>().Configure(2.4f, 0.7f, 6f);
+
+            // Warm interior fill so the room reads cozy, not cave-dark.
+            var fill = new GameObject("Tav_Fill");
+            fill.transform.SetParent(container);
+            fill.transform.position = c + Vector3.up * 3.4f;
+            var fillLight = fill.AddComponent<Light>();
+            fillLight.type = LightType.Point; fillLight.color = new Color(1f, 0.8f, 0.55f);
+            fillLight.range = 13f; fillLight.intensity = 1.5f; fillLight.shadows = LightShadows.None;
+
+            // Innkeeper (food vendor) behind the bar + two patrons.
+            BuildOneVendor(container, groundLayer, "Innkeeper Hobb", "Hobb",
+                c + new Vector3(0f, 0f, halfZ - 3.4f), 180f,
+                new[] { "cooked_fish", "cooked_trout", "cooked_bass", "cooked_carp" });
+            PlaceTownsfolk(container, c + new Vector3(-4.5f, 0f, -0.6f), new Color(0.4f, 0.32f, 0.5f), groundLayer);
+            PlaceTownsfolk(container, c + new Vector3(4.5f, 0f, -3.2f), new Color(0.3f, 0.4f, 0.55f), groundLayer);
+
+            // Hanging sign out front.
+            Solid("Tav_SignArm", c + new Vector3(2.6f, 3.4f, -halfZ - 0.7f), new Vector3(1.6f, 0.14f, 0.14f), timberMat);
+            var sign = Cube("Tav_Sign", c + new Vector3(3.2f, 2.7f, -halfZ - 0.7f), new Vector3(1.2f, 0.9f, 0.1f),
+                Mat("TavernSign", new Color(0.55f, 0.3f, 0.15f), smoothness: 0.2f, emission: new Color(0.35f, 0.14f, 0.04f)), container);
+            Object.DestroyImmediate(sign.GetComponent<BoxCollider>());
         }
 
         /// <summary>
@@ -740,18 +892,54 @@ namespace AldenFall.Editor
         /// </summary>
         private static void BuildVendorNPC(Transform parent, int groundLayer)
         {
+            // The market's three traders + the working forgemaster: a FUNCTIONAL city.
+            BuildOneVendor(parent, groundLayer, "Marla the Trader", "Marla", new Vector3(26f, 0f, 31f), 200f,
+                new[] { "cooked_fish", "cooked_trout", "fishing_pole", "leather_cap", "iron_helm", "apprentice_focus" });
+            BuildOneVendor(parent, groundLayer, "Torvald the Armorer", "Torvald", new Vector3(36f, 0f, -26f), 320f,
+                new[] { "rusty_sword", "knight_sword", "iron_helm", "iron_chestplate", "iron_legs", "bandit_cape" });
+            BuildOneVendor(parent, groundLayer, "Sela the Provisioner", "Sela", new Vector3(14f, 0f, 36f), 170f,
+                new[] { "cooked_fish", "cooked_trout", "cooked_bass", "raw_fish", "fishing_pole", "apprentice_wand" });
+
+            // Forgemaster at the anvil: E opens the +X combine panel in-world.
+            var forgeNpc = new GameObject("ForgeNPC");
+            int il = LayerMask.NameToLayer("Interactable");
+            forgeNpc.transform.SetParent(parent);
+            forgeNpc.transform.position = new Vector3(28.5f, 0f, -24.5f);
+            forgeNpc.transform.rotation = Quaternion.Euler(0f, 300f, 0f);
+            if (il >= 0) forgeNpc.layer = il;
+            var forge = forgeNpc.AddComponent<World.ForgeNPC>();
+            var forgeSO = new SerializedObject(forge);
+            forgeSO.FindProperty("prompt").stringValue = "Forge with Brammon";
+            forgeSO.FindProperty("radius").floatValue = 3.5f;
+            forgeSO.ApplyModifiedProperties();
+            var forgeSolid = forgeNpc.AddComponent<CapsuleCollider>();
+            forgeSolid.center = new Vector3(0f, 0.95f, 0f); forgeSolid.height = 1.9f; forgeSolid.radius = 0.38f;
+            var forgeBody = SceneSetup.InstantiateGeneratedVisual("HeroMale", forgeNpc.transform);
+            if (forgeBody != null) { forgeBody.name = "Body"; forgeBody.transform.localPosition = Vector3.zero; }
+        }
+
+        private static void BuildOneVendor(Transform parent, int groundLayer, string displayName,
+            string shortName, Vector3 pos, float yaw, string[] stock)
+        {
             int interactableLayer = LayerMask.NameToLayer("Interactable");
-            var npcObj = new GameObject("VendorMarla");
+            var npcObj = new GameObject($"Vendor{shortName}");
             npcObj.transform.SetParent(parent);
-            npcObj.transform.position = new Vector3(26f, 0f, 31f);   // between the market stalls
-            npcObj.transform.rotation = Quaternion.Euler(0f, 200f, 0f); // facing the plaza
+            npcObj.transform.position = pos;
+            npcObj.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
             if (interactableLayer >= 0) npcObj.layer = interactableLayer;
+
+            var solid = npcObj.AddComponent<CapsuleCollider>();
+            solid.center = new Vector3(0f, 0.95f, 0f); solid.height = 1.9f; solid.radius = 0.38f;
 
             var vendor = npcObj.AddComponent<World.VendorNPC>();
             var vendorSO = new SerializedObject(vendor);
-            vendorSO.FindProperty("displayName").stringValue = "Marla the Trader";
-            vendorSO.FindProperty("prompt").stringValue = "Trade with Marla";
+            vendorSO.FindProperty("displayName").stringValue = displayName;
+            vendorSO.FindProperty("prompt").stringValue = $"Trade with {shortName}";
             vendorSO.FindProperty("radius").floatValue = 3.5f;
+            var stockProp = vendorSO.FindProperty("stock");
+            stockProp.arraySize = stock.Length;
+            for (int i = 0; i < stock.Length; i++)
+                stockProp.GetArrayElementAtIndex(i).stringValue = stock[i];
             vendorSO.ApplyModifiedProperties();
 
             var model = SceneSetup.InstantiateGeneratedVisual("HeroFemale", npcObj.transform);
@@ -908,12 +1096,48 @@ namespace AldenFall.Editor
         /// keeps deciding gender pick + survives as the capsule fallback tint.
         /// </summary>
         private static int townsfolkCounter;
+        private static readonly string[] TownsfolkNames =
+        {
+            "Mera", "Old Casselt", "Jorun", "Willa", "Fenn", "Dara",
+            "Halvard", "Petra", "Ostin", "Lysa", "Brame", "Tessi",
+        };
+        private static readonly string[][] TownsfolkBarks =
+        {
+            new[] { "Fine day, when the ash stays south.", "You look like you can handle a blade." },
+            new[] { "The lake fish bite best at dusk.", "My knees ache when the mountain grumbles." },
+            new[] { "Stay clear of the west woods, goblins about.", "Marla overcharges, but her fish is fresh." },
+            new[] { "They say a hermit lives north of the walls.", "Heard the warcamp drums again last night." },
+            new[] { "Brammon can make two blades into a better one.", "The rivers run colder every season." },
+        };
+
         private static void PlaceTownsfolk(Transform container, Vector3 pos, Color robe, int groundLayer)
         {
+            int interactableLayer = LayerMask.NameToLayer("Interactable");
             var npc = new GameObject("Townsfolk");
             npc.transform.SetParent(container);
             npc.transform.position = pos;
             npc.transform.rotation = Quaternion.Euler(0, rng.Next(0, 360), 0);
+            if (interactableLayer >= 0) npc.layer = interactableLayer;
+
+            // SOLID: a capsule collider on the root so players cannot walk through
+            // people, plus a talk interaction. Functional citizens, not scenery.
+            var solid = npc.AddComponent<CapsuleCollider>();
+            solid.center = new Vector3(0f, 0.95f, 0f);
+            solid.height = 1.9f;
+            solid.radius = 0.38f;
+
+            var talk = npc.AddComponent<World.TownsfolkNPC>();
+            var talkSO = new SerializedObject(talk);
+            string npcName = TownsfolkNames[townsfolkCounter % TownsfolkNames.Length];
+            talkSO.FindProperty("displayName").stringValue = npcName;
+            talkSO.FindProperty("prompt").stringValue = $"Talk to {npcName}";
+            talkSO.FindProperty("radius").floatValue = 3f;
+            var barkSet = TownsfolkBarks[townsfolkCounter % TownsfolkBarks.Length];
+            var barksProp = talkSO.FindProperty("barks");
+            barksProp.arraySize = barkSet.Length;
+            for (int i = 0; i < barkSet.Length; i++)
+                barksProp.GetArrayElementAtIndex(i).stringValue = barkSet[i];
+            talkSO.ApplyModifiedProperties();
 
             string bodyName = (townsfolkCounter++ % 2 == 0) ? "HeroMale" : "HeroFemale";
             var model = SceneSetup.InstantiateGeneratedVisual(bodyName, npc.transform);
@@ -930,6 +1154,7 @@ namespace AldenFall.Editor
             body.transform.SetParent(npc.transform);
             body.transform.localPosition = new Vector3(0f, 0.95f, 0f);
             body.transform.localScale = new Vector3(0.72f, 0.95f, 0.72f);
+            Object.DestroyImmediate(body.GetComponent<CapsuleCollider>());
             body.GetComponent<MeshRenderer>().sharedMaterial = SceneSetup.GetOrCreateMaterialAsset(robe, $"Townsfolk_{robe.r:F2}");
             if (groundLayer >= 0) body.layer = groundLayer;
 
@@ -1034,12 +1259,10 @@ namespace AldenFall.Editor
             var surf = Cube("Lake_Surface", c + Vector3.up * WaterSurfaceY, new Vector3(w - 0.4f, 0.06f, w - 0.4f), waterMat, container);
             Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
 
-            // Feeder river winding in from the northern mountains (now with a source waterfall).
-            BuildFeederRiver(container, groundLayer, waterLayer, mudMat, waterMat);
-
-            // Two waterfalls: the feeder spills IN from the north mountains; the lake overflows
-            // OUT at its NW corner off the map — both at the enclosing mountain ring.
-            BuildWaterfall(container, new Vector3(FeederRiverX(250f), 0f, 251f), 15f, 12f, 180f, waterMat);
+            // The full river network: four waterfall sources on the mountain ring feeding
+            // seven reaches (two splits) that all drain here. The lake still overflows
+            // OUT at its NW corner off the map.
+            BuildRiverNetwork(container, groundLayer, waterLayer, mudMat, waterMat);
             BuildLakeOutflow(container, groundLayer, waterLayer, mudMat, waterMat);
 
             // Fish schools — visible ambient shoals in the deep lake + the feeder river.
@@ -1117,17 +1340,67 @@ namespace AldenFall.Editor
             BuildWaterfall(container, fallBase, 18f, 10f, yaw, waterMat);
         }
 
-        private static void BuildFeederRiver(Transform container, int groundLayer, int waterLayer, Material bedMat, Material waterMat)
+        /// <summary>Build every reach of the river network (v8): shared segment builder
+        /// walking each polyline, with shallow FORD crossings where a reach meets the
+        /// main road, a waterfall at each mountain source, and fish in the channels.</summary>
+        private static void BuildRiverNetwork(Transform container, int groundLayer, int waterLayer, Material bedMat, Material waterMat)
+        {
+            for (int r = 0; r < RiverPaths.Length; r++)
+                BuildRiverReach(container, r, groundLayer, waterLayer, bedMat, waterMat);
+
+            foreach (int r in RiverSourceFalls)
+            {
+                Vector3 source = RiverPaths[r][0];
+                Vector3 dirIn = (RiverPaths[r][1] - source).normalized;
+                float yaw = Mathf.Atan2(dirIn.x, dirIn.z) * Mathf.Rad2Deg + 180f;
+                BuildWaterfall(container, source + Vector3.up * 0.2f, 14f, RiverHalfWidths[r] * 2f, yaw, waterMat);
+            }
+
+            // Ambient fish in the two biggest reaches.
+            foreach (var (idx, at) in new[] { (1, 2), (4, 2) })
+            {
+                var mid = Vector3.Lerp(RiverPaths[idx][at], RiverPaths[idx][at + 1], 0.5f);
+                var fishObj = new GameObject($"River{idx}_FishSchool");
+                fishObj.transform.SetParent(container);
+                fishObj.transform.position = mid;
+                fishObj.AddComponent<World.FishSchool>().Configure(
+                    mid + Vector3.up * (WaterSurfaceY - 0.7f), new Vector3(RiverHalfWidths[idx] - 1f, 0.8f, 10f), 5, WaterSurfaceY);
+            }
+        }
+
+        private static void BuildRiverReach(Transform container, int riverIndex, int groundLayer, int waterLayer, Material bedMat, Material waterMat)
         {
             var shoreMat = Mat("RiverShoreN", new Color(0.3f, 0.26f, 0.19f), smoothness: 0.05f);
-            const float halfW = 7f, bedY = -2.2f, seg = 6f;
-            float colTop = WaterSurfaceY, colH = colTop - bedY, colCy = (colTop + bedY) / 2f;
-            float sourceZ = 250f, mouthZ = LakeCenter.z + LakeHalf - 4f;
+            var path = RiverPaths[riverIndex];
+            float halfW = RiverHalfWidths[riverIndex];
+            const float seg = 7f;
 
-            for (float z = sourceZ; z > mouthZ - 0.1f; z -= seg)
+            for (int leg = 0; leg < path.Length - 1; leg++)
             {
-                float zA = z, zB = Mathf.Max(z - seg, mouthZ);
-                float xA = FeederRiverX(zA), xB = FeederRiverX(zB);
+                Vector3 a = path[leg], b = path[leg + 1];
+                float legLen = Vector3.Distance(a, b);
+                int steps = Mathf.Max(1, Mathf.CeilToInt(legLen / seg));
+                for (int s = 0; s < steps; s++)
+                {
+                    Vector3 pA = Vector3.Lerp(a, b, s / (float)steps);
+                    Vector3 pB = Vector3.Lerp(a, b, (s + 1) / (float)steps);
+                    BuildRiverSegment(container, riverIndex, pA, pB, halfW, shoreMat, groundLayer, waterLayer, bedMat, waterMat);
+                }
+            }
+        }
+
+        private static void BuildRiverSegment(Transform container, int riverIndex, Vector3 pA, Vector3 pB,
+            float halfW, Material shoreMat, int groundLayer, int waterLayer, Material bedMat, Material waterMat)
+        {
+            Vector3 midP = (pA + pB) / 2f;
+            // Fords stay wading depth (no swim, walk across); everywhere else is deep.
+            bool ford = IsRiverFord(midP);
+            float bedY = ford ? -0.9f : -2.4f;
+            float colTop = WaterSurfaceY, colH = colTop - bedY, colCy = (colTop + bedY) / 2f;
+
+            {
+                float zA = pA.z, zB = pB.z;
+                float xA = pA.x, xB = pB.x;
                 Vector3 mid = new Vector3((xA + xB) / 2f, 0f, (zA + zB) / 2f);
                 float dx = xB - xA, dz = zB - zA;
                 float len = Mathf.Sqrt(dx * dx + dz * dz) + 1.6f;
@@ -1136,11 +1409,11 @@ namespace AldenFall.Editor
                 float yawRad = yaw * Mathf.Deg2Rad;
                 Vector3 rightDir = new Vector3(Mathf.Cos(yawRad), 0f, -Mathf.Sin(yawRad));
 
-                var bed = Cube("Feeder_Bed", mid + Vector3.up * (bedY - 0.35f), new Vector3(halfW * 2f + 1f, 0.7f, len), bedMat, container);
+                var bed = Cube($"River{riverIndex}_Bed", mid + Vector3.up * (bedY - 0.35f), new Vector3(halfW * 2f + 1f, 0.7f, len), bedMat, container);
                 bed.transform.rotation = rot; bed.isStatic = true;
                 if (groundLayer >= 0) bed.layer = groundLayer;
 
-                var vol = new GameObject("Feeder_WaterVolume");
+                var vol = new GameObject($"River{riverIndex}_WaterVolume");
                 vol.transform.SetParent(container);
                 vol.transform.position = mid + Vector3.up * colCy;
                 vol.transform.rotation = rot;
@@ -1149,18 +1422,35 @@ namespace AldenFall.Editor
                 vbox.size = new Vector3(halfW * 2f, colH, len);
                 if (waterLayer >= 0) vol.layer = waterLayer;
 
-                var surf = Cube("Feeder_Surface", mid + Vector3.up * WaterSurfaceY, new Vector3(halfW * 2f - 0.4f, 0.06f, len), waterMat, container);
+                var surf = Cube($"River{riverIndex}_Surface", mid + Vector3.up * WaterSurfaceY, new Vector3(halfW * 2f - 0.4f, 0.06f, len), waterMat, container);
                 surf.transform.rotation = rot;
                 Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
 
-                // Wade-in shore steps each bank.
-                for (int side = -1; side <= 1; side += 2)
+                // Wade-in shore steps each bank (skipped at fords, the road runs through).
+                if (!ford)
                 {
-                    float top = -1.0f, h = top - (bedY - 0.4f), off = halfW + 1.25f;
-                    var stp = Cube("Feeder_Shore", mid + rightDir * (off * side) + Vector3.up * (top - h / 2f),
-                        new Vector3(2.5f, h, len), shoreMat, container);
-                    stp.transform.rotation = rot; stp.isStatic = true;
-                    if (groundLayer >= 0) stp.layer = groundLayer;
+                    for (int side = -1; side <= 1; side += 2)
+                    {
+                        float top = -1.0f, h = top - (bedY - 0.4f), off = halfW + 1.25f;
+                        var stp = Cube($"River{riverIndex}_Shore", mid + rightDir * (off * side) + Vector3.up * (top - h / 2f),
+                            new Vector3(2.5f, h, len), shoreMat, container);
+                        stp.transform.rotation = rot; stp.isStatic = true;
+                        if (groundLayer >= 0) stp.layer = groundLayer;
+                    }
+                }
+                else
+                {
+                    // Stepping stones sell the crossing.
+                    var stoneMat = Mat("FordStone", new Color(0.45f, 0.43f, 0.4f), smoothness: 0.1f);
+                    for (int i = 0; i < 3; i++)
+                    {
+                        var stone = Cube($"River{riverIndex}_FordStone{i}",
+                            mid + rightDir * ((i - 1) * 2.2f) + Vector3.up * (WaterSurfaceY + 0.12f),
+                            new Vector3(1.5f, 0.5f, 1.7f), stoneMat, container);
+                        stone.transform.rotation = Quaternion.Euler(0f, (float)rng.NextDouble() * 40f, 0f);
+                        stone.isStatic = true;
+                        if (groundLayer >= 0) stone.layer = groundLayer;
+                    }
                 }
             }
         }
@@ -1608,6 +1898,13 @@ namespace AldenFall.Editor
                 Slab($"{name}_Floor", c + Vector3.down * 0.25f, new Vector3(s.x, 0.5f, s.y), floorMat, true);
                 Slab($"{name}_Ceiling", c + Vector3.up * 8f, new Vector3(s.x + 2f, 0.8f, s.y + 2f), wallMat, false);
 
+                // Side walls on the room's X edges: rooms are narrower than the outer
+                // shell, and without these the player walks off the floor edge into the
+                // void between room and shell (reads as "walking through walls").
+                // Corridors connect along Z, so X-edge walls never need doorways.
+                Slab($"{name}_WallW", c + new Vector3(-s.x / 2f - 0.4f, 4f, 0f), new Vector3(0.8f, 8.5f, s.y + 2f), wallMat, false);
+                Slab($"{name}_WallE", c + new Vector3(s.x / 2f + 0.4f, 4f, 0f), new Vector3(0.8f, 8.5f, s.y + 2f), wallMat, false);
+
                 // The ceiling blocks the sun, so every room carries its own warm ember
                 // glow — without this the interior is a near-black void (QA shot 11).
                 var lo = new GameObject($"{name}_RoomLight");
@@ -1714,7 +2011,7 @@ namespace AldenFall.Editor
             // (Floor Boss death), revealing the stairway to Floor 2 (SAO hook).
             gate.AddComponent<World.WorldStateGate>().Configure(
                 World.EmberfallWorldState.Phase.Cleared,
-                "Ancient stonework grinds open — the stairway to Floor 2 stands revealed.");
+                "Ancient stonework grinds open, the stairway to Floor 2 stands revealed.");
             var signMat = Mat("Floor2Sign", new Color(0.3f, 0.28f, 0.34f), smoothness: 0.1f, emission: new Color(0.1f, 0.14f, 0.3f));
             var sign = Cube("Floor2_Sign", new Vector3(0f, 5f, -446.5f), new Vector3(6f, 1.2f, 0.3f), signMat, container);
             Object.DestroyImmediate(sign.GetComponent<BoxCollider>());

@@ -75,7 +75,7 @@ namespace AldenFall.Multiplayer
             if (cam != null)
                 cam.SetTarget(transform);
 
-            // You always know your own name — only remote players get a plate.
+            // You always know your own name, only remote players get a plate.
             // (Also handled in CreateNameplate; this covers whichever runs last.)
             if (nameplate != null)
                 nameplate.gameObject.SetActive(false);
@@ -171,7 +171,7 @@ namespace AldenFall.Multiplayer
         /// <summary>
         /// DEV/testing (F9 panel): relay a forced world-phase change to the server so
         /// the eruption state can be flipped from a pure client too. requiresAuthority
-        /// stays default (owner-only) — it's a cheat, not an exploit surface beyond
+        /// stays default (owner-only), it's a cheat, not an exploit surface beyond
         /// what the local-economy demo already allows.
         /// </summary>
         [Command]
@@ -197,7 +197,7 @@ namespace AldenFall.Multiplayer
                 appearance = GetComponent<CharacterAppearance>();
             appearance?.ApplyNetworkSelection(syncedGender, syncedSkinTone, syncedHairStyle, syncedHairColor);
 
-            // The body may have swapped (gender) — re-resolve cached Animators onto the now-active
+            // The body may have swapped (gender), re-resolve cached Animators onto the now-active
             // body so remote movement + cast animations drive the visible model, not a hidden one.
             animator = GetComponentInChildren<Animator>();
             GetComponent<Abilities.PlayerAbilities>()?.RefreshAnimator();
@@ -254,7 +254,7 @@ namespace AldenFall.Multiplayer
         /// The CharacterController is the avatar's ONLY collider, and it just got disabled
         /// (remote avatars are moved by synced state, not physics). On a HOST the server
         /// simulation shares this instance, so without a replacement collider enemy
-        /// Physics.OverlapSphere detection can never see remote players — they'd never pull
+        /// Physics.OverlapSphere detection can never see remote players, they'd never pull
         /// aggro. Add a trigger capsule on the same GameObject (so GetComponent&lt;Health&gt;
         /// on the hit collider still works) matching the CC's dimensions.
         /// </summary>
@@ -300,7 +300,7 @@ namespace AldenFall.Multiplayer
             nameplate.raycastTarget = false;
             nameplate.rectTransform.sizeDelta = new Vector2(220f, 32f);
 
-            // Own name over own head is noise — hide it for the local player.
+            // Own name over own head is noise, hide it for the local player.
             // isLocalPlayer may not be set yet here; OnStartLocalPlayer re-hides.
             if (isLocalPlayer)
                 canvasObj.SetActive(false);

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Events;
+using AldenFall.Data;
 
 namespace AldenFall.Progression
 {
@@ -9,7 +10,7 @@ namespace AldenFall.Progression
         Strength = 1,
         Defence = 2,
         Magic = 3,
-        Fishing = 4,   // append-only enum — serialized indices
+        Fishing = 4,   // append-only enum, serialized indices
         Cooking = 5,
     }
 
@@ -24,7 +25,10 @@ namespace AldenFall.Progression
     public class Skills : MonoBehaviour
     {
         public const int SkillCount = 6;
-        public const int MaxLevel = 99;
+
+        /// <summary>The level clamp. Reads config/progression.json (practicalCap, 99 today).
+        /// hardCap (500) is reserved for the secret-cap work in WORLD1_COMPLETION_PLAN F5.</summary>
+        public static int MaxLevel => GameConfig.Progression.practicalCap;
 
         [Header("Events")]
         public UnityEvent<SkillType, float> OnXpGained;      // skill, xp amount
@@ -36,14 +40,16 @@ namespace AldenFall.Progression
         public int Level(SkillType skill) => levels[(int)skill];
         public float Xp(SkillType skill) => xp[(int)skill];
 
-        /// <summary>Total XP required to reach the given level (from level 1).</summary>
+        /// <summary>Total XP required to reach the given level (from level 1).
+        /// Curve knobs (xpCoefficient, xpExponent) live in config/progression.json.
+        /// Default L2=50xp, L5=~450, L10=~1900, L20=~8300.</summary>
         public static float XpForLevel(int level)
         {
-            // Gentle early curve that steepens: L2=50xp, L5=~450, L10=~1900, L20=~8300
             if (level <= 1) return 0f;
+            var p = GameConfig.Progression;
             float total = 0f;
             for (int l = 1; l < level; l++)
-                total += Mathf.Floor(50f * Mathf.Pow(l, 1.35f));
+                total += Mathf.Floor(p.xpCoefficient * Mathf.Pow(l, p.xpExponent));
             return total;
         }
 
@@ -92,7 +98,7 @@ namespace AldenFall.Progression
             OnLevelUp?.Invoke(skill, level);
         }
 
-        // Combat formulas live in Stats.CombatMath (single source of truth) —
+        // Combat formulas live in Stats.CombatMath (single source of truth) -
         // skill levels flow there through PlayerStatBridge → StatBlock.
 
         public static string DisplayName(SkillType skill) => skill switch

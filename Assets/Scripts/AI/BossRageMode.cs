@@ -6,9 +6,9 @@ namespace AldenFall.AI
 {
     /// <summary>
     /// Two-phase boss fight. Above the trigger threshold the boss fights
-    /// normally. The moment it drops below 50%, a transformation scene plays —
+    /// normally. The moment it drops below 50%, a transformation scene plays -
     /// it roars, GROWS, and breaks the ground around it (invulnerable and
-    /// frozen while it happens) — then rage mode: much faster, attacking far
+    /// frozen while it happens), then rage mode: much faster, attacking far
     /// more often, hitting harder, and it never stops hunting you.
     /// </summary>
     [RequireComponent(typeof(Health), typeof(EnemyAI))]
@@ -57,7 +57,7 @@ namespace AldenFall.AI
 
         private IEnumerator TransformRoutine()
         {
-            // Freeze the boss for the scene — the self-stun keeps EnemyAI
+            // Freeze the boss for the scene, the self-stun keeps EnemyAI
             // parked, invulnerability makes the moment read as scripted.
             statuses?.Apply(new StatusEffect
             {
@@ -71,7 +71,7 @@ namespace AldenFall.AI
 
             // A real cinematic moment: ALL combat pauses (player locked +
             // invulnerable, every mob frozen), the camera pushes in on the
-            // boss, letterbox on — then the fight resumes at full rage.
+            // boss, letterbox on, then the fight resumes at full rage.
             PlayRageCinematic();
 
             Vector3 startScale = transform.localScale;
@@ -117,7 +117,7 @@ namespace AldenFall.AI
             var director = Cinematics.CutsceneDirector.Instance;
             if (director == null || director.IsPlaying)
             {
-                // No director available — at least announce it
+                // No director available, at least announce it
                 CombatEvents.RaiseStatus(transform.position + Vector3.up * 3.5f,
                     "GRUKK IS ENRAGED", new Color(1f, 0.25f, 0.15f));
                 return;

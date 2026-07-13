@@ -27,7 +27,7 @@ namespace AldenFall.Abilities
 
     /// <summary>
     /// The 10-slot action bar (keys 1-9, 0). Slots 1-5 are RESERVED for combat
-    /// abilities; 6-0 take anything — abilities or consumable items dragged
+    /// abilities; 6-0 take anything, abilities or consumable items dragged
     /// from the bag. The model is the validator: UI drop targets just call
     /// SetSlot and show what stuck. Layout persists via PlayerPrefs.
     /// </summary>
@@ -142,6 +142,22 @@ namespace AldenFall.Abilities
                 case BindingKind.Item:
                     consumables?.TryEat(binding.Id);
                     break;
+            }
+        }
+
+        /// <summary>
+        /// Fill the combat slots (keys 1-5) with a starter kit, in order. Used by
+        /// the intro weapon choice so the player's bar matches their opening
+        /// weapon. Unknown ids are skipped, extra combat slots are cleared, and
+        /// slots 6-0 are left alone. Persists like any other bar change.
+        /// </summary>
+        public void ApplyCombatKit(IList<string> abilityIds)
+        {
+            for (int i = 0; i < CombatSlots; i++)
+            {
+                string id = abilityIds != null && i < abilityIds.Count ? abilityIds[i] : null;
+                if (id == null || !SetSlot(i, SlotBinding.Ability(id)))
+                    ClearSlot(i);
             }
         }
 

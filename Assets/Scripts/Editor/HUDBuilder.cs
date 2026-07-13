@@ -12,7 +12,7 @@ namespace AldenFall.Editor
 {
     /// <summary>
     /// Builds the production HUD: health cluster, ability bar, target frame,
-    /// XP feed, inventory + skills panels, tooltip — all from the generated
+    /// XP feed, inventory + skills panels, tooltip, all from the generated
     /// sprite set (UISpriteGenerator) and the UITheme palette.
     /// </summary>
     public static class HUDBuilder
@@ -83,7 +83,8 @@ namespace AldenFall.Editor
 
             Image(cluster, "Shadow", S("glow_soft"), UITheme.Shadow, stretch: true, padding: -10);
             Image(cluster, "Bg", S("bar_r6"), UITheme.PanelBg, stretch: true);
-            Image(cluster, "Border", S("panel_border_r16"), UITheme.PanelBorder, stretch: true, padding: -1);
+            // Border radius matches the bar body (r12), not the big panel radius.
+            Image(cluster, "Border", S("bar_border_r6"), UITheme.PanelBorder, stretch: true, padding: -1);
 
             hud.healthGhost = FillBar(cluster, "Ghost", UITheme.HpGhost, 4);
             hud.healthFill = FillBar(cluster, "Fill", UITheme.HpGreen, 4);
@@ -104,10 +105,11 @@ namespace AldenFall.Editor
 
             var bar = Panel(root, "AbilityBar", new Vector2(0.5f, 0f), new Vector2(0, 74), new Vector2(barWidth + 190, 84));
 
+            // Docked chips sit a clean 16px off the bar ends (was a ragged 38px).
             hud.meleeSlot = BuildAbilitySlot(bar, "Melee", "icon_sword", "AUTO",
-                UITheme.Gold, new Vector2(-barWidth / 2f - 62, 0), 48, raycast: false);
+                UITheme.Gold, new Vector2(-barWidth / 2f - 40, 0), 48, raycast: false);
             hud.dodgeSlot = BuildAbilitySlot(bar, "Dodge", "icon_strength", "TAPx2",
-                UITheme.TextDim, new Vector2(barWidth / 2f + 62, 0), 48, raycast: false);
+                UITheme.TextDim, new Vector2(barWidth / 2f + 40, 0), 48, raycast: false);
 
             hud.barSlots.Clear();
             float startX = -barWidth / 2f + slotSize / 2f;
@@ -148,11 +150,11 @@ namespace AldenFall.Editor
             if (root.GetComponent<DragController>() == null)
                 root.gameObject.AddComponent<DragController>();
 
-            // ---- Interaction prompt pill ("E — Fish") above the bar ----
+            // ---- Interaction prompt pill ("[E] Fish") above the bar ----
             var chip = Panel(root, "InteractPrompt", new Vector2(0.5f, 0f), new Vector2(0, 186), new Vector2(180, 34));
             Image(chip, "ChipBg", S("panel_r16"), new Color(0.07f, 0.063f, 0.10f, 0.85f), stretch: true);
             Image(chip, "ChipBorder", S("panel_border_r16"), UITheme.PanelBorder, stretch: true, padding: -1);
-            hud.promptText = Text(chip, "PromptText", "E — Fish", 15, UITheme.TextGold, FontStyles.Bold);
+            hud.promptText = Text(chip, "PromptText", "[E] Fish", 15, UITheme.TextGold, FontStyles.Bold);
             Stretch(hud.promptText.rectTransform);
             hud.promptChip = chip.gameObject;
             chip.gameObject.SetActive(false);
@@ -176,15 +178,18 @@ namespace AldenFall.Editor
             const float slotSize = 58f, gap = 8f;
             const int slotCount = Abilities.ActionBar.SlotCount;
             float barWidth = slotCount * slotSize + (slotCount - 1) * gap;
-            float clusterX = -barWidth / 2f - 62f;   // centered over the melee AUTO slot
+            float clusterX = -barWidth / 2f - 40f;   // centered over the melee AUTO slot
 
             var cluster = Panel(root, "CombatStyleCluster", new Vector2(0.5f, 0f),
                 new Vector2(clusterX, 136), new Vector2(140, 58));
             var styleUI = cluster.gameObject.AddComponent<CombatStyleUI>();
 
+            // Grouping pill so label + buttons read as one control, not floaters.
+            Image(cluster, "ClusterBg", S("panel_r16"), new Color(0.07f, 0.063f, 0.10f, 0.62f), stretch: true, padding: -4);
+
             var label = Text(cluster, "Label", "XP STYLE · V", 10, UITheme.TextDim, FontStyles.Bold);
             label.characterSpacing = 2;
-            Anchor(label.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, 4), new Vector2(140, 14));
+            Anchor(label.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, -3), new Vector2(140, 14));
 
             var styles = new (Combat.CombatStyle style, string glyph, UnityEngine.Events.UnityAction onClick)[]
             {
@@ -302,12 +307,13 @@ namespace AldenFall.Editor
             toasts.pivot = new Vector2(1f, 0f);
             var toastLayout = toasts.gameObject.AddComponent<VerticalLayoutGroup>();
             toastLayout.childAlignment = TextAnchor.LowerRight;
-            toastLayout.spacing = 5f;
+            toastLayout.spacing = 6f;
             toastLayout.childControlWidth = false;
             toastLayout.childControlHeight = false;
             toastLayout.childForceExpandWidth = false;
             toastLayout.childForceExpandHeight = false;
             hud.toastRoot = toasts;
+            hud.toastPillSprite = S("panel_r16");   // rounded pill bg behind each toast
         }
 
         // ==================== CHARACTER PANEL ====================
@@ -325,61 +331,68 @@ namespace AldenFall.Editor
             Image(panel, "Bg", S("panel_r16"), UITheme.PanelBg, stretch: true);
             Image(panel, "Border", S("panel_border_r16"), UITheme.PanelBorder, stretch: true, padding: -1);
 
-            var header = Text(panel, "Header", "CHARACTER", 19, UITheme.TextGold, FontStyles.Bold);
+            var header = Text(panel, "Header", "CHARACTER", 20, UITheme.TextGold, FontStyles.Bold);
             header.characterSpacing = 6;
             var headerRect = header.rectTransform;
             headerRect.anchorMin = new Vector2(0, 1); headerRect.anchorMax = new Vector2(0.7f, 1);
             headerRect.offsetMin = new Vector2(24, -46); headerRect.offsetMax = new Vector2(0, -16);
             header.alignment = TextAlignmentOptions.MidlineLeft;
 
-            charUI.countText = Text(panel, "Count", "0 / 20", 14, UITheme.TextDim, FontStyles.Normal);
+            charUI.countText = Text(panel, "Count", "0 / 20", 12, UITheme.TextDim, FontStyles.Normal);
             var countRect = charUI.countText.rectTransform;
             countRect.anchorMin = new Vector2(0.7f, 1); countRect.anchorMax = new Vector2(1, 1);
             countRect.offsetMin = new Vector2(0, -46); countRect.offsetMax = new Vector2(-24, -16);
             charUI.countText.alignment = TextAlignmentOptions.MidlineRight;
 
-            // Gold readout (moved off the quest tracker) — sits under the header, left column.
+            // Thin gold rule under the header line.
+            var headerRule = Image(panel, "HeaderRule", null, UITheme.HeaderRule, stretch: false);
+            var ruleRect = headerRule.rectTransform;
+            ruleRect.anchorMin = new Vector2(0, 1); ruleRect.anchorMax = new Vector2(1, 1);
+            ruleRect.offsetMin = new Vector2(24, -55); ruleRect.offsetMax = new Vector2(-24, -54);
+
+            // Gold readout (moved off the quest tracker), under the header, left column.
             charUI.goldText = Text(panel, "Gold", "<color=#F2CC8C><b>Gold:</b> 0</color>", 15,
                 UITheme.TextGold, FontStyles.Bold);
             var goldRect = charUI.goldText.rectTransform;
             goldRect.anchorMin = new Vector2(0, 1); goldRect.anchorMax = new Vector2(0.7f, 1);
-            goldRect.offsetMin = new Vector2(24, -70); goldRect.offsetMax = new Vector2(0, -48);
+            goldRect.offsetMin = new Vector2(24, -86); goldRect.offsetMax = new Vector2(0, -64);
             charUI.goldText.alignment = TextAlignmentOptions.MidlineLeft;
             charUI.goldText.richText = true;
 
-            // ---- Paper doll (left column, top→bottom: helm/cape/chest/legs/weapon/focus) ----
+            // ---- Paper doll (left column, top→bottom: helm/cape/chest/legs/weapon/focus)
+            // Starts clear of the gold line; labels sit in the gaps between slots. ----
             var dollSlots = new (Items.EquipSlot slot, string label, float y)[]
             {
-                (Items.EquipSlot.Helm,   "HELM", -92),
-                (Items.EquipSlot.Cape,   "CAPE", -172),
-                (Items.EquipSlot.Chest,  "CHEST", -252),
-                (Items.EquipSlot.Legs,   "LEGS", -332),
-                (Items.EquipSlot.Weapon, "WEAPON", -412),
-                (Items.EquipSlot.Focus,  "FOCUS", -492),
+                (Items.EquipSlot.Helm,   "HELM", -128),
+                (Items.EquipSlot.Cape,   "CAPE", -208),
+                (Items.EquipSlot.Chest,  "CHEST", -288),
+                (Items.EquipSlot.Legs,   "LEGS", -368),
+                (Items.EquipSlot.Weapon, "MAIN HAND", -448),
+                (Items.EquipSlot.Focus,  "OFF HAND (FOCUS)", -528),
             };
             foreach (var (slot, label, y) in dollSlots)
             {
                 var slotUI = BuildItemSlot(panel, $"Doll_{slot}", new Vector2(0, 1), new Vector2(56, y), 62);
                 charUI.equipSlots.Add(new CharacterPanelUI.EquipSlotEntry { slot = slot, ui = slotUI });
 
-                var slotLabel = Text(panel, $"DollLabel_{slot}", label, 9, UITheme.TextDim, FontStyles.Bold);
+                var slotLabel = Text(panel, $"DollLabel_{slot}", label, 10, UITheme.TextDim, FontStyles.Bold);
                 slotLabel.characterSpacing = 2;
-                Anchor(slotLabel.rectTransform, new Vector2(0, 1), new Vector2(56, y - 40), new Vector2(70, 12));
+                slotLabel.textWrappingMode = TextWrappingModes.NoWrap;
+                Anchor(slotLabel.rectTransform, new Vector2(0, 1), new Vector2(56, y - 40), new Vector2(130, 12));
             }
 
-            // ---- Bonuses block (below doll, left side) ----
-            var bonusHeader = Text(panel, "BonusHeader", "BONUSES", 11, UITheme.TextDim, FontStyles.Bold);
+            // ---- Bonuses block (bottom-right, under the bag grid, table-aligned) ----
+            var bonusHeader = Text(panel, "BonusHeader", "BONUSES", 12, UITheme.TextDim, FontStyles.Bold);
             bonusHeader.characterSpacing = 3;
-            Anchor(bonusHeader.rectTransform, new Vector2(0, 0), new Vector2(70, 118), new Vector2(120, 16));
+            Anchor(bonusHeader.rectTransform, new Vector2(0, 0), new Vector2(238, 182), new Vector2(180, 16));
             bonusHeader.alignment = TextAlignmentOptions.MidlineLeft;
-            bonusHeader.rectTransform.anchoredPosition = new Vector2(70, 118);
 
             charUI.bonusText = Text(panel, "BonusText", "", 12, UITheme.TextMain, FontStyles.Normal);
             var bonusRect = charUI.bonusText.rectTransform;
             bonusRect.anchorMin = new Vector2(0, 0); bonusRect.anchorMax = new Vector2(0, 0);
             bonusRect.pivot = new Vector2(0, 0);
-            bonusRect.anchoredPosition = new Vector2(22, 18);
-            bonusRect.sizeDelta = new Vector2(190, 96);
+            bonusRect.anchoredPosition = new Vector2(148, 44);
+            bonusRect.sizeDelta = new Vector2(300, 124);
             charUI.bonusText.alignment = TextAlignmentOptions.TopLeft;
             charUI.bonusText.lineSpacing = 8;
 
@@ -387,8 +400,8 @@ namespace AldenFall.Editor
             var gridObj = new GameObject("Grid");
             gridObj.transform.SetParent(panel, false);
             var gridRect = gridObj.AddComponent<RectTransform>();
-            gridRect.anchorMin = new Vector2(0, 0); gridRect.anchorMax = new Vector2(1, 1);
-            gridRect.offsetMin = new Vector2(148, 24); gridRect.offsetMax = new Vector2(-20, -66);
+            gridRect.anchorMin = new Vector2(0, 1); gridRect.anchorMax = new Vector2(1, 1);
+            gridRect.offsetMin = new Vector2(148, -440); gridRect.offsetMax = new Vector2(-20, -74);
             var grid = gridObj.AddComponent<GridLayoutGroup>();
             grid.cellSize = new Vector2(64, 64);
             grid.spacing = new Vector2(9, 9);
@@ -458,7 +471,7 @@ namespace AldenFall.Editor
         {
             var panel = Panel(root, "SkillTreePanel", new Vector2(0.5f, 0f), new Vector2(0, -520), new Vector2(680, 460));
             var slide = panel.gameObject.AddComponent<SlidePanel>();
-            slide.shownPos = new Vector2(0, 250);
+            slide.shownPos = new Vector2(0, 400);   // clears the action bar + health cluster
             slide.hiddenPos = new Vector2(0, -520);
             var treeUI = panel.gameObject.AddComponent<SkillTreePanelUI>();
 
@@ -466,18 +479,23 @@ namespace AldenFall.Editor
             Image(panel, "Bg", S("panel_r16"), UITheme.PanelBg, stretch: true);
             Image(panel, "Border", S("panel_border_r16"), UITheme.PanelBorder, stretch: true, padding: -1);
 
-            var header = Text(panel, "Header", "COMBAT TREES (T)", 19, UITheme.TextGold, FontStyles.Bold);
+            var header = Text(panel, "Header", "COMBAT TREES (T)", 20, UITheme.TextGold, FontStyles.Bold);
             header.characterSpacing = 6;
             var hRect = header.rectTransform;
             hRect.anchorMin = new Vector2(0, 1); hRect.anchorMax = new Vector2(1, 1);
             hRect.offsetMin = new Vector2(24, -46); hRect.offsetMax = new Vector2(-24, -16);
             header.alignment = TextAlignmentOptions.MidlineLeft;
 
-            var hint = Text(panel, "Hint", "drag an ability onto the action bar", 12, UITheme.TextDim, FontStyles.Italic);
+            var hint = Text(panel, "Hint", "drag an ability onto the action bar", 12, UITheme.TextDim, FontStyles.Normal);
             var hintRect = hint.rectTransform;
             hintRect.anchorMin = new Vector2(0, 1); hintRect.anchorMax = new Vector2(1, 1);
             hintRect.offsetMin = new Vector2(24, -46); hintRect.offsetMax = new Vector2(-24, -16);
             hint.alignment = TextAlignmentOptions.MidlineRight;
+
+            var treesRule = Image(panel, "HeaderRule", null, UITheme.HeaderRule, stretch: false);
+            var treesRuleRect = treesRule.rectTransform;
+            treesRuleRect.anchorMin = new Vector2(0, 1); treesRuleRect.anchorMax = new Vector2(1, 1);
+            treesRuleRect.offsetMin = new Vector2(24, -55); treesRuleRect.offsetMax = new Vector2(-24, -54);
 
             var trees = new[] { SkillType.Attack, SkillType.Strength, SkillType.Defence, SkillType.Magic };
             var tabActions = new UnityEngine.Events.UnityAction[]
@@ -508,6 +526,11 @@ namespace AldenFall.Editor
                 UnityEditor.Events.UnityEventTools.AddPersistentListener(tabButton.onClick, tabActions[t]);
                 tabRect.gameObject.AddComponent<HoverScale>().hoverScale = 1.04f;
 
+                // Accent underline: only the active tab shows it (SkillTreePanelUI toggles).
+                var tabUnderline = Image(tabRect, "Underline", S("bar_r6"),
+                    new Color(accent.r, accent.g, accent.b, 0.9f), stretch: false);
+                Anchor(tabUnderline.rectTransform, new Vector2(0.5f, 0f), new Vector2(0, 2), new Vector2(tabW - 20, 3));
+
                 // Content page: sections per weapon class, tiles stacked down
                 var page = Panel(panel, $"Page_{tree}", new Vector2(0.5f, 1f), new Vector2(0, -122), new Vector2(632, 320));
                 page.pivot = new Vector2(0.5f, 1f);
@@ -523,9 +546,9 @@ namespace AldenFall.Editor
 
                     string section = weaponClass == Abilities.WeaponClass.Any
                         ? "ANY WEAPON" : weaponClass.ToString().ToUpperInvariant();
-                    var sectionLabel = Text(page, $"Section_{weaponClass}", section, 11, UITheme.TextDim, FontStyles.Bold);
+                    var sectionLabel = Text(page, $"Section_{weaponClass}", section, 12, UITheme.TextDim, FontStyles.Bold);
                     sectionLabel.characterSpacing = 3;
-                    Anchor(sectionLabel.rectTransform, new Vector2(0, 1), new Vector2(80, y - 12), new Vector2(140, 16));
+                    Anchor(sectionLabel.rectTransform, new Vector2(0, 1), new Vector2(86, y - 12), new Vector2(140, 16));
                     sectionLabel.alignment = TextAlignmentOptions.MidlineLeft;
                     y -= 30f;
 
@@ -543,6 +566,7 @@ namespace AldenFall.Editor
                     button = tabButton,
                     buttonBg = tabBg,
                     label = tabLabel,
+                    underline = tabUnderline,
                     content = page.gameObject,
                 });
             }
@@ -572,7 +596,7 @@ namespace AldenFall.Editor
             tileUI.icon = Image(plate, "Icon", S(def.IconSprite), iconColor, stretch: true, padding: 9);
             tileUI.icon.preserveAspect = true;
 
-            tileUI.nameText = Text(tile, "Name", def.Name, 16, UITheme.TextMain, FontStyles.Bold);
+            tileUI.nameText = Text(tile, "Name", def.Name, 15, UITheme.TextMain, FontStyles.Bold);
             Anchor(tileUI.nameText.rectTransform, new Vector2(0, 1), new Vector2(230, -22), new Vector2(280, 22));
             tileUI.nameText.alignment = TextAlignmentOptions.MidlineLeft;
 
@@ -581,13 +605,13 @@ namespace AldenFall.Editor
             tileUI.cooldownText.alignment = TextAlignmentOptions.MidlineRight;
 
             tileUI.requiresText = Text(tile, "Requires",
-                $"requires {def.RequiredWeapon.ToString().ToLowerInvariant()}", 11,
-                UITheme.HpRed, FontStyles.Italic);
-            Anchor(tileUI.requiresText.rectTransform, new Vector2(1, 0), new Vector2(-74, 16), new Vector2(120, 16));
+                $"requires {def.RequiredWeapon.ToString().ToLowerInvariant()}", 12,
+                UITheme.HpRed, FontStyles.Normal);
+            Anchor(tileUI.requiresText.rectTransform, new Vector2(1, 0), new Vector2(-99, 16), new Vector2(170, 16));
             tileUI.requiresText.alignment = TextAlignmentOptions.MidlineRight;
             tileUI.requiresText.gameObject.SetActive(false);
 
-            // Rank pips + mastery progress
+            // Rank pips + mastery progress (bar starts clear of the last pip)
             var pips = new List<UnityEngine.UI.Image>();
             for (int i = 0; i < Abilities.AbilityMastery.MaxRank; i++)
             {
@@ -597,7 +621,7 @@ namespace AldenFall.Editor
             }
             tileUI.rankPips = pips.ToArray();
 
-            var barArea = Panel(tile, "MasteryArea", new Vector2(0, 0), new Vector2(268, 22), new Vector2(160, 5));
+            var barArea = Panel(tile, "MasteryArea", new Vector2(0, 0), new Vector2(288, 22), new Vector2(160, 5));
             Image(barArea, "BarBg", S("bar_r6"), new Color(0, 0, 0, 0.55f), stretch: true);
             tileUI.masteryFill = FillBar(barArea, "Fill", UITheme.Gold, 0);
         }
@@ -608,7 +632,7 @@ namespace AldenFall.Editor
         {
             var cluster = Panel(root, "PanelButtons", new Vector2(1f, 0f), new Vector2(-130, 52), new Vector2(220, 60));
 
-            // Method groups (not closures) — persistent listeners must serialize
+            // Method groups (not closures), persistent listeners must serialize
             BuildPanelButton(cluster, "CharacterBtn", "icon_bag", "C", new Vector2(-72, 0),
                 hotkeys.ToggleCharacter);
             BuildPanelButton(cluster, "SkillsBtn", "icon_magic", "K", new Vector2(0, 0),
@@ -683,7 +707,7 @@ namespace AldenFall.Editor
             float panelH = 92f + skillCount * 82f + 24f;
             var panel = Panel(root, "SkillsPanel", new Vector2(0f, 0.5f), new Vector2(-240, 0), new Vector2(360, panelH));
             var slide = panel.gameObject.AddComponent<SlidePanel>();
-            slide.shownPos = new Vector2(204, 0);
+            slide.shownPos = new Vector2(308, 0);   // clears the always-on skill strip
             slide.hiddenPos = new Vector2(-240, 0);
             var skillsUI = panel.gameObject.AddComponent<SkillsPanelUI>();
 
@@ -691,12 +715,17 @@ namespace AldenFall.Editor
             Image(panel, "Bg", S("panel_r16"), UITheme.PanelBg, stretch: true);
             Image(panel, "Border", S("panel_border_r16"), UITheme.PanelBorder, stretch: true, padding: -1);
 
-            var header = Text(panel, "Header", "SKILLS", 19, UITheme.TextGold, FontStyles.Bold);
+            var header = Text(panel, "Header", "SKILLS", 20, UITheme.TextGold, FontStyles.Bold);
             header.characterSpacing = 6;
             var hRect = header.rectTransform;
             hRect.anchorMin = new Vector2(0, 1); hRect.anchorMax = new Vector2(1, 1);
             hRect.offsetMin = new Vector2(24, -46); hRect.offsetMax = new Vector2(-24, -16);
             header.alignment = TextAlignmentOptions.MidlineLeft;
+
+            var skillsRule = Image(panel, "HeaderRule", null, UITheme.HeaderRule, stretch: false);
+            var skillsRuleRect = skillsRule.rectTransform;
+            skillsRuleRect.anchorMin = new Vector2(0, 1); skillsRuleRect.anchorMax = new Vector2(1, 1);
+            skillsRuleRect.offsetMin = new Vector2(24, -55); skillsRuleRect.offsetMax = new Vector2(-24, -54);
 
             var glyphs = new Dictionary<SkillType, string>
             {
@@ -725,25 +754,27 @@ namespace AldenFall.Editor
         {
             var row = Panel(panel, $"Row_{skill}", new Vector2(0.5f, 1f), new Vector2(0, y), new Vector2(312, 68));
             Image(row, "RowBg", S("panel_r16"), UITheme.PanelBgLight, stretch: true);
+            Image(row, "RowBorder", S("panel_border_r16"), new Color(1f, 1f, 1f, 0.05f), stretch: true, padding: -1);
 
             var accent = XpFeed.SkillColor(skill);
             var iconColor = accent; iconColor.a = 0.95f;
             var icon = Image(row, "Icon", S(glyph), iconColor, stretch: false);
             Anchor(icon.rectTransform, new Vector2(0, 0.5f), new Vector2(30, 6), new Vector2(32, 32));
 
-            var name = Text(row, "Name", Skills.DisplayName(skill), 16, UITheme.TextMain, FontStyles.Bold);
+            var name = Text(row, "Name", Skills.DisplayName(skill), 15, UITheme.TextMain, FontStyles.Bold);
             var nRect = name.rectTransform;
             nRect.anchorMin = new Vector2(0, 0.5f); nRect.anchorMax = new Vector2(0.7f, 1f);
             nRect.offsetMin = new Vector2(56, -4); nRect.offsetMax = new Vector2(0, -6);
             name.alignment = TextAlignmentOptions.MidlineLeft;
 
-            var level = Text(row, "Level", "1", 26, accent, FontStyles.Bold);
+            // One level color across all skills; the icon already carries identity.
+            var level = Text(row, "Level", "1", 26, UITheme.TextMain, FontStyles.Bold);
             var lRect = level.rectTransform;
             lRect.anchorMin = new Vector2(0.78f, 0); lRect.anchorMax = new Vector2(1, 1);
             lRect.offsetMin = Vector2.zero; lRect.offsetMax = new Vector2(-14, 0);
             level.alignment = TextAlignmentOptions.MidlineRight;
 
-            var xpText = Text(row, "XpText", "", 11, UITheme.TextDim, FontStyles.Normal);
+            var xpText = Text(row, "XpText", "", 12, UITheme.TextDim, FontStyles.Normal);
             var xRect = xpText.rectTransform;
             xRect.anchorMin = new Vector2(0, 0); xRect.anchorMax = new Vector2(0.78f, 0.42f);
             xRect.offsetMin = new Vector2(56, 16); xRect.offsetMax = Vector2.zero;
@@ -751,7 +782,7 @@ namespace AldenFall.Editor
 
             // XP bar along the bottom
             var barArea = Panel(row, "XpBar", new Vector2(0.5f, 0f), new Vector2(8, 9), new Vector2(232, 6));
-            Image(barArea, "BarBg", S("bar_r6"), new Color(0, 0, 0, 0.5f), stretch: true);
+            Image(barArea, "BarBg", S("bar_r6"), new Color(0, 0, 0, 0.35f), stretch: true);
             var fill = FillBar(barArea, "Fill", accent, 0);
 
             return new SkillsPanelUI.SkillRow
@@ -785,40 +816,41 @@ namespace AldenFall.Editor
             Image(panel, "Bg", S("panel_r16"), new Color(0.05f, 0.045f, 0.075f, 0.97f), stretch: true);
             tooltip.border = Image(panel, "Border", S("panel_border_r16"), UITheme.PanelBorder, stretch: true, padding: -1);
 
-            tooltip.nameText = Text(panel, "Name", "", 16, UITheme.TextMain, FontStyles.Bold);
+            tooltip.nameText = Text(panel, "Name", "", 15, UITheme.TextMain, FontStyles.Bold);
             var nRect = tooltip.nameText.rectTransform;
             nRect.anchorMin = new Vector2(0, 1); nRect.anchorMax = new Vector2(1, 1);
-            nRect.offsetMin = new Vector2(14, -34); nRect.offsetMax = new Vector2(leftRight, -8);
+            nRect.offsetMin = new Vector2(16, -34); nRect.offsetMax = new Vector2(leftRight, -8);
             tooltip.nameText.alignment = TextAlignmentOptions.MidlineLeft;
 
             tooltip.statText = Text(panel, "Stats", "", 12, UITheme.TextGold, FontStyles.Normal);
             var sRect = tooltip.statText.rectTransform;
             sRect.anchorMin = new Vector2(0, 1); sRect.anchorMax = new Vector2(1, 1);
-            sRect.offsetMin = new Vector2(14, -56); sRect.offsetMax = new Vector2(leftRight, -34);
+            sRect.offsetMin = new Vector2(16, -56); sRect.offsetMax = new Vector2(leftRight, -34);
             tooltip.statText.alignment = TextAlignmentOptions.MidlineLeft;
 
             tooltip.descText = Text(panel, "Desc", "", 12, UITheme.TextDim, FontStyles.Normal);
             var dRect = tooltip.descText.rectTransform;
             dRect.anchorMin = new Vector2(0, 0); dRect.anchorMax = new Vector2(1, 1);
-            dRect.offsetMin = new Vector2(14, 10); dRect.offsetMax = new Vector2(leftRight, -58);
+            dRect.offsetMin = new Vector2(16, 10); dRect.offsetMax = new Vector2(leftRight, -58);
             tooltip.descText.alignment = TextAlignmentOptions.TopLeft;
             tooltip.descText.textWrappingMode = TextWrappingModes.Normal;
 
             // ---- comparison column (right) ----
             var compare = Panel(panel, "Compare", new Vector2(0, 0), Vector2.zero, Vector2.zero);
             compare.anchorMin = new Vector2(0, 0); compare.anchorMax = new Vector2(1, 1);
-            compare.offsetMin = new Vector2(286, 10); compare.offsetMax = new Vector2(-14, -8);
+            compare.offsetMin = new Vector2(286, 10); compare.offsetMax = new Vector2(-16, -8);
             tooltip.compareRoot = compare.gameObject;
 
-            // Divider between the two columns
-            var divider = Image(panel, "Divider", null, new Color(1f, 1f, 1f, 0.10f), stretch: false);
+            // Divider between the two columns, parented to the compare column so
+            // it disappears with it (the panel collapses to one column then).
+            var divider = Image(compare, "Divider", null, new Color(1f, 1f, 1f, 0.10f), stretch: false);
             var dvRect = divider.rectTransform;
             dvRect.anchorMin = new Vector2(0, 0); dvRect.anchorMax = new Vector2(0, 1);
             dvRect.pivot = new Vector2(0.5f, 0.5f);
-            dvRect.offsetMin = new Vector2(278, 12); dvRect.offsetMax = new Vector2(280, -12);
+            dvRect.offsetMin = new Vector2(-8, 2); dvRect.offsetMax = new Vector2(-7, -2);
             dvRect.anchoredPosition = new Vector2(dvRect.anchoredPosition.x, 0);
 
-            tooltip.compareHeader = Text(compare, "CompareHeader", "Equipped", 11, UITheme.TextDim, FontStyles.Bold);
+            tooltip.compareHeader = Text(compare, "CompareHeader", "Equipped", 12, UITheme.TextDim, FontStyles.Bold);
             var chRect = tooltip.compareHeader.rectTransform;
             chRect.anchorMin = new Vector2(0, 1); chRect.anchorMax = new Vector2(1, 1);
             chRect.offsetMin = new Vector2(0, -18); chRect.offsetMax = new Vector2(0, 0);

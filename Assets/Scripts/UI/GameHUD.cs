@@ -46,11 +46,12 @@ namespace AldenFall.UI
 
         [Header("Toasts")]
         public RectTransform toastRoot;
+        public Sprite toastPillSprite;                // rounded pill bg, set by HUDBuilder
         private const int MaxToasts = 4;              // cap the visible pickup stack
         private readonly List<GameObject> activeToasts = new List<GameObject>();
 
         [Header("Interaction")]
-        public GameObject promptChip;      // "E — Fish" pill above the action bar
+        public GameObject promptChip;      // "E, Fish" pill above the action bar
         public TMP_Text promptText;
         public GameObject castBarRoot;     // thin fishing progress bar
         public Image castBarFill;
@@ -338,20 +339,39 @@ namespace AldenFall.UI
                 if (oldest != null) Destroy(oldest);
             }
 
-            var text = obj.AddComponent<TextMeshProUGUI>();
-            text.text = $"<color=#{ColorUtility.ToHtmlStringRGB(def.RarityColor)}>{def.Name}</color> acquired";
-            text.fontSize = 18;
+            // Consistent-width pill behind the text so toasts read as one
+            // system over any terrain brightness.
+            var rect = obj.AddComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(320, 30);
+            var pill = obj.AddComponent<Image>();
+            pill.sprite = toastPillSprite;
+            if (toastPillSprite != null && toastPillSprite.border.sqrMagnitude > 0)
+                pill.type = Image.Type.Sliced;
+            pill.color = new Color(0.055f, 0.048f, 0.082f, 0.86f);
+            pill.raycastTarget = false;
+            var group = obj.AddComponent<CanvasGroup>();
+            group.blocksRaycasts = false;
+
+            var textObj = new GameObject("Label");
+            textObj.transform.SetParent(obj.transform, false);
+            var textRect = textObj.AddComponent<RectTransform>();
+            textRect.anchorMin = Vector2.zero;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = new Vector2(14, 0);
+            textRect.offsetMax = new Vector2(-14, 0);
+            var text = textObj.AddComponent<TextMeshProUGUI>();
+            text.text = $"<color=#{ColorUtility.ToHtmlStringRGB(def.RarityColor)}>{def.Name}</color> <color=#C8C2CE>acquired</color>";
+            text.fontSize = 15;
             text.fontStyle = FontStyles.Bold;
             text.alignment = TextAlignmentOptions.MidlineRight;
-            text.outlineWidth = 0.18f;
-            text.outlineColor = new Color(0, 0, 0, 0.85f);
             text.raycastTarget = false;
-            text.rectTransform.sizeDelta = new Vector2(320, 26);
+            text.textWrappingMode = TextWrappingModes.NoWrap;
+            text.overflowMode = TextOverflowModes.Ellipsis;
 
-            // Scale-in only — position belongs to the toastRoot layout group,
+            // Scale-in only, position belongs to the toastRoot layout group,
             // so same-frame toasts (starter sword + fishing pole) stack cleanly.
-            text.transform.localScale = Vector3.one * 0.7f;
-            StartCoroutine(UIFx.ScaleTo(text.transform, Vector3.one, 0.25f, back: true));
+            obj.transform.localScale = Vector3.one * 0.7f;
+            StartCoroutine(UIFx.ScaleTo(obj.transform, Vector3.one, 0.25f, back: true));
 
             yield return new WaitForSeconds(2.4f);
 
@@ -359,12 +379,12 @@ namespace AldenFall.UI
             while (elapsed < 0.4f)
             {
                 elapsed += Time.deltaTime;
-                if (text == null) yield break;   // culled early by the cap
-                text.alpha = 1f - elapsed / 0.4f;
+                if (group == null) yield break;   // culled early by the cap
+                group.alpha = 1f - elapsed / 0.4f;
                 yield return null;
             }
             activeToasts.Remove(obj);
-            if (text != null) Destroy(text.gameObject);
+            if (obj != null) Destroy(obj);
         }
     }
 }

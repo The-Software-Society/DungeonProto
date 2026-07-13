@@ -2,7 +2,7 @@ using UnityEngine;
 
 namespace AldenFall.UI
 {
-    /// <summary>Slow breathing pulse — used on ability slots that are ready.</summary>
+    /// <summary>Slow breathing pulse, used on ability slots that are ready.</summary>
     public class ReadyPulse : MonoBehaviour
     {
         public UnityEngine.UI.Graphic target;

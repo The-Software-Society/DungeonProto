@@ -895,15 +895,29 @@ namespace AldenFall.Editor
                 if (groundLayer >= 0) body.layer = groundLayer;
             }
 
-            // Crude cage: four corner posts (leave a gap so she can walk out once freed).
+            // Locked cage: a dense ring of bars with NO gap. She is genuinely trapped
+            // until Grukmar dies, when RescueCaptive drops the bars (Jon: "she should
+            // be locked up until you kill the warlord").
             var cageMat = Mat("Cage", new Color(0.22f, 0.16f, 0.11f), smoothness: 0.05f);
-            for (int i = 0; i < 4; i++)
+            var bars = new System.Collections.Generic.List<GameObject>();
+            for (int i = 0; i < 10; i++)
             {
-                float a = i * Mathf.PI / 2f + Mathf.PI / 4f;
+                float a = i * Mathf.PI * 2f / 10f;
                 var post = Cylinder($"CagePost{i}", pos + new Vector3(Mathf.Cos(a), 1.1f, Mathf.Sin(a)) * 1.3f,
-                    new Vector3(0.16f, 1.1f, 0.16f), cageMat, parent);
+                    new Vector3(0.14f, 1.1f, 0.14f), cageMat, parent);
                 post.isStatic = true;
                 if (groundLayer >= 0) post.layer = groundLayer;
+                bars.Add(post);
+            }
+            // Cross-rails so the cage reads as a cage, not fence posts.
+            for (int i = 0; i < 2; i++)
+            {
+                var rail = Cylinder($"CageRail{i}", pos + Vector3.up * (0.7f + i * 0.9f), new Vector3(1.5f, 0.06f, 1.5f), cageMat, parent);
+                rail.transform.rotation = Quaternion.identity;
+                rail.isStatic = true;
+                Object.DestroyImmediate(rail.GetComponent<CapsuleCollider>());
+                if (groundLayer >= 0) rail.layer = groundLayer;
+                bars.Add(rail);
             }
 
             // Fearful red captive glow that RescueCaptive warms to gold on rescue.
@@ -919,6 +933,7 @@ namespace AldenFall.Editor
 
             var captive = daughterObj.AddComponent<World.RescueCaptive>();
             captive.Configure("grukmar", light);
+            captive.ConfigureCage(bars);
         }
 
         // ==================== FISHING & COOKING (pond east shore) ====================
@@ -2395,7 +2410,7 @@ namespace AldenFall.Editor
             var defs = Data.MonsterDatabase.LoadAll();
             if (defs.Count == 0)
             {
-                Debug.LogError("CreateEnemies: monsters.json missing or empty — no mobs built!");
+                Debug.LogError("CreateEnemies: monsters.json missing or empty, no mobs built!");
                 return;
             }
 

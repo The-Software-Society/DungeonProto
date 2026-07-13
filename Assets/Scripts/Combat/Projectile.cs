@@ -46,7 +46,7 @@ namespace AldenFall.Combat
         private void Awake()
         {
             // Safety net FIRST: guarantee despawn even if EnsureVisibleProjectile (or any later
-            // step) throws — otherwise the glow orphans forever (esp. the prefab magic bolt).
+            // step) throws, otherwise the glow orphans forever (esp. the prefab magic bolt).
             Destroy(gameObject, maxLifetime + 0.5f);
             EnsureVisibleProjectile();
         }
@@ -77,7 +77,7 @@ namespace AldenFall.Combat
 
         /// <summary>
         /// Which combat skill this bolt trains, and its XP-per-damage rate. The grant happens
-        /// server-side, scaled by the damage actually dealt to the enemy — never on cast.
+        /// server-side, scaled by the damage actually dealt to the enemy, never on cast.
         /// </summary>
         public void SetXpReward(Progression.SkillType skill, float rate)
         {
@@ -93,7 +93,7 @@ namespace AldenFall.Combat
         private void EnsureVisibleProjectile()
         {
             // The Fireball prefab (magic bolt) already carries its own mesh + trail + light, so
-            // skip the runtime glow when the object is already visible — avoids fragile work
+            // skip the runtime glow when the object is already visible, avoids fragile work
             // (double TrailRenderer, Shader.Find in stripped builds) that could leave an orphan.
             if (transform.Find("ProjectileGlow") != null || GetComponentInChildren<Renderer>() != null)
                 return;
@@ -173,7 +173,7 @@ namespace AldenFall.Combat
                 return current + direction * speed * Time.deltaTime;
             }
 
-            // Ballistic phase — gravity takes over.
+            // Ballistic phase, gravity takes over.
             ballisticVelocity += Vector3.down * gravityAfterHoming * Time.deltaTime;
             if (ballisticVelocity.sqrMagnitude > 0.01f)
                 transform.rotation = Quaternion.LookRotation(ballisticVelocity.normalized);
@@ -235,7 +235,7 @@ namespace AldenFall.Combat
 
         /// <summary>
         /// True when this projectile came from a player and is passing another player
-        /// while PvP is disabled — the shot flies through instead of exploding on allies.
+        /// while PvP is disabled, the shot flies through instead of exploding on allies.
         /// Not a hard PvP lock: gated on CombatRules.PvpEnabled for the future PvP system.
         /// </summary>
         private bool IsFriendlyPlayer(Transform t)
@@ -245,7 +245,7 @@ namespace AldenFall.Combat
             var avatar = t.GetComponentInParent<Multiplayer.NetworkPlayerAvatar>();
             if (avatar == null) return false;
 
-            // Duels: your ACTIVE duel opponent is a legitimate target — the projectile
+            // Duels: your ACTIVE duel opponent is a legitimate target, the projectile
             // must explode on them even while global PvP stays off (DuelMember's
             // opponent SyncVar replicates, so this client-side check stays honest).
             var duel = owner.GetComponent<DuelMember>();
@@ -298,7 +298,7 @@ namespace AldenFall.Combat
             }
             finally
             {
-                // Always despawn — even if damage or effects threw.
+                // Always despawn, even if damage or effects threw.
                 Destroy(gameObject);
             }
         }

@@ -5,7 +5,7 @@ namespace AldenFall.UI
 {
     /// <summary>
     /// Hover grow + press punch for interactive UI elements.
-    /// One MonoBehaviour per file — components added by editor build code must
+    /// One MonoBehaviour per file, components added by editor build code must
     /// live in a file matching the class name or the scene loses the script
     /// on reload ("referenced script (Unknown) is missing").
     /// </summary>
