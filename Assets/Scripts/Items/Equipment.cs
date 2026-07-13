@@ -72,6 +72,16 @@ namespace AldenFall.Items
             }
         }
 
+        /// <summary>True when a Bow is in the main hand (archery auto + ability gate).</summary>
+        public bool HasBow
+        {
+            get
+            {
+                var main = GetEquippedDef(EquipSlot.Weapon);
+                return main != null && main.WeaponKind == WeaponKind.Bow;
+            }
+        }
+
         /// <summary>Equip from inventory; the displaced item returns to the bag.</summary>
         public bool Equip(string itemId)
         {

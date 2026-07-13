@@ -36,6 +36,7 @@ namespace AldenFall.Combat
         private Player.PlayerController playerController;
         private Abilities.PlayerAbilities abilities;
         private PlayerCombat combat;   // server-auth damage relay
+        private Items.Inventory inventory;   // arrow ammo for the bow
         private float lastSwingTime = float.NegativeInfinity;
         private bool engaged; // attack order active: pursue until cancelled
 
@@ -58,6 +59,7 @@ namespace AldenFall.Combat
             controller = GetComponent<CharacterController>();
             playerController = GetComponent<Player.PlayerController>();
             abilities = GetComponent<Abilities.PlayerAbilities>();
+            inventory = GetComponent<Items.Inventory>();
             combat = GetComponent<PlayerCombat>();
         }
 
@@ -130,13 +132,23 @@ namespace AldenFall.Combat
 
             var target = targeting.CurrentTarget;
             float distance = Vector3.Distance(transform.position, target.position);
-            // Any magic implement (off-hand focus OR main-hand wand) enables magic autos at range.
+            // A bow makes the player a ranged attacker (arrows at range, no melee).
+            // Otherwise any magic implement (off-hand focus OR main-hand wand) enables magic autos.
+            bool hasBow = equipment != null && equipment.HasBow;
             bool hasFocus = equipment != null && equipment.HasMagicImplement;
-            float autoRange = hasFocus ? magicAutoRange : meleeRange;
 
             bool onCooldown = Time.time - lastSwingTime < Stats.CombatMath.SwingInterval(stats);
 
-            if (distance <= meleeRange)
+            if (hasBow)
+            {
+                if (distance <= magicAutoRange)
+                {
+                    if (!onCooldown) CastArrow(target);
+                }
+                else if (engaged)
+                    playerController?.SetExternalMoveIntent(target.position - transform.position);
+            }
+            else if (distance <= meleeRange)
             {
                 if (!onCooldown)
                     StartSwing(target);
@@ -243,6 +255,48 @@ namespace AldenFall.Combat
             {
                 // No callback: the projectile's own Magic XP grant applies
                 projectile.SetDamage(Stats.CombatMath.SpellDamage(stats, boltBaseDamage));
+                projectile.Initialize(aimDirection, gameObject, target);
+            }
+        }
+
+        // ==================== ARCHERY AUTO ====================
+
+        private void CastArrow(Transform target)
+        {
+            // Reuse the bolt projectile as an arrow (a dedicated arrow model is art-blocked).
+            var prefab = abilities != null ? abilities.FireballPrefab : null;
+            if (prefab == null) return;
+
+            // Consume one arrow; without ammo the bow cannot loose.
+            if (inventory == null || !inventory.Remove("arrow")) return;
+
+            lastSwingTime = Time.time;
+            statuses?.Remove("invisible");
+
+            Vector3 look = target.position - transform.position;
+            look.y = 0;
+            if (look.sqrMagnitude > 0.01f)
+                transform.rotation = Quaternion.LookRotation(look.normalized);
+
+            if (animator != null)
+                animator.SetTrigger(SpecialAttackHash);
+
+            Vector3 spawnPos = abilities != null && abilities.FirePoint != null
+                ? abilities.FirePoint.position
+                : transform.position + Vector3.up * 1.4f;
+
+            Vector3 aimPoint = target.position + Vector3.up;
+            var targetCollider = target.GetComponentInChildren<Collider>();
+            if (targetCollider != null) aimPoint = targetCollider.bounds.center;
+            Vector3 aimDirection = (aimPoint - spawnPos).normalized;
+
+            var arrow = Object.Instantiate(prefab, spawnPos, Quaternion.LookRotation(aimDirection));
+            arrow.transform.localScale *= 0.45f;   // slim, not a fireball
+            var projectile = arrow.GetComponent<Projectile>();
+            if (projectile != null)
+            {
+                projectile.SetDamage(Stats.CombatMath.RangedDamage(stats));
+                projectile.SetXpReward(Progression.SkillType.Ranged, 2.0f);   // arrows train Ranged
                 projectile.Initialize(aimDirection, gameObject, target);
             }
         }

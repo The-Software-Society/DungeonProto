@@ -596,6 +596,83 @@
       "EatLockout": 2.5999999046325684,
       "CookedResult": "",
       "Value": 0
+    },
+    {
+      "Id": "short_bow",
+      "Name": "Short Bow",
+      "Description": "A plain hunting bow. Draws fast, hits from range.",
+      "slot": "Weapon",
+      "weaponKind": "Bow",
+      "rarity": "Common",
+      "Bonuses": [
+        {
+          "type": "WeaponPower",
+          "value": 4.0
+        }
+      ],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 1,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 0
+    },
+    {
+      "Id": "arrow",
+      "Name": "Arrow",
+      "Description": "Ammunition for a bow. Stacks in one bag slot.",
+      "slot": "None",
+      "weaponKind": "None",
+      "rarity": "Common",
+      "Bonuses": [],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 1.0,
+        "b": 1.0,
+        "a": 1.0
+      },
+      "MaxStack": 100,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 1
+    },
+    {
+      "Id": "emberstring_bow",
+      "Name": "Emberstring Bow",
+      "Description": "A bow strung with ember-sinew, loosed arrows trail fire. The Guardian's gift to a marksman.",
+      "slot": "Weapon",
+      "weaponKind": "Bow",
+      "rarity": "Epic",
+      "Bonuses": [
+        {
+          "type": "WeaponPower",
+          "value": 16.0
+        },
+        {
+          "type": "Ranged",
+          "value": 2.0
+        }
+      ],
+      "ModelProp": "",
+      "Tint": {
+        "r": 1.0,
+        "g": 0.55,
+        "b": 0.35,
+        "a": 1.0
+      },
+      "MaxStack": 1,
+      "HealAmount": 0.0,
+      "EatLockout": 0.0,
+      "CookedResult": "",
+      "Value": 0
     }
   ]
 }

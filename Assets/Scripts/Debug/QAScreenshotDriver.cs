@@ -285,6 +285,15 @@ namespace AldenFall.DebugTools
             var ef = Items.ItemDatabase.Get("ember_focus");
             Check("item ember_focus slot Focus, SpellPower 10", ef != null && ef.Slot == Items.EquipSlot.Focus && Mathf.Approximately(ef.Bonus(Stats.StatType.SpellPower), 10f));
 
+            // Phase 6 archery.
+            var bow = Items.ItemDatabase.Get("emberstring_bow");
+            Check("emberstring_bow loads WeaponKind.Bow", bow != null && bow.WeaponKind == Items.WeaponKind.Bow);
+            var arrowDef = Items.ItemDatabase.Get("arrow");
+            Check("arrow stacks (MaxStack>1)", arrowDef != null && arrowDef.MaxStack > 1);
+            Check("SkillRegistry has Ranged (Archery)", Progression.SkillRegistry.Get(Progression.SkillType.Ranged).display == "Archery");
+            var bossQ = Quests.QuestDatabase.Get("q_floor_boss");
+            Check("q_floor_boss offers melee/magic/archery (3 choices)", bossQ != null && bossQ.RewardChoices.Count == 3);
+
             // Ability database + enums/flags.
             var fb = Abilities.AbilityDatabase.Get("fireball");
             Check("ability fireball loaded, kind Projectile", fb != null && fb.Kind == Abilities.AbilityKind.Projectile);

@@ -17,6 +17,7 @@ namespace AldenFall.Abilities
         Any,
         Sword,
         Focus,
+        Bow,     // append-only enum!
     }
 
     public enum AbilityKind

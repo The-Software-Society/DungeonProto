@@ -46,6 +46,17 @@ namespace AldenFall.Stats
             return raw * Random.Range(1f - v, 1f + v);
         }
 
+        /// <summary>Raw arrow damage before mitigation. Ranged-skill-driven (config: baseRangedDamage).</summary>
+        public static float RangedDamage(StatBlock attacker)
+        {
+            float weapon = attacker != null ? attacker.Get(StatType.WeaponPower) : 0f;
+            float ranged = attacker != null ? attacker.Get(StatType.Ranged) : 1f;
+
+            float raw = (GameConfig.Combat.baseRangedDamage + weapon) * LevelScale(ranged);
+            float v = GameConfig.Combat.damageVariance;
+            return raw * Random.Range(1f - v, 1f + v);
+        }
+
         /// <summary>
         /// Spell damage scaled exponentially by Magic, gated by the focus item.
         /// No focus (SpellPower 0) = gate base; SpellPower at cap = 100% output.

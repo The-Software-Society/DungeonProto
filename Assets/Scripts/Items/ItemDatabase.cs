@@ -27,6 +27,7 @@ namespace AldenFall.Items
         Sword,
         Wand,    // main-hand magic weapon
         Focus,   // off-hand magic implement
+        Bow,     // main-hand ranged weapon (append-only enum!)
     }
 
     public enum ItemRarity

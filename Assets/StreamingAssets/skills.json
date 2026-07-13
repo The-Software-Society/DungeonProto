@@ -6,11 +6,61 @@
     "To add a skill: append a SkillType enum value (append-only), add an entry here, then its behavior controller."
   ],
   "skills": [
-    { "id": "Attack",   "category": "combat", "display": "Attack",   "glyph": "icon_sword",    "color": "#FF9E73", "xpRate": 1.0 },
-    { "id": "Strength", "category": "combat", "display": "Strength", "glyph": "icon_strength", "color": "#FF7366", "xpRate": 1.0 },
-    { "id": "Defence",  "category": "combat", "display": "Defence",  "glyph": "icon_shield",   "color": "#8CBFFF", "xpRate": 1.0 },
-    { "id": "Magic",    "category": "combat", "display": "Magic",    "glyph": "icon_magic",    "color": "#B88CFF", "xpRate": 1.0 },
-    { "id": "Fishing",  "category": "gather", "display": "Fishing",  "glyph": "icon_fish",     "color": "#73D9E6", "xpRate": 1.0 },
-    { "id": "Cooking",  "category": "craft",  "display": "Cooking",  "glyph": "icon_flame",    "color": "#FFBF66", "xpRate": 1.0 }
+    {
+      "id": "Attack",
+      "category": "combat",
+      "display": "Attack",
+      "glyph": "icon_sword",
+      "color": "#FF9E73",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Strength",
+      "category": "combat",
+      "display": "Strength",
+      "glyph": "icon_strength",
+      "color": "#FF7366",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Defence",
+      "category": "combat",
+      "display": "Defence",
+      "glyph": "icon_shield",
+      "color": "#8CBFFF",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Magic",
+      "category": "combat",
+      "display": "Magic",
+      "glyph": "icon_magic",
+      "color": "#B88CFF",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Fishing",
+      "category": "gather",
+      "display": "Fishing",
+      "glyph": "icon_fish",
+      "color": "#73D9E6",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Cooking",
+      "category": "craft",
+      "display": "Cooking",
+      "glyph": "icon_flame",
+      "color": "#FFBF66",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Ranged",
+      "category": "combat",
+      "display": "Archery",
+      "glyph": "icon_sword",
+      "color": "#5FA845",
+      "xpRate": 1.0
+    }
   ]
 }

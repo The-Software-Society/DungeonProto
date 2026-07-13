@@ -78,11 +78,12 @@ namespace AldenFall.Stats
                 skills.Level(SkillType.Attack),
                 skills.Level(SkillType.Strength),
                 skills.Level(SkillType.Defence),
-                skills.Level(SkillType.Magic));
+                skills.Level(SkillType.Magic),
+                skills.Level(SkillType.Ranged));
         }
 
         [Command]
-        private void CmdSyncCombatLevels(int attack, int strength, int defence, int magic)
+        private void CmdSyncCombatLevels(int attack, int strength, int defence, int magic, int ranged)
         {
             // Server: mirror the owning client's leveled skills into this machine's
             // StatBlock, the single source of truth Health.TakeDamage reads.
@@ -90,6 +91,7 @@ namespace AldenFall.Stats
             stats.SetBase(StatType.Strength, strength);
             stats.SetBase(StatType.Defence, defence);
             stats.SetBase(StatType.Magic, magic);
+            stats.SetBase(StatType.Ranged, ranged);
         }
 
         private void Sync()
@@ -98,6 +100,7 @@ namespace AldenFall.Stats
             stats.SetBase(StatType.Strength, skills.Level(SkillType.Strength));
             stats.SetBase(StatType.Defence, skills.Level(SkillType.Defence));
             stats.SetBase(StatType.Magic, skills.Level(SkillType.Magic));
+            stats.SetBase(StatType.Ranged, skills.Level(SkillType.Ranged));
         }
     }
 }

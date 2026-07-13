@@ -16,6 +16,7 @@ namespace AldenFall.Stats
         AttackSpeed,  // swings per second multiplier (1 = base)
         MoveSpeed,    // movement multiplier (1 = base)
         SpellPower,   // focus item bonus that gates spell damage (append-only enum!)
+        Ranged,       // archery damage scaling (bow skill level)
     }
 
     /// <summary>

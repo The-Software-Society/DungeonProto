@@ -12,6 +12,7 @@ namespace AldenFall.Data
     public class CombatConfig
     {
         public float baseMeleeDamage = 5f;
+        public float baseRangedDamage = 5f;
         public float baseSwingInterval = 1.9f;
         public float levelGrowth = 1.085f;
 
