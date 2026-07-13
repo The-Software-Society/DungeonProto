@@ -106,6 +106,7 @@ namespace AldenFall.Multiplayer
             Ensure<GatherController>();
             Ensure<CraftingController>();
             Ensure<PlayerInteractor>();
+            Ensure<Persistence.PlayerSave>();
         }
 
         private T Ensure<T>() where T : Component

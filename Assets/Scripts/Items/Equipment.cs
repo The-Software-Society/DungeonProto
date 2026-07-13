@@ -111,6 +111,19 @@ namespace AldenFall.Items
             return true;
         }
 
+        /// <summary>Wipe every equipped item (stats + visuals) WITHOUT returning them to the
+        /// bag, for a save-load restore that rebuilds equipment from scratch.</summary>
+        public void ClearAll()
+        {
+            foreach (var slot in new System.Collections.Generic.List<EquipSlot>(equipped.Keys))
+                stats?.ClearModifiers($"equip:{slot}");
+            equipped.Clear();
+            foreach (var visual in visuals.Values)
+                if (visual != null) Destroy(visual);
+            visuals.Clear();
+            OnEquipmentChanged?.Invoke();
+        }
+
         /// <summary>Unequip a slot back into the bag (if there's room).</summary>
         public bool Unequip(EquipSlot slot)
         {

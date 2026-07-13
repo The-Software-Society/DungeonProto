@@ -96,6 +96,15 @@ namespace AldenFall.Progression
         /// Testing/debug: force a level directly. XP snaps to the level floor
         /// and OnLevelUp fires so stat bridges and UI stay in sync.
         /// </summary>
+        /// <summary>Restore a skill's exact level and xp (loading a saved profile).</summary>
+        public void Restore(SkillType skill, int level, float xpValue)
+        {
+            int index = (int)skill;
+            levels[index] = Mathf.Clamp(level, 1, MaxLevel);
+            xp[index] = Mathf.Max(0f, xpValue);
+            OnLevelUp?.Invoke(skill, levels[index]);
+        }
+
         public void SetLevel(SkillType skill, int level)
         {
             int index = (int)skill;

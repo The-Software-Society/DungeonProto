@@ -52,6 +52,13 @@ namespace AldenFall.Items
             return true;
         }
 
+        /// <summary>Wipe the bag (a save-load restore rebuilds it from scratch).</summary>
+        public void Clear()
+        {
+            slots.Clear();
+            OnChanged?.Invoke();
+        }
+
         /// <summary>Removes ONE item from the cell at index (whole cell at count 1).</summary>
         public bool RemoveAt(int index)
         {

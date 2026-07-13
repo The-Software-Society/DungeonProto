@@ -55,6 +55,21 @@ namespace AldenFall.Persistence
             }
         }
 
+        /// <summary>Remove an account's save file (used by QA to start from a clean slate).</summary>
+        public static void Delete(string accountId)
+        {
+            if (string.IsNullOrEmpty(accountId)) return;
+            try
+            {
+                var path = PathFor(accountId);
+                if (File.Exists(path)) File.Delete(path);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogError($"PlayerPersistence: delete failed for '{accountId}': {e.Message}");
+            }
+        }
+
         private static string Sanitize(string s)
         {
             foreach (var c in Path.GetInvalidFileNameChars()) s = s.Replace(c, '_');
