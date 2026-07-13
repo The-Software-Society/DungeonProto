@@ -2038,6 +2038,17 @@ namespace AldenFall.Editor
                 new (string id, float chance)[] { ("ember_focus", 0.5f), ("cooked_bass", 1f), ("knight_sword", 0.6f) }, groundLayer);
             CreateLootChest(container, new Vector3(0f, 0f, -430f), 0f,
                 new (string id, float chance)[] { ("ember_focus", 1f), ("emberfang", 0.9f), ("knight_sword", 1f) }, groundLayer);
+
+            // Sealed side cache off the LavaHall's west wall (clear of the central corridor):
+            // a rich chest behind a seal that only drops when its two stone guardians fall
+            // (guards are a stone_sentinel camp placed inside this AABB in monsters.json).
+            var cacheSeal = Cube("LavaHall_CacheSeal", new Vector3(-24f, 4f, -389f), new Vector3(14f, 8f, 0.6f), sealMat, container);
+            cacheSeal.isStatic = true;
+            if (groundLayer >= 0) cacheSeal.layer = groundLayer;
+            var cNav = cacheSeal.AddComponent<NavMeshModifier>(); cNav.overrideArea = true; cNav.area = 1;
+            cacheSeal.AddComponent<World.SealableDoor>().Configure(new Vector3(-24f, 4f, -389f), new Vector3(16f, 12f, 12f));
+            CreateLootChest(container, new Vector3(-24f, 0f, -391f), 0f,
+                new (string id, float chance)[] { ("emberfang", 0.45f), ("iron_chestplate", 1f), ("adept_focus", 0.7f), ("cooked_carp", 1f) }, groundLayer);
         }
 
         // ==================== ALDRIC'S GLADE (player spawn) ====================
@@ -2168,6 +2179,22 @@ namespace AldenFall.Editor
             BuildSealStone("SealStone_West", new Vector3(-82f, 0f, 96f), groundLayer);
             BuildSealStone("SealStone_East", new Vector3(64f, 0f, 110f), groundLayer);
             BuildSealStone("SealStone_Deep", new Vector3(-30f, 0f, 184f), groundLayer);
+
+            // Near-city eruption consequences: lava breaks through the streets only while Erupting.
+            BuildEruptionSpawns(root, groundLayer);
+        }
+
+        private static void BuildEruptionSpawns(Transform root, int groundLayer)
+        {
+            var go = new GameObject("EruptionSpawns");
+            go.transform.SetParent(root, false);
+            go.AddComponent<World.EruptionSpawns>();
+
+            var content = Child(go.transform, "Content");
+            BuildLavaPool(content, new Vector3(-42f, 0f, 22f), new Vector2(12f, 10f), groundLayer);
+            BuildLavaPool(content, new Vector3(40f, 0f, -28f), new Vector2(14f, 10f), groundLayer);
+            BuildLavaPool(content, new Vector3(4f, 0f, 50f), new Vector2(10f, 8f), groundLayer);
+            content.gameObject.SetActive(false);   // EruptionSpawns switches it on during Erupting
         }
 
         private static void BuildGateDefense()

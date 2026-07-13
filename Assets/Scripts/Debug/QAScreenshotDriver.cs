@@ -352,6 +352,14 @@ namespace AldenFall.DebugTools
             bool hasGate = FindObjectsByType<World.DefendZone>(FindObjectsSortMode.None).Length >= 1;
             Check("gate DefendZone present", hasGate);
 
+            // Phase 4 dungeon depth + eruption.
+            var mobList = AldenFall.Data.MonsterDatabase.LoadAll();
+            var boss = mobList.Find(m => m.id == "cave_troll_boss");
+            Check("boss reframed Cinderbound Guardian", boss != null && boss.displayName == "Cinderbound Guardian");
+            Check("EruptionSpawns present", FindObjectsByType<World.EruptionSpawns>(FindObjectsSortMode.None).Length >= 1);
+            int seals = FindObjectsByType<World.SealableDoor>(FindObjectsSortMode.None).Length;
+            Check("dungeon has >=2 sealable doors", seals >= 2);
+
             // Named NPC roster loaded + placed in the scene.
             Check("npc roster loads 7", World.NpcRoster.LoadAll().Count == 7);
             bool hasElowen = false;
