@@ -84,7 +84,11 @@ namespace AldenFall.AI
         private void GrantRewardsTo(GameObject player, int gold)
         {
             if (player == null) return;
-            player.GetComponent<Wallet>()?.Add(gold);
+            // Server-authoritative gold: host player gets it directly, a pure-client
+            // player on the dedicated server gets it via TargetRpc.
+            var combat = player.GetComponent<Combat.PlayerCombat>();
+            if (combat != null) combat.ServerGrantGold(gold);
+            else player.GetComponent<Wallet>()?.Add(gold);
             if (!string.IsNullOrEmpty(MobId))
                 player.GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, MobId);
         }

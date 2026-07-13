@@ -65,6 +65,24 @@ namespace AldenFall.Combat
             GetComponent<Progression.Skills>()?.AddXp((Progression.SkillType)xpSkill, xp);
         }
 
+        /// <summary>Server grants gold to this player. Host player (local) gets it directly;
+        /// a pure-client player on the dedicated server gets it via TargetRpc so the client
+        /// HUD and Wallet see it. Mirrors ServerGrantCombatXp.</summary>
+        public void ServerGrantGold(int amount)
+        {
+            if (!isServer || amount <= 0) return;
+            if (isLocalPlayer)
+                GetComponent<Items.Wallet>()?.Add(amount);
+            else
+                TargetGrantGold(amount);
+        }
+
+        [TargetRpc]
+        private void TargetGrantGold(int amount)
+        {
+            GetComponent<Items.Wallet>()?.Add(amount);
+        }
+
         // Healing (food, etc.) is server-authoritative like damage, a client calling Health.Heal
         // directly no-ops (server guard), so route it through the server.
         public void Heal(float amount)
