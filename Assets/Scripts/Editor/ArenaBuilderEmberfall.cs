@@ -38,7 +38,7 @@ namespace AldenFall.Editor
         // sized against the NW quadrant (edges x[-196,-80], z[80,196]) with the whole
         // river network draining into it.
         private static readonly Vector3 LakeCenter = new Vector3(-138f, 0f, 138f);
-        private const float LakeHalf = 58f;         // half-width of the open water (~116m across)
+        private const float LakeHalf = 72f;         // half-width of the open water (~144m across, city-sized)
         private const float LakeBedY = -5.0f;       // depth = WaterSurfaceY - LakeBedY = 4.65m (deep swim)
 
         // ---- Ember approach (south corridor) ----
@@ -220,28 +220,39 @@ namespace AldenFall.Editor
                                  || InApproachFootprint(wx, wz)
                                  || (Mathf.Abs(wx) < 8f && wz > -322f);   // main N-S road
                     if (!flatZone)
-                        h = (Mathf.PerlinNoise(wx * 0.012f + 31.7f, wz * 0.012f + 17.3f) - 0.5f) * 0.5f;
+                        // Rolling hills: a broad low-frequency swell + finer roll for real depth.
+                        h = (Mathf.PerlinNoise(wx * 0.006f + 12.3f, wz * 0.006f + 5.1f) - 0.5f) * 3.2f
+                          + (Mathf.PerlinNoise(wx * 0.02f + 31.7f, wz * 0.02f + 17.3f) - 0.5f) * 1.0f;
 
                     if (InCityFootprint(wx, wz))
                         h = -0.15f;   // cobbles (top y=0) sit proud of the pad
 
-                    // Lake bowl: sit just under the built mud banks/bed with a WIDE soft
-                    // blend — the deep sharp carve exposed the bank slabs as floating
-                    // shelves in QA round 1.
+                    // Mountains cradling the lake basin (landward sides; the world edge already
+                    // carries the range). A raised ridge so the lake reads as nestled in mountains,
+                    // with the river cutting a gorge through it (carved below).
+                    float lakeR = Vector2.Distance(new Vector2(wx, wz), new Vector2(LakeCenter.x, LakeCenter.z));
+                    if (!flatZone && lakeR > LakeHalf + 10f && lakeR < LakeHalf + 62f)
+                    {
+                        float t = (lakeR - (LakeHalf + 10f)) / 52f;         // 0 inner -> 1 outer
+                        h = Mathf.Max(h, Mathf.Sin(t * Mathf.PI) * 15f);    // up to 15m peaks, 0 at ends
+                    }
+
+                    // Lake bowl: sit just under the built mud banks/bed with a WIDE soft blend.
                     float lakeDx = Mathf.Max(Mathf.Abs(wx - LakeCenter.x), Mathf.Abs(wz - LakeCenter.z));
                     if (lakeDx < LakeHalf - 6f)
                         h = -2.9f;
                     else if (lakeDx < LakeHalf + 12f)
                         h = Mathf.Lerp(-2.9f, h, (lakeDx - (LakeHalf - 6f)) / 18f);
 
-                    // Feeder river channel down from the north mountains.
+                    // Feeder river: WIDER + deeper (swimmable, crossable) with a gradient bank,
+                    // cutting a gorge through the lake mountains from the north down to the lake.
                     if (wz > LakeCenter.z + LakeHalf - 4f && wz < 270f)
                     {
                         float riverDx = Mathf.Abs(wx - FeederRiverX(wz));
-                        if (riverDx < 9f)
-                            h = -2.6f;
-                        else if (riverDx < 15f)
-                            h = Mathf.Lerp(-2.6f, h, (riverDx - 9f) / 6f);
+                        if (riverDx < 13f)
+                            h = -3.4f;
+                        else if (riverDx < 24f)
+                            h = Mathf.Lerp(-3.4f, h, (riverDx - 13f) / 11f);
                     }
 
                     heights[iz, ix] = MetersToH(h);
