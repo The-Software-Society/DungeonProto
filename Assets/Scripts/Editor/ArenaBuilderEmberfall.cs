@@ -37,8 +37,11 @@ namespace AldenFall.Editor
         // v8: Jon called the old 88m lake "a puddle at best". Genuinely big and DEEP now,
         // sized against the NW quadrant (edges x[-196,-80], z[80,196]) with the whole
         // river network draining into it.
-        private static readonly Vector3 LakeCenter = new Vector3(-138f, 0f, 138f);
-        private const float LakeHalf = 72f;         // half-width of the open water (~144m across, city-sized)
+        // Environment/Waterworks milestone: the lake is the northern STARTING vista (player +
+        // Aldric spawn on its south shore), city-sized and cradled by mountains with a forest
+        // buffer. Progression runs south: lake -> dark woods -> city -> ember approach -> volcano.
+        private static readonly Vector3 LakeCenter = new Vector3(0f, 0f, 300f);
+        private const float LakeHalf = 95f;         // ~190m across, bigger than the city
         private const float LakeBedY = -5.0f;       // depth = WaterSurfaceY - LakeBedY = 4.65m (deep swim)
 
         // ---- Ember approach (south corridor) ----
@@ -83,7 +86,7 @@ namespace AldenFall.Editor
         }
 
         // ---- Aldric's forest glade (player spawn) — a lush clearing N of the city ----
-        private static readonly Vector2 GladeCenter = new Vector2(0f, 90f);
+        private static readonly Vector2 GladeCenter = new Vector2(0f, 200f);   // Aldric's lakeside camp / spawn (south shore of the lake)
         private const float GladeRadius = 20f;
 
         private static bool InGlade(float x, float z)
@@ -191,9 +194,11 @@ namespace AldenFall.Editor
         /// </summary>
         private static void BuildEmberfallTerrain(Transform root, int groundLayer)
         {
-            const float sizeX = 520f, sizeZ = 592f, sizeY = 40f;
-            Vector3 origin = new Vector3(-260f, -sizeY / 2f, -322f);   // surface base sits at y=0
-            const int hmRes = 257, splatRes = 256, detailRes = 512;
+            // Expanded world (Environment milestone): room for a city-sized north lake + forest
+            // buffer + real mountains, keeping city@origin + volcano south.
+            const float sizeX = 900f, sizeZ = 1040f, sizeY = 70f;
+            Vector3 origin = new Vector3(-450f, -sizeY / 2f, -470f);   // x[-450,450], z[-470,570]; surface base y=0
+            const int hmRes = 513, splatRes = 512, detailRes = 1024;
 
             var data = new TerrainData
             {
@@ -218,43 +223,44 @@ namespace AldenFall.Editor
 
                     bool flatZone = InCityFootprint(wx, wz) || InGlade(wx, wz)
                                  || InApproachFootprint(wx, wz)
-                                 || (Mathf.Abs(wx) < 8f && wz > -322f);   // main N-S road
+                                 || (Mathf.Abs(wx) < 8f && wz > -322f && wz < 190f);   // city road (city -> glade)
                     if (!flatZone)
-                        // Rolling hills: a broad low-frequency swell + finer roll for real depth.
-                        h = (Mathf.PerlinNoise(wx * 0.006f + 12.3f, wz * 0.006f + 5.1f) - 0.5f) * 3.2f
-                          + (Mathf.PerlinNoise(wx * 0.02f + 31.7f, wz * 0.02f + 17.3f) - 0.5f) * 1.0f;
+                        // Gentle rolling valley floor (kept modest so placements sit right).
+                        h = (Mathf.PerlinNoise(wx * 0.008f + 12.3f, wz * 0.008f + 5.1f) - 0.5f) * 1.6f
+                          + (Mathf.PerlinNoise(wx * 0.024f + 31.7f, wz * 0.024f + 17.3f) - 0.5f) * 0.7f;
 
                     if (InCityFootprint(wx, wz))
                         h = -0.15f;   // cobbles (top y=0) sit proud of the pad
 
-                    // Mountains cradling the lake basin (landward sides; the world edge already
-                    // carries the range). A raised ridge so the lake reads as nestled in mountains,
-                    // with the river cutting a gorge through it (carved below).
-                    float lakeR = Vector2.Distance(new Vector2(wx, wz), new Vector2(LakeCenter.x, LakeCenter.z));
-                    if (!flatZone && lakeR > LakeHalf + 10f && lakeR < LakeHalf + 62f)
+                    // MOUNTAINS ring the world with rising TERRAIN (not cube walls), leaving the
+                    // south ember-approach corridor open to the volcano. Steep near the edge.
+                    float edge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
+                                           Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
+                    bool southCorridor = Mathf.Abs(wx) < ApproachHalfW + 24f && wz < -90f;
+                    if (!InCityFootprint(wx, wz) && !southCorridor && edge < 120f)
                     {
-                        float t = (lakeR - (LakeHalf + 10f)) / 52f;         // 0 inner -> 1 outer
-                        h = Mathf.Max(h, Mathf.Sin(t * Mathf.PI) * 15f);    // up to 15m peaks, 0 at ends
+                        float m = 1f - edge / 120f;                 // 0 inner -> 1 at the edge
+                        h = Mathf.Max(h, m * m * 60f);              // steep mountains up to ~60m
                     }
 
-                    // Lake: a NATURAL round basin carved into the terrain (deep centre ->
-                    // gentle shallows -> shore) so grass/sand meets the waterline like the
-                    // rivers do. No cube banks; the terrain IS the lakebed.
+                    // LAKE: a natural round basin carved into the terrain (deep centre -> shore),
+                    // grass/sand meets the waterline. The terrain IS the lakebed (no cube banks).
+                    float lakeR = Vector2.Distance(new Vector2(wx, wz), new Vector2(LakeCenter.x, LakeCenter.z));
                     if (lakeR < LakeHalf + 6f)
                     {
                         float d01 = Mathf.Clamp01(lakeR / (LakeHalf + 6f));
-                        h = Mathf.Min(h, Mathf.Lerp(-4.6f, 0.4f, Mathf.SmoothStep(0f, 1f, d01)));
+                        h = Mathf.Min(h, Mathf.Lerp(-4.8f, 0.4f, Mathf.SmoothStep(0f, 1f, d01)));
                     }
 
-                    // Feeder river: WIDER + deeper (swimmable, crossable) with a gradient bank,
-                    // cutting a gorge through the lake mountains from the north down to the lake.
-                    if (wz > LakeCenter.z + LakeHalf - 4f && wz < 270f)
+                    // North feeder river: cuts a swimmable gorge from the north mountains down
+                    // into the lake's north shore (source -> river -> lake).
+                    if (wz > LakeCenter.z - 4f && wz < origin.z + sizeZ - 30f)
                     {
-                        float riverDx = Mathf.Abs(wx - FeederRiverX(wz));
+                        float riverDx = Mathf.Abs(wx - (LakeCenter.x + 8f * Mathf.Sin((wz - LakeCenter.z) / 45f)));
                         if (riverDx < 13f)
-                            h = -3.4f;
+                            h = Mathf.Min(h, -3.2f);
                         else if (riverDx < 24f)
-                            h = Mathf.Lerp(-3.4f, h, (riverDx - 13f) / 11f);
+                            h = Mathf.Min(h, Mathf.Lerp(-3.2f, h, (riverDx - 13f) / 11f));
                     }
 
                     heights[iz, ix] = MetersToH(h);
@@ -330,9 +336,11 @@ namespace AldenFall.Editor
                     if (Mathf.Abs(wx - LakeCenter.x) < LakeHalf + 10f
                      && Mathf.Abs(wz - LakeCenter.z) < LakeHalf + 10f) continue;
                     if (SootAmount(wx, wz) > 0.25f) continue;
-                    if (Mathf.Abs(wx) < 7f && wz > -60f && wz < 66f) continue;   // road clear (stops before the glade)
-                    float ring = Mathf.Sqrt(wx * wx + wz * wz);
-                    if (ring > 250f) continue;
+                    if (Mathf.Abs(wx) < 7f && wz > -60f && wz < 66f) continue;   // city road clear
+                    // No grass on the rock mountains (rising terrain at the world edge).
+                    float dEdge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
+                                            Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
+                    if (dEdge < 78f) continue;
 
                     // Dense carpet with natural variation: near-full coverage, thicker in clumps.
                     float clump = Mathf.PerlinNoise(wx * 0.05f + 7.7f, wz * 0.05f + 3.1f);
@@ -357,7 +365,7 @@ namespace AldenFall.Editor
             // Default basemapDistance (~20m) swaps to the washed-out low-res basemap one
             // screen from the player — THE pale-mint wash in both QA rounds. Keep the
             // real splats out to the fog band.
-            terrain.basemapDistance = 400f;
+            terrain.basemapDistance = 2000f;   // never swap to the low-res basemap (expanded world > 900m)
         }
 
         private static TerrainLayer MakeTerrainLayer(string name, Color baseColor, float noise)

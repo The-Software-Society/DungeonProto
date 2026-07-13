@@ -41,12 +41,19 @@ namespace AldenFall.Editor
         /// cradled by mountains, fed by the north feeder river.</summary>
         public static void CaptureLake() => Run(new (string, Vector3, Vector3)[]
         {
-            ("lake_birdseye",  new Vector3(-138f, 90f, 40f),   new Vector3(-138f, 0f, 138f)),   // whole lake + mtns
-            ("lake_vista_SE",  new Vector3(-78f, 7f, 82f),     new Vector3(-150f, 2f, 150f)),   // across water to mtns
-            ("lake_shore_S",   new Vector3(-138f, 5f, 74f),    new Vector3(-138f, 1f, 150f)),   // south shore looking N
-            ("lake_river_in",  new Vector3(-120f, 8f, 208f),   new Vector3(-135f, 0f, 175f)),   // north river inflow
-            ("lake_from_hill", new Vector3(-55f, 26f, 60f),    new Vector3(-138f, 0f, 138f)),   // hilltop over lake
-            ("lake_wide",      new Vector3(-138f, 45f, -10f),  new Vector3(-138f, 0f, 150f)),   // wide basin
+            ("lake_birdseye",  new Vector3(0f, 150f, 120f),    new Vector3(0f, 0f, 300f)),      // whole lake + mtns
+            ("lake_from_spawn",new Vector3(0f, 4f, 185f),      new Vector3(0f, 4f, 300f)),      // Aldric's shore looking across
+            ("lake_shore_E",   new Vector3(90f, 6f, 300f),     new Vector3(0f, 3f, 300f)),      // east shore across water
+            ("lake_river_in",  new Vector3(20f, 12f, 420f),    new Vector3(5f, 0f, 360f)),      // north river inflow
+            ("lake_wide",      new Vector3(0f, 70f, 150f),     new Vector3(0f, 0f, 320f)),      // wide basin + mtns
+        });
+
+        /// <summary>High aerial of the whole expanded world to judge the macro layout.</summary>
+        public static void CaptureMacro() => Run(new (string, Vector3, Vector3)[]
+        {
+            ("macro_N",  new Vector3(0f, 430f, -200f),  new Vector3(0f, 0f, 180f)),   // looking N over city->lake
+            ("macro_top",new Vector3(0f, 620f, 40f),    new Vector3(0f, 0f, 45f)),    // near top-down
+            ("macro_E",  new Vector3(-420f, 300f, 120f),new Vector3(60f, 0f, 160f)),  // from the west
         });
 
         private static void Run((string name, Vector3 pos, Vector3 lookAt)[] shots)

@@ -171,55 +171,54 @@ namespace AldenFall.Editor
             // Late-afternoon sun: still warm and directional, but HIGH and BRIGHT enough
             // that camps, forest floors, and the ember approach stay readable — the old
             // 24°-dusk setup left everything outside the city near-black in playtests.
-            var sunObj = new GameObject("Sun (Dusk)");
+            // Bright clear daylight (v9 environment milestone) - the references are sunlit, and
+            // the dusk setup left the expanded world dark + unreadable.
+            var sunObj = new GameObject("Sun");
             var sun = sunObj.AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.76f, 0.52f);
-            sun.intensity = 1.9f;
+            sun.color = new Color(1f, 0.97f, 0.9f);
+            sun.intensity = 1.55f;
             sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = 0.75f;
-            sunObj.transform.rotation = Quaternion.Euler(42f, -128f, 0f);
+            sun.shadowStrength = 0.6f;
+            sunObj.transform.rotation = Quaternion.Euler(52f, -120f, 0f);   // high mid-morning sun
             RenderSettings.sun = sun;
 
-            // Cool fill from the opposite sky so shadows aren't dead black
+            // Sky-blue fill so shadows read as cool daylight shade, not black.
             var fillObj = new GameObject("Sky Fill");
             var fill = fillObj.AddComponent<Light>();
             fill.type = LightType.Directional;
-            fill.color = new Color(0.42f, 0.48f, 0.68f);
-            fill.intensity = 0.55f;
+            fill.color = new Color(0.55f, 0.63f, 0.78f);
+            fill.intensity = 0.5f;
             fill.shadows = LightShadows.None;
-            fillObj.transform.rotation = Quaternion.Euler(45f, 52f, 0f);
+            fillObj.transform.rotation = Quaternion.Euler(50f, 60f, 0f);
 
-            // Procedural dusk skybox
+            // Clear blue procedural sky.
             var skyShader = Shader.Find("Skybox/Procedural");
             if (skyShader != null)
             {
                 var sky = new Material(skyShader);
-                sky.SetFloat("_SunSize", 0.055f);
-                sky.SetFloat("_SunSizeConvergence", 4.5f);
-                sky.SetFloat("_AtmosphereThickness", 1.18f);
-                sky.SetColor("_SkyTint", new Color(0.62f, 0.44f, 0.5f));
-                sky.SetColor("_GroundColor", new Color(0.24f, 0.19f, 0.21f));
-                sky.SetFloat("_Exposure", 1.25f);
+                sky.SetFloat("_SunSize", 0.045f);
+                sky.SetFloat("_SunSizeConvergence", 5f);
+                sky.SetFloat("_AtmosphereThickness", 1.0f);
+                sky.SetColor("_SkyTint", new Color(0.5f, 0.63f, 0.85f));
+                sky.SetColor("_GroundColor", new Color(0.46f, 0.47f, 0.44f));
+                sky.SetFloat("_Exposure", 1.35f);
                 AssetDatabase.CreateAsset(sky, $"{MaterialDir}/EmberfallSkybox.mat");
                 RenderSettings.skybox = sky;
             }
 
-            // Warm-purple ambient + distance fog — lifted so unlit faces stay readable
+            // Bright daylight ambient.
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.68f, 0.56f, 0.6f);
-            RenderSettings.ambientEquatorColor = new Color(0.52f, 0.45f, 0.47f);
-            RenderSettings.ambientGroundColor = new Color(0.3f, 0.27f, 0.28f);
+            RenderSettings.ambientSkyColor = new Color(0.74f, 0.82f, 0.95f);
+            RenderSettings.ambientEquatorColor = new Color(0.62f, 0.64f, 0.6f);
+            RenderSettings.ambientGroundColor = new Color(0.38f, 0.37f, 0.32f);
 
-            // Wide fog band: the near forest stays clear while the encircling mountains fade
-            // into hazy silhouettes on the horizon (depth, never floor-to-sky emptiness).
+            // Light haze pushed WAY out for the big world - only the far mountains fade.
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.5f, 0.42f, 0.46f);
-            // Start farther out: at 70 the terrain washed pale-mint within one screen
-            // of the player (QA terrain round 1) — the haze belongs on the mountains.
-            RenderSettings.fogStartDistance = 130f;
-            RenderSettings.fogEndDistance = 380f;
+            RenderSettings.fogColor = new Color(0.72f, 0.79f, 0.86f);
+            RenderSettings.fogStartDistance = 400f;
+            RenderSettings.fogEndDistance = 1500f;
         }
 
         private static void CreatePostProcessing()
@@ -297,18 +296,24 @@ namespace AldenFall.Editor
                 c.isStatic = true;
                 if (groundLayer >= 0) c.layer = groundLayer;
             }
-            // NW water-exclusion box (lake + feeder): x[-206,-100], z[100,262].
-            Fill("Underfill_S", -262f, 262f, -460f, 100f);   // everything south of the water band
-            Fill("Underfill_NE", -100f, 262f, 100f, 268f);    // north band, east of the water
-            Fill("Underfill_NW", -262f, -206f, 100f, 268f);   // north band, west of the water
-            Fill("Underfill_NN", -206f, -100f, 262f, 268f);   // thin strip north of the water
+            // Legacy flat-tile safety: underfill boxes + cube mountain wall. In terrain mode
+            // the terrain is a solid collider with real mountain slopes at the edges, so this
+            // cube geography is retired (it would otherwise wall the middle of the expanded world).
+            if (!UseUnityTerrain)
+            {
+                // NW water-exclusion box (lake + feeder): x[-206,-100], z[100,262].
+                Fill("Underfill_S", -262f, 262f, -460f, 100f);   // everything south of the water band
+                Fill("Underfill_NE", -100f, 262f, 100f, 268f);    // north band, east of the water
+                Fill("Underfill_NW", -262f, -206f, 100f, 268f);   // north band, west of the water
+                Fill("Underfill_NN", -206f, -100f, 262f, 268f);   // thin strip north of the water
+            }
 
             // (2) Last-resort catch floor far below — a backstop for anything that clips through.
-            ColliderBox("WorldCatchFloor", new Vector3(0f, -18f, -95f), new Vector3(580f, 1f, 780f), safety, groundLayer);
+            ColliderBox("WorldCatchFloor", new Vector3(0f, -22f, 0f), new Vector3(1000f, 1f, 1200f), safety, groundLayer);
 
-            // (3) Natural enclosing geography — a continuous ring of mountains walls the
-            //     world (no invisible rails), plus layered ridgelines + distant silhouettes.
-            BuildMountainRing(root, groundLayer);
+            // (3) Natural enclosing geography.
+            if (!UseUnityTerrain)
+                BuildMountainRing(root, groundLayer);
         }
 
         /// <summary>
