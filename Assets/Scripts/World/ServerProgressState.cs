@@ -129,7 +129,15 @@ namespace AldenFall.World
         private void GrantHopeOfEmberfallToAll()
         {
             foreach (var conn in NetworkServer.connections.Values)
-                if (conn != null) TargetGrantHope(conn);
+            {
+                if (conn == null) continue;
+                // Host's own player: apply inline (a TargetRpc to the local connection is
+                // deferred past this frame). Pure clients: TargetRpc onto their machine.
+                if (conn == NetworkServer.localConnection)
+                    ApplyHopeBuffLocal();
+                else
+                    TargetGrantHope(conn);
+            }
         }
 
         [TargetRpc]
