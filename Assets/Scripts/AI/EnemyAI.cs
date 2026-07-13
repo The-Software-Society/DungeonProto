@@ -437,6 +437,9 @@ namespace AldenFall.AI
                     return;
                 detectionTimer = 0f;
 
+                // A mob standing in a safe zone (pond, city) never acquires a target.
+                if (World.SafeZone.IsInAnySafeZone(transform.position)) return;
+
                 // Look for player
                 Collider[] colliders = Physics.OverlapSphere(transform.position, detectionRange, playerLayer);
                 foreach (var col in colliders)
@@ -447,6 +450,9 @@ namespace AldenFall.AI
                     var playerHealth = col.GetComponent<Health>();
                     if (playerHealth != null && playerHealth.IsAlive)
                     {
+                        // Players inside a safe zone can't be aggroed.
+                        if (World.SafeZone.IsInAnySafeZone(col.transform.position)) continue;
+
                         // Veiled players are undetectable
                         var candidateStatuses = col.GetComponent<Combat.StatusSystem>();
                         if (candidateStatuses != null && candidateStatuses.IsInvisible) continue;

@@ -2150,6 +2150,18 @@ namespace AldenFall.Editor
             //   * entering the volcano / accepting the final quest -> EmberfallWorldState.Instance.BeginEruption()
             //   * cave_troll_boss (Floor Boss) death -> EmberfallWorldState.Instance.MarkDungeonCleared()
             //     (and unseal the Floor-2 gate at "EmberfallVolcano/Floor2_SealedGate").
+
+            // ---- Safe zones: no unprovoked aggro over the pond (fishing/cooking) and the
+            // city, per playtest feedback. Neutral dancers still retaliate if attacked. ----
+            BuildSafeZone("SafeZone_Lake", new Vector3(LakeCenter.x, 0f, LakeCenter.z), LakeHalf + 12f);
+            BuildSafeZone("SafeZone_City", Vector3.zero, CityHalf + 9f);
+        }
+
+        private static void BuildSafeZone(string name, Vector3 center, float radius)
+        {
+            var go = new GameObject(name);
+            go.transform.position = center;
+            go.AddComponent<World.SafeZone>().Configure(radius);
         }
 
         // ==================== WORLD SAFETY (bounds) ====================

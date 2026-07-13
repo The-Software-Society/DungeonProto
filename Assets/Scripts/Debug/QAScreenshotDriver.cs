@@ -324,6 +324,11 @@ namespace AldenFall.DebugTools
             }
             else Check("player has questlog/wallet", false);
 
+            // Safe zones baked into the scene (pond + city peaceful, forest not).
+            Check("city center is a safe zone", World.SafeZone.IsInAnySafeZone(Vector3.zero));
+            Check("lake center is a safe zone", World.SafeZone.IsInAnySafeZone(new Vector3(-138f, 0f, 138f)));
+            Check("deep forest is NOT a safe zone", !World.SafeZone.IsInAnySafeZone(new Vector3(-180f, 0f, 0f)));
+
             if (qaFail == 0) Debug.Log($"[QATEST] === ALL {qaPass} PASSED ===");
             else Debug.LogError($"[QATEST] === {qaPass} passed, {qaFail} FAILED ===");
         }
