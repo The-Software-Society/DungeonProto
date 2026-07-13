@@ -476,6 +476,7 @@ namespace AldenFall.DebugTools
             // Phase 11: server-wide floor progress + first-clear prestige.
             var progress = World.ServerProgressState.Instance;
             Check("ServerProgressState present in scene", progress != null);
+            Check("city progress board placed in scene", FindObjectsByType<World.ProgressBoard>(FindObjectsSortMode.None).Length >= 1);
             if (progress != null)
             {
                 Check("floor not cleared at start", !progress.FloorCleared && progress.BossClears == 0);

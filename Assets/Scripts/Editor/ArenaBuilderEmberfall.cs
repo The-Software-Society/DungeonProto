@@ -2163,6 +2163,13 @@ namespace AldenFall.Editor
             var progressObj = new GameObject("ServerProgressState");
             progressObj.AddComponent<Mirror.NetworkIdentity>();
             progressObj.AddComponent<World.ServerProgressState>();
+
+            // City progress board: a world-space sign near the tavern/plaza showing the
+            // server-wide Floor-1 standings (reads ServerProgressState). Purely visual.
+            var boardObj = new GameObject("CityProgressBoard");
+            boardObj.transform.position = new Vector3(-18f, 2.3f, 18f);
+            boardObj.transform.rotation = Quaternion.Euler(0f, 135f, 0f);
+            boardObj.AddComponent<World.ProgressBoard>();
             // TODO (Phase-3 quest agent): wire the eruption climax —
             //   * entering the volcano / accepting the final quest -> EmberfallWorldState.Instance.BeginEruption()
             //   * cave_troll_boss (Floor Boss) death -> EmberfallWorldState.Instance.MarkDungeonCleared()
