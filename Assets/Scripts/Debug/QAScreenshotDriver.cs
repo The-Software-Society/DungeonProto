@@ -473,6 +473,25 @@ namespace AldenFall.DebugTools
                 Check("PlayerSave restores skill level", pSkills != null && pSkills.Level(Progression.SkillType.Strength) == 7);
             }
 
+            // Phase 11: server-wide floor progress + first-clear prestige.
+            var progress = World.ServerProgressState.Instance;
+            Check("ServerProgressState present in scene", progress != null);
+            if (progress != null)
+            {
+                Check("floor not cleared at start", !progress.FloorCleared && progress.BossClears == 0);
+                var pStatus = player.GetComponent<Combat.StatusSystem>();
+                var expectName = player.GetComponent<Multiplayer.NetworkPlayerAvatar>()?.DisplayName;
+                string wanted = string.IsNullOrWhiteSpace(expectName) ? "A hero of Emberfall" : expectName;
+
+                progress.RegisterBossClear(player);
+                Check("first boss clear sets FloorCleared + count", progress.FloorCleared && progress.BossClears == 1);
+                Check("first clear records clearer name", progress.FirstClearName == wanted);
+                Check("first clear grants Hope of Emberfall buff", pStatus != null && pStatus.Has(World.ServerProgressState.HopeBuffId));
+
+                progress.RegisterBossClear(player);
+                Check("later clears bump count, keep first-clearer", progress.BossClears == 2 && progress.FirstClearName == wanted);
+            }
+
             // Safe zones baked into the scene (pond + city peaceful, forest not).
             Check("city center is a safe zone", World.SafeZone.IsInAnySafeZone(Vector3.zero));
             Check("lake center is a safe zone", World.SafeZone.IsInAnySafeZone(new Vector3(-138f, 0f, 138f)));

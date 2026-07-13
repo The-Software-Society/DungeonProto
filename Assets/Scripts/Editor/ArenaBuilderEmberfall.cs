@@ -2156,6 +2156,13 @@ namespace AldenFall.Editor
             var stateObj = new GameObject("EmberfallWorldState");
             stateObj.AddComponent<Mirror.NetworkIdentity>();
             stateObj.AddComponent<World.EmberfallWorldState>();
+
+            // ---- ServerProgressState (networked scene object) ----
+            // Server-wide floor progress + first-clear prestige (Phase 11). A separate scene
+            // NetworkIdentity so world atmosphere and server-progress concerns stay decoupled.
+            var progressObj = new GameObject("ServerProgressState");
+            progressObj.AddComponent<Mirror.NetworkIdentity>();
+            progressObj.AddComponent<World.ServerProgressState>();
             // TODO (Phase-3 quest agent): wire the eruption climax —
             //   * entering the volcano / accepting the final quest -> EmberfallWorldState.Instance.BeginEruption()
             //   * cave_troll_boss (Floor Boss) death -> EmberfallWorldState.Instance.MarkDungeonCleared()
