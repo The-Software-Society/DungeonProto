@@ -11,6 +11,7 @@ namespace AldenFall.Multiplayer
         public int skinTone;
         public int hairStyle;
         public int hairColor;
+        public string accountId;   // client's stable per-install id, for per-account saves
     }
 
     public struct AldenAuthResponse : NetworkMessage
@@ -59,7 +60,8 @@ namespace AldenFall.Multiplayer
                 gender = profile.gender,
                 skinTone = profile.skinTone,
                 hairStyle = profile.hairStyle,
-                hairColor = profile.hairColor
+                hairColor = profile.hairColor,
+                accountId = profile.accountId
             });
         }
 
@@ -79,7 +81,8 @@ namespace AldenFall.Multiplayer
                 gender = Mathf.Clamp(msg.gender, 0, 1),
                 skinTone = Mathf.Clamp(msg.skinTone, 0, Player.CharacterAppearance.SkinTones.Length - 1),
                 hairStyle = Mathf.Clamp(msg.hairStyle, 0, Player.CharacterAppearance.HairStyleNames.Length - 1),
-                hairColor = Mathf.Clamp(msg.hairColor, 0, Player.CharacterAppearance.HairColors.Length - 1)
+                hairColor = Mathf.Clamp(msg.hairColor, 0, Player.CharacterAppearance.HairColors.Length - 1),
+                accountId = string.IsNullOrEmpty(msg.accountId) ? "" : msg.accountId
             });
             conn.Send(new AldenAuthResponse { accepted = true, message = "Accepted" });
             ServerAccept(conn);

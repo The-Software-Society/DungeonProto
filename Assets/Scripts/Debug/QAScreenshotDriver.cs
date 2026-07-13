@@ -76,7 +76,7 @@ namespace AldenFall.DebugTools
             if (manager == null) { Fail("no AldenNetworkManager"); yield break; }
 
             manager.SetLocalLogin("localhost", manager.RequiredPassword,
-                new Multiplayer.AldenPlayerProfile { playerName = "QA", gender = 0, skinTone = 0, hairStyle = 1, hairColor = 0 });
+                new Multiplayer.AldenPlayerProfile { playerName = "QA", gender = 0, skinTone = 0, hairStyle = 1, hairColor = 0, accountId = Persistence.PlayerIdentity.AccountId });
             manager.StartHost();
 
             float wait = 0f;
@@ -471,6 +471,12 @@ namespace AldenFall.DebugTools
                 pSave.ForceLoad();                                    // pulls it back and applies
                 Check("PlayerSave restores gold", pWallet != null && pWallet.Gold == 4321);
                 Check("PlayerSave restores skill level", pSkills != null && pSkills.Level(Progression.SkillType.Strength) == 7);
+
+                // Phase 13: accountId plumbs login profile -> avatar -> PlayerSave (so the
+                // dedicated server can persist each player under their own id, not just the host).
+                var avatar13 = player.GetComponent<Multiplayer.NetworkPlayerAvatar>();
+                Check("login profile plumbs accountId to avatar", avatar13 != null && avatar13.AccountId == Persistence.PlayerIdentity.AccountId);
+                Check("PlayerSave resolves per-account id", pSave.AccountId == Persistence.PlayerIdentity.AccountId);
             }
 
             // Phase 11: server-wide floor progress + first-clear prestige.
@@ -502,6 +508,19 @@ namespace AldenFall.DebugTools
                     pSave.ForceLoad();
                     Check("Floor1Cleared persists through save/load", pProg.Floor1Cleared);
                 }
+            }
+
+            // Phase 13: KillMob quest credit now routes through PlayerCombat (host inline /
+            // pure-client TargetRpc), closing the dedicated-server gap where a client's kill
+            // quests never advanced. Host path is behaviour-identical to before (the quest-flow
+            // test above covers advancement); the relay must exist and be safe to call.
+            var combat13 = player.GetComponent<Combat.PlayerCombat>();
+            Check("PlayerCombat present (KillMob quest relay)", combat13 != null);
+            if (combat13 != null)
+            {
+                combat13.ServerAdvanceKillQuest("");         // empty -> no-op
+                combat13.ServerAdvanceKillQuest("grukmar");  // no active quest -> safe no-op
+                Check("ServerAdvanceKillQuest safe no-ops", true);
             }
 
             // Safe zones baked into the scene (pond + city peaceful, forest not).

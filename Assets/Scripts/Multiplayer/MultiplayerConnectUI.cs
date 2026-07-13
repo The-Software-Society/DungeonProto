@@ -273,7 +273,8 @@ namespace AldenFall.Multiplayer
             gender = gender,
             skinTone = skinTone,
             hairStyle = hairStyle,
-            hairColor = hairColor
+            hairColor = hairColor,
+            accountId = Persistence.PlayerIdentity.AccountId
         };
 
         private void SetStatus(string message)

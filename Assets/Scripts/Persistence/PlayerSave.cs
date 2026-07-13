@@ -12,11 +12,11 @@ namespace AldenFall.Persistence
     /// owning account's saved profile shortly after spawn (gold, all skills, inventory,
     /// equipment) and writes it back on a debounced timer and on teardown.
     ///
-    /// Account scope: uses PlayerIdentity.AccountId, which is correct for the HOST/local
-    /// player (the beta's primary path and the QA harness). Per-account saves for pure
-    /// clients on a dedicated server need the client's accountId plumbed through the
-    /// login profile / auth message (tracked as a Phase 13 follow-up), so this persists
-    /// only the LOCAL (host) player for now and no-ops for remote player objects.
+    /// Account scope: keyed by the owning client's account id, plumbed server-side through
+    /// the login profile onto NetworkPlayerAvatar.AccountId (Phase 13). This lets the
+    /// dedicated server persist EVERY player under their own id, not just the host. Falls
+    /// back to the local PlayerIdentity for the host's own player, and no-ops when no
+    /// account id is known (so nothing is ever saved to a shared "anon" bucket).
     /// </summary>
     public class PlayerSave : MonoBehaviour
     {
@@ -29,6 +29,7 @@ namespace AldenFall.Persistence
         private Equipment equipment;
         private Quests.QuestLog quests;
         private Progression.PlayerProgress progress;
+        private Multiplayer.NetworkPlayerAvatar avatar;
 
         private bool loaded;
         private float nextSaveAt;
@@ -42,10 +43,20 @@ namespace AldenFall.Persistence
             equipment = GetComponent<Equipment>();
             quests = GetComponent<Quests.QuestLog>();
             progress = GetComponent<Progression.PlayerProgress>();
+            avatar = GetComponent<Multiplayer.NetworkPlayerAvatar>();
         }
 
-        /// <summary>Only the host/local player persists (see class note on account scope).</summary>
-        private bool ShouldPersist => netId != null && netId.isServer && netId.isLocalPlayer;
+        /// <summary>The owning account's id: the client's plumbed profile id, or the local
+        /// PlayerIdentity for the host's own player. Empty when unknown (then we do not save).</summary>
+        private string ResolveAccountId()
+        {
+            if (avatar != null && !string.IsNullOrEmpty(avatar.AccountId)) return avatar.AccountId;
+            if (netId != null && netId.isLocalPlayer) return PlayerIdentity.AccountId;
+            return "";
+        }
+
+        /// <summary>The server persists every player that has a known account id.</summary>
+        private bool ShouldPersist => netId != null && netId.isServer && !string.IsNullOrEmpty(ResolveAccountId());
 
         private void Update()
         {
@@ -72,7 +83,7 @@ namespace AldenFall.Persistence
                 ForceSave();
         }
 
-        public string AccountId => PlayerIdentity.AccountId;
+        public string AccountId => ResolveAccountId();
 
         /// <summary>Snapshot the live player into a save record.</summary>
         public PlayerSaveData Capture()

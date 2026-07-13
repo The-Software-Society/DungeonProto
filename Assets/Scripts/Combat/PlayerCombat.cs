@@ -83,6 +83,25 @@ namespace AldenFall.Combat
             GetComponent<Items.Wallet>()?.Add(amount);
         }
 
+        /// <summary>Server advances this player's KillMob quest credit. Quest state is
+        /// client-local (the owning client's HUD reads it), so the host player advances
+        /// inline while a pure-client player on the dedicated server gets a TargetRpc.
+        /// Mirrors ServerGrantGold; without it a pure client's kill quests never progress.</summary>
+        public void ServerAdvanceKillQuest(string mobId)
+        {
+            if (!isServer || string.IsNullOrEmpty(mobId)) return;
+            if (isLocalPlayer)
+                GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, mobId);
+            else
+                TargetAdvanceKillQuest(mobId);
+        }
+
+        [TargetRpc]
+        private void TargetAdvanceKillQuest(string mobId)
+        {
+            GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, mobId);
+        }
+
         // Healing (food, etc.) is server-authoritative like damage, a client calling Health.Heal
         // directly no-ops (server guard), so route it through the server.
         public void Heal(float amount)

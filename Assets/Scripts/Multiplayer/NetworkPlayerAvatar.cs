@@ -20,6 +20,10 @@ namespace AldenFall.Multiplayer
 
         /// <summary>Synced display name (party/duel prompts, rosters).</summary>
         public string DisplayName => syncedName;
+
+        /// <summary>Server-only: the owning client's account id (from the login profile), used
+        /// by PlayerSave to key per-account persistence. Empty on clients / when unknown.</summary>
+        public string AccountId { get; private set; } = "";
         [SyncVar(hook = nameof(OnIntProfileChanged))] private int syncedGender;
         [SyncVar(hook = nameof(OnIntProfileChanged))] private int syncedSkinTone;
         [SyncVar(hook = nameof(OnIntProfileChanged))] private int syncedHairStyle = 1;
@@ -141,6 +145,7 @@ namespace AldenFall.Multiplayer
         [Server]
         public void ServerApplyProfile(AldenPlayerProfile profile)
         {
+            AccountId = string.IsNullOrEmpty(profile.accountId) ? "" : profile.accountId;
             syncedName = string.IsNullOrWhiteSpace(profile.playerName) ? "Player" : profile.playerName.Trim();
             syncedGender = Mathf.Clamp(profile.gender, 0, 1);
             syncedSkinTone = Mathf.Clamp(profile.skinTone, 0, CharacterAppearance.SkinTones.Length - 1);

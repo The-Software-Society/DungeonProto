@@ -12,6 +12,7 @@ namespace AldenFall.Multiplayer
         public int skinTone;
         public int hairStyle;
         public int hairColor;
+        public string accountId;   // stable per-install id used to key per-account saves
     }
 
     public class AldenNetworkManager : NetworkManager

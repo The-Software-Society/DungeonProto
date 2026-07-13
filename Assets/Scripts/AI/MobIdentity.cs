@@ -89,8 +89,15 @@ namespace AldenFall.AI
             var combat = player.GetComponent<Combat.PlayerCombat>();
             if (combat != null) combat.ServerGrantGold(gold);
             else player.GetComponent<Wallet>()?.Add(gold);
+
+            // KillMob quest credit is client-local state, so route it through the same
+            // host-inline / pure-client-TargetRpc bridge as gold (else a dedicated-server
+            // client's kill quests never advance).
             if (!string.IsNullOrEmpty(MobId))
-                player.GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, MobId);
+            {
+                if (combat != null) combat.ServerAdvanceKillQuest(MobId);
+                else player.GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, MobId);
+            }
         }
 
         private void RollLoot()
