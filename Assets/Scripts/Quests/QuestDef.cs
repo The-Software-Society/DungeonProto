@@ -16,6 +16,7 @@ namespace AldenFall.Quests
         CatchFish,
         EatFood,
         CookFood,
+        InspectMarker,   // press E on a world marker with a matching id (seal stones, dead-traveler markers)
     }
 
     /// <summary>One granted item, JSON-friendly (JsonUtility cannot serialize tuples).</summary>

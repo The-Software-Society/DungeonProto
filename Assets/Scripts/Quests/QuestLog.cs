@@ -52,6 +52,10 @@ namespace AldenFall.Quests
 
             var cooking = GetComponent<Player.CookingController>();
             if (cooking != null) cooking.OnCooked += id => Advance(ObjectiveKind.CookFood, id);
+
+            // CollectItem: anything entering the bag advances "gather N of item" objectives.
+            if (inventory != null && inventory.OnItemAdded != null)
+                inventory.OnItemAdded.AddListener(id => Advance(ObjectiveKind.CollectItem, id));
         }
 
         // ReachLocation objectives are position-driven: poll the player's spot a few
