@@ -324,6 +324,21 @@ namespace AldenFall.DebugTools
             }
             else Check("player has questlog/wallet", false);
 
+            // Reward-choice grant path (data-driven; the panel click routes through this).
+            var inv2 = player.GetComponent<Items.Inventory>();
+            if (inv2 != null)
+            {
+                var opt = new Quests.QuestRewardOption
+                {
+                    style = "archery",
+                    items = new System.Collections.Generic.List<Quests.RewardEntry>
+                    { new Quests.RewardEntry { itemId = "adept_focus", count = 1 } }
+                };
+                int before = inv2.CountOf("adept_focus");
+                UI.RewardChoicePanel.Grant(player, opt);
+                Check("reward-choice Grant adds the chosen item", inv2.CountOf("adept_focus") == before + 1);
+            }
+
             // Safe zones baked into the scene (pond + city peaceful, forest not).
             Check("city center is a safe zone", World.SafeZone.IsInAnySafeZone(Vector3.zero));
             Check("lake center is a safe zone", World.SafeZone.IsInAnySafeZone(new Vector3(-138f, 0f, 138f)));

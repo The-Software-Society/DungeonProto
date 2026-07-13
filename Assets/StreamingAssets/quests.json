@@ -73,7 +73,10 @@
           "LocationHint": "Her mother waits near the fountain in the city square" }
       ],
       "GoldReward": 150,
-      "Rewards": [ { "itemId": "knight_sword", "count": 1 } ],
+      "RewardChoices": [
+        { "label": "Knight's Sword", "description": "A proper blade for close work.", "style": "melee", "equip": true, "items": [ { "itemId": "knight_sword", "count": 1 } ] },
+        { "label": "Adept Focus", "description": "Channel stronger spells.", "style": "magic", "equip": true, "items": [ { "itemId": "adept_focus", "count": 1 } ] }
+      ],
       "GiverNpcId": "townsperson",
       "PrereqQuestId": "q_learn_eat",
       "StartCutscene": "q_rescue_start",
@@ -118,7 +121,10 @@
           "LocationHint": "The volcano's mouth opens at the far south end of the Ember Approach" }
       ],
       "GoldReward": 400,
-      "Rewards": [ { "itemId": "ember_focus", "count": 1 } ],
+      "RewardChoices": [
+        { "label": "Emberfang", "description": "The caldera's fang, forged for melee.", "style": "melee", "equip": true, "items": [ { "itemId": "emberfang", "count": 1 } ] },
+        { "label": "Ember Focus", "description": "A focus humming with ember-magic.", "style": "magic", "equip": true, "items": [ { "itemId": "ember_focus", "count": 1 } ] }
+      ],
       "PrereqQuestId": "q_ember_scout"
     }
   ]

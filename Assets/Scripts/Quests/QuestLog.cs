@@ -184,6 +184,10 @@ namespace AldenFall.Quests
             if (def.GoldReward > 0)
                 wallet?.Add(def.GoldReward);
 
+            // Build-fairness: quests that grant a weapon offer a pick-one melee/magic/archery choice.
+            if (def.RewardChoices != null && def.RewardChoices.Count > 0)
+                UI.RewardChoicePanel.Present(gameObject, $"Choose your reward: {def.Name}", def.RewardChoices);
+
             CombatEvents.RaiseStatus(transform.position + Vector3.up * 2.4f,
                 def.GoldReward > 0 ? $"Quest complete: {def.Name}  +{def.GoldReward}g"
                                    : $"Quest complete: {def.Name}",

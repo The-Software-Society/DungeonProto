@@ -27,6 +27,21 @@ namespace AldenFall.Quests
         public int count = 1;
     }
 
+    /// <summary>
+    /// One pick in a quest's reward-choice (melee vs magic vs archery, etc.).
+    /// Presented by RewardChoicePanel on turn-in; the chosen option's items are
+    /// granted. style drives the card accent ("melee"/"magic"/"archery").
+    /// </summary>
+    [System.Serializable]
+    public class QuestRewardOption
+    {
+        public string label = "";
+        public string description = "";
+        public string style = "melee";     // melee | magic | archery
+        public List<RewardEntry> items = new List<RewardEntry>();
+        public bool equip = false;          // auto-equip the first equippable item
+    }
+
     [System.Serializable]
     public class ObjectiveDef
     {
@@ -56,6 +71,7 @@ namespace AldenFall.Quests
         public string Description;
         public List<ObjectiveDef> Objectives = new List<ObjectiveDef>();
         public List<RewardEntry> Rewards = new List<RewardEntry>();
+        public List<QuestRewardOption> RewardChoices = new List<QuestRewardOption>();  // optional pick-one
         public int GoldReward;
         public string GiverNpcId;        // "" = auto-turn-in chain quest (no NPC hand-in)
         public string StartCutscene;     // optional cutscene id played on Accept
