@@ -8,6 +8,12 @@ namespace AldenFall.Items
     /// layer (the "+N" suffix IS the instance) so the result flows through
     /// inventory / equipment untouched. Cost climbs steeply so late upgrades are
     /// a real gold sink.
+    ///
+    /// Economy scope: DoCombine mutates the passed Inventory + Wallet directly, which
+    /// are the local player's. Authoritative in host mode (the beta path); on a
+    /// dedicated server a pure client combines only its client-local copies, the same
+    /// accepted limitation as VendorPanel / loot credit, resolved by the Phase 13
+    /// dedicated-server economy-authority [Command] follow-up.
     /// </summary>
     public static class Forge
     {

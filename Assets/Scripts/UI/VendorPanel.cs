@@ -16,6 +16,14 @@ namespace AldenFall.UI
     /// Chrome + rows come from <see cref="PanelChrome"/> so the market matches
     /// every other panel: zebra rows, right-aligned prices, disabled buttons
     /// when an action can't run.
+    ///
+    /// Economy scope: buy/sell mutate the LOCAL player's sibling Wallet + Inventory
+    /// directly. In host mode (the beta's primary path) those ARE the authoritative
+    /// components, so the trade is real. On a dedicated server a pure client would
+    /// mutate only its client-local copies (server never sees the trade), the same
+    /// accepted limitation as loot/quest credit (see MobIdentity.GrantKillRewards);
+    /// routing trades through a per-player [Command] relay is the Phase 13
+    /// dedicated-server economy-authority follow-up.
     /// </summary>
     public class VendorPanel : MonoBehaviour
     {
