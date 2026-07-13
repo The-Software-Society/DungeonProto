@@ -122,22 +122,26 @@ namespace AldenFall.Editor
         //   R4  east river       (245,62) -> across the north forest
         //   R4a   split of R4    -> east shore (fords the main road at x~0)
         //   R4b   split of R4    -> southeast corner
+        // v9 waterworks: 4 waterfall sources on the surrounding mountains, each feeding a river
+        // that drains into the north lake (0,300,r95). R3 runs from the EAST mountains WEST
+        // through the CITY (a canal) and up to the lake. Every water body is on this chain.
+        //   R0 North falls  (0,485)   -> lake N shore
+        //   R1 NE falls      (320,455) -> lake NE
+        //   R2 NW falls      (-320,455)-> lake NW
+        //   R3 East falls    (435,45)  -> through the CITY -> lake SW inlet
         private static readonly Vector3[][] RiverPaths =
         {
-            new[] { new Vector3(-150f,0f,250f), new Vector3(-146f,0f,220f), new Vector3(-140f,0f,204f), new Vector3(-138f,0f,192f) },
-            new[] { new Vector3(85f,0f,248f), new Vector3(40f,0f,238f), new Vector3(-8f,0f,228f), new Vector3(-40f,0f,205f), new Vector3(-70f,0f,196f), new Vector3(-78f,0f,188f) },
-            new[] { new Vector3(-40f,0f,205f), new Vector3(-56f,0f,180f), new Vector3(-72f,0f,162f), new Vector3(-78f,0f,155f) },
-            new[] { new Vector3(-248f,0f,92f), new Vector3(-224f,0f,102f), new Vector3(-206f,0f,118f), new Vector3(-196f,0f,130f) },
-            new[] { new Vector3(245f,0f,62f), new Vector3(198f,0f,76f), new Vector3(150f,0f,92f), new Vector3(104f,0f,106f), new Vector3(56f,0f,116f), new Vector3(18f,0f,124f) },
-            new[] { new Vector3(18f,0f,124f), new Vector3(0f,0f,142f), new Vector3(-30f,0f,156f), new Vector3(-60f,0f,162f), new Vector3(-78f,0f,158f) },
-            new[] { new Vector3(18f,0f,124f), new Vector3(-16f,0f,112f), new Vector3(-52f,0f,98f), new Vector3(-84f,0f,88f) },
+            new[] { new Vector3(0f,0f,485f), new Vector3(2f,0f,450f), new Vector3(-4f,0f,420f), new Vector3(0f,0f,398f) },
+            new[] { new Vector3(320f,0f,455f), new Vector3(230f,0f,415f), new Vector3(140f,0f,378f), new Vector3(72f,0f,352f) },
+            new[] { new Vector3(-320f,0f,455f), new Vector3(-230f,0f,415f), new Vector3(-140f,0f,378f), new Vector3(-72f,0f,352f) },
+            new[] { new Vector3(435f,0f,45f), new Vector3(300f,0f,40f), new Vector3(170f,0f,28f), new Vector3(60f,0f,12f), new Vector3(-8f,0f,6f), new Vector3(-64f,0f,40f), new Vector3(-84f,0f,120f), new Vector3(-64f,0f,200f), new Vector3(-40f,0f,235f) },
         };
-        private static readonly float[] RiverHalfWidths = { 7f, 6f, 4.5f, 6f, 6f, 5f, 4.5f };
-        // Waterfall sources: index into RiverPaths whose first point sits at the ring.
-        private static readonly int[] RiverSourceFalls = { 0, 1, 3, 4 };
+        private static readonly float[] RiverHalfWidths = { 8f, 7f, 7f, 8f };
+        // Waterfall sources: index into RiverPaths whose first point sits on a mountain.
+        private static readonly int[] RiverSourceFalls = { 0, 1, 2, 3 };
 
-        /// <summary>Fords: shallow wading crossings where a river meets the main road.</summary>
-        private static bool IsRiverFord(Vector3 p) => Mathf.Abs(p.x) < 10f && Mathf.Abs(p.z - 140f) < 14f;
+        /// <summary>Fords: shallow wading crossings where the city river meets the N-S road.</summary>
+        private static bool IsRiverFord(Vector3 p) => Mathf.Abs(p.x) < 10f && Mathf.Abs(p.z - 6f) < 16f;
 
         private static float DistToSegment(Vector2 p, Vector2 a, Vector2 b)
         {
@@ -252,15 +256,20 @@ namespace AldenFall.Editor
                         h = Mathf.Min(h, Mathf.Lerp(-4.8f, 0.4f, Mathf.SmoothStep(0f, 1f, d01)));
                     }
 
-                    // North feeder river: cuts a swimmable gorge from the north mountains down
-                    // into the lake's north shore (source -> river -> lake).
-                    if (wz > LakeCenter.z - 4f && wz < origin.z + sizeZ - 30f)
+                    // Carve every river channel as a swimmable gorge (source on a mountain ->
+                    // down to the lake). Gradient banks; shallower where it threads the city.
+                    var hpt = new Vector2(wx, wz);
+                    for (int ri = 0; ri < RiverPaths.Length; ri++)
                     {
-                        float riverDx = Mathf.Abs(wx - (LakeCenter.x + 8f * Mathf.Sin((wz - LakeCenter.z) / 45f)));
-                        if (riverDx < 13f)
-                            h = Mathf.Min(h, -3.2f);
-                        else if (riverDx < 24f)
-                            h = Mathf.Min(h, Mathf.Lerp(-3.2f, h, (riverDx - 13f) / 11f));
+                        var rpath = RiverPaths[ri];
+                        float rd = float.MaxValue;
+                        for (int si = 0; si < rpath.Length - 1; si++)
+                            rd = Mathf.Min(rd, DistToSegment(hpt, new Vector2(rpath[si].x, rpath[si].z),
+                                                                   new Vector2(rpath[si + 1].x, rpath[si + 1].z)));
+                        float hw = RiverHalfWidths[ri];
+                        float bedDepth = InCityFootprint(wx, wz) ? -1.4f : -3.0f;   // shallow canal in the city
+                        if (rd < hw) h = Mathf.Min(h, bedDepth);
+                        else if (rd < hw + 10f) h = Mathf.Min(h, Mathf.Lerp(bedDepth, h, (rd - hw) / 10f));
                     }
 
                     heights[iz, ix] = MetersToH(h);
@@ -273,9 +282,10 @@ namespace AldenFall.Editor
             var sandLayer = MakeTerrainLayer("TL_Sand", new Color(0.52f, 0.46f, 0.34f), 0.03f);
             var sootLayer = MakeTerrainLayer("TL_Soot", new Color(0.115f, 0.09f, 0.08f), 0.04f);
             var dirtLayer = MakeTerrainLayer("TL_Dirt", new Color(0.36f, 0.28f, 0.19f), 0.04f);
-            data.terrainLayers = new[] { grassLayer, sandLayer, sootLayer, dirtLayer };
+            var rockLayer = MakeTerrainLayer("TL_Rock", new Color(0.3f, 0.28f, 0.29f), 0.02f);
+            data.terrainLayers = new[] { grassLayer, sandLayer, sootLayer, dirtLayer, rockLayer };
 
-            var alpha = new float[splatRes, splatRes, 4];
+            var alpha = new float[splatRes, splatRes, 5];
             for (int iz = 0; iz < splatRes; iz++)
             {
                 for (int ix = 0; ix < splatRes; ix++)
@@ -284,20 +294,26 @@ namespace AldenFall.Editor
                     float wz = origin.z + iz / (float)(splatRes - 1) * sizeZ;
 
                     float soot = SootAmount(wx, wz);
-                    bool nearLake = Mathf.Abs(wx - LakeCenter.x) < LakeHalf + 12f
-                                 && Mathf.Abs(wz - LakeCenter.z) < LakeHalf + 12f;
-                    bool road = Mathf.Abs(wx) < 6f && wz > -322f;
+                    float lakeR = Vector2.Distance(new Vector2(wx, wz), new Vector2(LakeCenter.x, LakeCenter.z));
+                    bool shore = (lakeR > LakeHalf - 12f && lakeR < LakeHalf + 8f) || InAnyRiver(wx, wz);  // thin sand/mud band
+                    bool road = (Mathf.Abs(wx) < 6f && wz > -60f && wz < 210f);   // N-S dirt road (city -> lakeside)
+                    float edge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
+                                           Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
+                    bool southCorridor = Mathf.Abs(wx) < ApproachHalfW + 24f && wz < -90f;
 
-                    float g = 1f, s = 0f, so = 0f, d = 0f;
-                    if (soot > 0.05f) { so = Mathf.Clamp01(soot); g = 1f - so; }
-                    if (nearLake) { s = 0.85f; g *= 0.15f; }
-                    if (road || InCityFootprint(wx, wz)) { d = 0.8f; g *= 0.2f; so *= 0.5f; }
+                    float g = 1f, s = 0f, so = 0f, d = 0f, rk = 0f;
+                    if (!southCorridor && edge < 110f) { rk = Mathf.Clamp01((110f - edge) / 70f); g *= 1f - rk; }  // rock mountains
+                    if (soot > 0.05f) { so = Mathf.Clamp01(soot); g *= 1f - so; rk *= 1f - so; }                    // volcanic south
+                    if (shore) { s = 0.8f; g *= 0.2f; rk *= 0.2f; }                                                 // sand/mud shores
+                    if (road || InCityFootprint(wx, wz)) { d = 0.85f; g *= 0.15f; so *= 0.4f; }                     // dirt roads + city
 
-                    float sum = g + s + so + d;
+                    float sum = g + s + so + d + rk;
+                    if (sum <= 0f) { g = 1f; sum = 1f; }
                     alpha[iz, ix, 0] = g / sum;
                     alpha[iz, ix, 1] = s / sum;
                     alpha[iz, ix, 2] = so / sum;
                     alpha[iz, ix, 3] = d / sum;
+                    alpha[iz, ix, 4] = rk / sum;
                 }
             }
             data.SetAlphamaps(0, 0, alpha);
@@ -379,6 +395,7 @@ namespace AldenFall.Editor
                 "TL_Sand"  => GroundTextureGenerator.Sand(s),
                 "TL_Soot"  => GroundTextureGenerator.Soot(s),
                 "TL_Dirt"  => GroundTextureGenerator.Dirt(s),
+                "TL_Rock"  => GroundTextureGenerator.Rock(s),
                 _          => GroundTextureGenerator.Grass(s),
             };
             AssetDatabase.DeleteAsset($"{MaterialDir}/{name}_Tex.asset");
@@ -1412,7 +1429,7 @@ namespace AldenFall.Editor
             }
 
             // Ambient fish in the two biggest reaches.
-            foreach (var (idx, at) in new[] { (1, 2), (4, 2) })
+            foreach (var (idx, at) in new[] { (1, 2), (3, 3) })
             {
                 var mid = Vector3.Lerp(RiverPaths[idx][at], RiverPaths[idx][at + 1], 0.5f);
                 var fishObj = new GameObject($"River{idx}_FishSchool");

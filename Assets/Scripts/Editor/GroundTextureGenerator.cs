@@ -108,6 +108,27 @@ namespace AldenFall.Editor
             return px;
         }
 
+        public static Color32[] Rock(int s)
+        {
+            var px = new Color32[s * s];
+            Color dark = new Color(0.20f, 0.19f, 0.21f);
+            Color mid = new Color(0.34f, 0.32f, 0.34f);
+            Color light = new Color(0.5f, 0.49f, 0.5f);
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    float u = x / (float)s, v = y / (float)s;
+                    float n = Fbm(u, v, 5f);
+                    float facet = Fbm(u, v, 16f);
+                    float crack = Fbm(u, v, 40f);
+                    Color c = Color.Lerp(dark, mid, Mathf.Clamp01(n * 1.4f));
+                    c = Color.Lerp(c, light, Mathf.Clamp01((facet - 0.5f) * 1.6f));
+                    if (crack < 0.28f) c = Color.Lerp(c, dark, (0.28f - crack) * 2.5f);   // dark fissures
+                    px[y * s + x] = c;
+                }
+            return px;
+        }
+
         public static Color32[] Soot(int s)
         {
             var px = new Color32[s * s];
