@@ -2910,11 +2910,13 @@ namespace AldenFall.Editor
                         float z = tz + 0.35f + (float)localRng.NextDouble() * (TileSize - 0.7f);
                         if (!allowAt(x, z)) continue;
 
-                        float height = 0.45f + (float)localRng.NextDouble() * 0.75f;
-                        float width = 0.035f + (float)localRng.NextDouble() * 0.045f;
+                        // Short, flat ground cover (not waist-high spikes): 0.12-0.28m tall with
+                        // a wider splay so it reads as walkable grass patches, per playtest feedback.
+                        float height = 0.12f + (float)localRng.NextDouble() * 0.16f;
+                        float width = 0.045f + (float)localRng.NextDouble() * 0.05f;
                         float angle = (float)localRng.NextDouble() * Mathf.PI * 2f;
                         Vector3 right = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
-                        Vector3 lean = new Vector3(-right.z, 0f, right.x) * (0.04f + (float)localRng.NextDouble() * 0.08f);
+                        Vector3 lean = new Vector3(-right.z, 0f, right.x) * (0.06f + (float)localRng.NextDouble() * 0.12f);
                         Vector3 baseCenter = new Vector3(x, 0.03f, z);
                         Vector3 topCenter = baseCenter + Vector3.up * height + lean;
 
