@@ -37,16 +37,39 @@ namespace AldenFall.Items
         Epic,
     }
 
-    /// <summary>Static definition of an item type. Bonuses are StatBlock modifiers.</summary>
+    /// <summary>One equip stat bonus, JSON-friendly (JsonUtility cannot serialize
+    /// tuples). Implicit-from-tuple keeps inline initializers compiling; Deconstruct
+    /// keeps every `foreach (var (t,v) in Bonuses)` reader working unchanged.</summary>
+    [System.Serializable]
+    public class StatBonus
+    {
+        public string type;    // StatType name, human-editable (e.g. "WeaponPower")
+        public float value;
+        public StatBonus() { }
+        public StatBonus(StatType t, float v) { type = t.ToString(); value = v; }
+        public static implicit operator StatBonus((StatType type, float value) t) => new StatBonus(t.type, t.value);
+        public void Deconstruct(out StatType t, out float v)
+        {
+            t = System.Enum.TryParse<StatType>(type, out var k) ? k : default;
+            v = value;
+        }
+    }
+
+    /// <summary>Static definition of an item type, loaded from items.json. Bonuses are StatBlock modifiers.</summary>
+    [System.Serializable]
     public class ItemDef
     {
         public string Id;
         public string Name;
         public string Description;
-        public EquipSlot Slot;
-        public WeaponKind WeaponKind;   // Sword/Wand/Focus for equip-gated abilities; None for everything else
-        public ItemRarity Rarity;
-        public List<(StatType type, float value)> Bonuses = new List<(StatType, float)>();
+        // Enums are serialized as editable strings; readers use the parsed properties below.
+        public string slot = "None";        // EquipSlot: None/Weapon/Helm/Chest/Legs/Cape/Focus
+        public string weaponKind = "None";  // WeaponKind: None/Sword/Wand/Focus (equip-gated abilities)
+        public string rarity = "Common";    // ItemRarity: Common/Uncommon/Rare/Epic
+        public EquipSlot Slot => System.Enum.TryParse<EquipSlot>(slot, out var k) ? k : EquipSlot.None;
+        public WeaponKind WeaponKind => System.Enum.TryParse<WeaponKind>(weaponKind, out var k) ? k : WeaponKind.None;
+        public ItemRarity Rarity => System.Enum.TryParse<ItemRarity>(rarity, out var k) ? k : ItemRarity.Common;
+        public List<StatBonus> Bonuses = new List<StatBonus>();
         public string ModelProp;    // Assets/Models/Props/<name> for visuals + icon
         public Color Tint = Color.white;
         public int MaxStack = 1;    // >1 = stacks in one bag slot (fish, materials)
@@ -83,13 +106,25 @@ namespace AldenFall.Items
         };
     }
 
+    /// <summary>File wrapper for JsonUtility (mirrors Data.MonsterFile).</summary>
+    [System.Serializable]
+    public class ItemFile
+    {
+        public ItemDef[] items = new ItemDef[0];
+    }
+
     /// <summary>
-    /// Code-defined item registry (code-as-data keeps the headless pipeline simple).
-    /// Progression: rusty starter → goblin leather → bandit/orc iron tier → boss epic.
+    /// Item registry, loaded from StreamingAssets/items.json (mirrors
+    /// Data.MonsterDatabase). Progression: rusty starter → goblin leather →
+    /// bandit/orc iron tier → boss epic.
     /// </summary>
     public static class ItemDatabase
     {
+        public const string FileName = "items.json";
         private static Dictionary<string, ItemDef> items;
+
+        public static string FilePath =>
+            System.IO.Path.Combine(Application.streamingAssetsPath, FileName);
 
         public static ItemDef Get(string id)
         {
@@ -110,233 +145,34 @@ namespace AldenFall.Items
             if (items != null) return;
             items = new Dictionary<string, ItemDef>();
 
-            // ---- Starter (deliberately terrible) ----
-            Register(new ItemDef
+            try
             {
-                Id = "rusty_sword",
-                Name = "Rusty Sword",
-                Description = "Chipped, corroded, and barely a weapon. It's a start.",
-                Slot = EquipSlot.Weapon,
-                WeaponKind = WeaponKind.Sword,
-                Rarity = ItemRarity.Common,
-                Bonuses = { (StatType.WeaponPower, 2f) },
-                ModelProp = "RustySword",
-            });
-
-            Register(new ItemDef
+                if (!System.IO.File.Exists(FilePath))
+                {
+                    Debug.LogError($"ItemDatabase: {FilePath} not found");
+                    return;
+                }
+                var file = JsonUtility.FromJson<ItemFile>(System.IO.File.ReadAllText(FilePath));
+                if (file?.items == null)
+                {
+                    Debug.LogError("ItemDatabase: items.json parsed to nothing");
+                    return;
+                }
+                foreach (var d in file.items)
+                {
+                    if (d == null || string.IsNullOrEmpty(d.Id)) continue;
+                    items[d.Id] = d;
+                }
+                Debug.Log($"ItemDatabase: loaded {items.Count} items");
+            }
+            catch (System.Exception e)
             {
-                Id = "apprentice_wand",
-                Name = "Apprentice Wand",
-                Description = "A slim training wand, warm to the touch. Channels magic from the main hand.",
-                Slot = EquipSlot.Weapon,
-                WeaponKind = WeaponKind.Wand,
-                Rarity = ItemRarity.Common,
-                Bonuses = { (StatType.SpellPower, 3f) },
-                ModelProp = "MagicFocus",
-                Tint = new Color(0.62f, 0.55f, 0.85f),
-            });
-
-            // ---- Goblin tier (leather) ----
-            Register(new ItemDef
-            {
-                Id = "leather_cap",
-                Name = "Leather Cap",
-                Description = "Hardened goblin leather. Smells like goblin.",
-                Slot = EquipSlot.Helm,
-                Rarity = ItemRarity.Common,
-                Bonuses = { (StatType.Armor, 1f) },
-                ModelProp = "LeatherCap",
-                Tint = new Color(0.55f, 0.4f, 0.25f),
-            });
-            Register(new ItemDef
-            {
-                Id = "leather_legs",
-                Name = "Leather Leggings",
-                Description = "Scuffed leather leg guards.",
-                Slot = EquipSlot.Legs,
-                Rarity = ItemRarity.Common,
-                Bonuses = { (StatType.Armor, 1f) },
-                Tint = new Color(0.5f, 0.36f, 0.22f),
-            });
-
-            // ---- Bandit tier ----
-            Register(new ItemDef
-            {
-                Id = "raider_saber",
-                Name = "Raider Saber",
-                Description = "A cruel curved blade taken from a field bandit.",
-                Slot = EquipSlot.Weapon,
-                WeaponKind = WeaponKind.Sword,
-                Rarity = ItemRarity.Uncommon,
-                Bonuses = { (StatType.WeaponPower, 8f), (StatType.AttackSpeed, 0.1f) },
-                ModelProp = "RaiderSaber",
-            });
-            Register(new ItemDef
-            {
-                Id = "bandit_cape",
-                Name = "Bandit Cape",
-                Description = "A tattered hood-cape. Makes you feel sneaky.",
-                Slot = EquipSlot.Cape,
-                Rarity = ItemRarity.Uncommon,
-                Bonuses = { (StatType.Armor, 1f), (StatType.MoveSpeed, 0.05f) },
-                ModelProp = "BanditCape",
-                Tint = new Color(0.25f, 0.22f, 0.28f),
-            });
-
-            // ---- Orc tier (iron) ----
-            Register(new ItemDef
-            {
-                Id = "iron_helm",
-                Name = "Iron Helm",
-                Description = "A dented great helm. Rings like a bell when struck.",
-                Slot = EquipSlot.Helm,
-                Rarity = ItemRarity.Uncommon,
-                Bonuses = { (StatType.Armor, 3f) },
-                ModelProp = "IronHelm",
-            });
-            Register(new ItemDef
-            {
-                Id = "iron_chestplate",
-                Name = "Iron Chestplate",
-                Description = "Riveted orcish iron. Heavy, dented, dependable.",
-                Slot = EquipSlot.Chest,
-                Rarity = ItemRarity.Uncommon,
-                Bonuses = { (StatType.Armor, 5f) },
-                ModelProp = "IronChestplate",
-            });
-            Register(new ItemDef
-            {
-                Id = "iron_legs",
-                Name = "Iron Greaves",
-                Description = "Plated shin and thigh guards, orc-sized but adjustable.",
-                Slot = EquipSlot.Legs,
-                Rarity = ItemRarity.Uncommon,
-                Bonuses = { (StatType.Armor, 3f) },
-                ModelProp = "IronLegs",
-            });
-
-            // ---- Orc tier sword (KnightSword prop finally earns its keep) ----
-            Register(new ItemDef
-            {
-                Id = "knight_sword",
-                Name = "Knight's Sword",
-                Description = "A proper blade with a blue-silver crossguard. How did an orc get this?",
-                Slot = EquipSlot.Weapon,
-                WeaponKind = WeaponKind.Sword,
-                Rarity = ItemRarity.Rare,
-                Bonuses = { (StatType.WeaponPower, 12f), (StatType.AttackSpeed, 0.05f) },
-                ModelProp = "KnightSword",
-            });
-
-            // ---- Boss tier ----
-            Register(new ItemDef
-            {
-                Id = "emberfang",
-                Name = "Emberfang",
-                Description = "An obsidian blade veined with living fire. The troll guarded it well.",
-                Slot = EquipSlot.Weapon,
-                WeaponKind = WeaponKind.Sword,
-                Rarity = ItemRarity.Epic,
-                Bonuses = { (StatType.WeaponPower, 18f), (StatType.Strength, 3f) },
-                ModelProp = "Emberfang",
-                Tint = new Color(1f, 0.6f, 0.3f),
-            });
-
-            // ---- Focus items: spells run at 60% without one, 100% with the boss focus ----
-            Register(new ItemDef
-            {
-                Id = "apprentice_focus",
-                Name = "Apprentice Focus",
-                Description = "A chipped crystal on a stick. It hums, faintly.",
-                Slot = EquipSlot.Focus,
-                WeaponKind = WeaponKind.Focus,
-                Rarity = ItemRarity.Uncommon,
-                Bonuses = { (StatType.SpellPower, 4f) },
-                ModelProp = "MagicFocus",
-                Tint = new Color(0.5f, 0.7f, 1f),
-            });
-            Register(new ItemDef
-            {
-                Id = "adept_focus",
-                Name = "Adept Focus",
-                Description = "The crystal floats now. That feels important.",
-                Slot = EquipSlot.Focus,
-                WeaponKind = WeaponKind.Focus,
-                Rarity = ItemRarity.Rare,
-                Bonuses = { (StatType.SpellPower, 7f) },
-                ModelProp = "MagicFocus",
-                Tint = new Color(0.72f, 0.5f, 1f),
-            });
-            Register(new ItemDef
-            {
-                Id = "ember_focus",
-                Name = "Ember Focus",
-                Description = "A shard of the troll's fire, tamed into an orb. Spells hit like they mean it.",
-                Slot = EquipSlot.Focus,
-                WeaponKind = WeaponKind.Focus,
-                Rarity = ItemRarity.Epic,
-                Bonuses = { (StatType.SpellPower, 10f) },
-                ModelProp = "MagicFocus",
-                Tint = new Color(1f, 0.55f, 0.25f),
-            });
-
-            // ---- Fishing & cooking ----
-            Register(new ItemDef
-            {
-                Id = "fishing_pole",
-                Name = "Fishing Pole",
-                Description = "A bendy stick, some line, and a cork. The pond awaits.",
-                Slot = EquipSlot.None,
-                Rarity = ItemRarity.Common,
-                ModelProp = "FishingPole",
-            });
-            Register(new ItemDef
-            {
-                Id = "raw_fish",
-                Name = "Raw Minnow",
-                Description = "A small fresh minnow from the river. Needs a campfire.",
-                Slot = EquipSlot.None,
-                Rarity = ItemRarity.Common,
-                MaxStack = 50,
-                ModelProp = "Fish",
-                Tint = new Color(0.72f, 0.8f, 0.9f),
-                CookedResult = "cooked_fish",
-            });
-            Register(new ItemDef
-            {
-                Id = "cooked_fish",
-                Name = "Cooked Fish",
-                Description = "Golden and flaky. Restores health, chewing takes a moment.",
-                Slot = EquipSlot.None,
-                Rarity = ItemRarity.Common,
-                MaxStack = 50,
-                HealAmount = 25f,
-                EatLockout = 1.8f,
-                ModelProp = "Fish",
-                Tint = new Color(0.95f, 0.72f, 0.35f),
-            });
-            Register(new ItemDef
-            {
-                Id = "burnt_fish",
-                Name = "Burnt Fish",
-                Description = "It's charcoal shaped like regret. Cooking gets better with practice.",
-                Slot = EquipSlot.None,
-                Rarity = ItemRarity.Common,
-                MaxStack = 50,
-                ModelProp = "Fish",
-                Tint = new Color(0.22f, 0.2f, 0.18f),
-            });
-
-            // Higher fishing tiers, level-gated in FishingController; more healing when cooked.
-            Register(new ItemDef { Id = "raw_trout", Name = "Raw Trout", Description = "A river trout, still wriggling.", MaxStack = 50, ModelProp = "Fish", Tint = new Color(0.6f, 0.75f, 0.7f), CookedResult = "cooked_trout" });
-            Register(new ItemDef { Id = "cooked_trout", Name = "Cooked Trout", Description = "Flaky and hearty. Restores solid health.", MaxStack = 50, HealAmount = 40f, EatLockout = 2.0f, ModelProp = "Fish", Tint = new Color(0.95f, 0.66f, 0.4f) });
-            Register(new ItemDef { Id = "raw_bass", Name = "Raw Bass", Description = "A fat river bass.", MaxStack = 50, ModelProp = "Fish", Tint = new Color(0.5f, 0.6f, 0.45f), CookedResult = "cooked_bass" });
-            Register(new ItemDef { Id = "cooked_bass", Name = "Cooked Bass", Description = "Rich and filling. Restores a lot of health.", Rarity = ItemRarity.Uncommon, MaxStack = 50, HealAmount = 60f, EatLockout = 2.3f, ModelProp = "Fish", Tint = new Color(0.9f, 0.6f, 0.32f) });
-            Register(new ItemDef { Id = "raw_carp", Name = "Raw Golden Carp", Description = "A rare golden carp, prized by cooks.", Rarity = ItemRarity.Rare, MaxStack = 50, ModelProp = "Fish", Tint = new Color(0.85f, 0.72f, 0.35f), CookedResult = "cooked_carp" });
-            Register(new ItemDef { Id = "cooked_carp", Name = "Golden Carp Feast", Description = "A feast fit for a hero. Restores massive health.", Rarity = ItemRarity.Rare, MaxStack = 50, HealAmount = 95f, EatLockout = 2.6f, ModelProp = "Fish", Tint = new Color(1f, 0.78f, 0.3f) });
+                Debug.LogError($"ItemDatabase: failed to load {FileName}: {e.Message}");
+            }
         }
 
-        private static void Register(ItemDef def) => items[def.Id] = def;
+        /// <summary>Drop the cache so the next access reloads items.json (hot-reload).</summary>
+        public static void Reload() { items = null; EnsureInitialized(); }
 
         public static string SlotName(EquipSlot slot) => slot switch
         {

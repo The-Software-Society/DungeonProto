@@ -38,6 +38,14 @@ namespace AldenFall.Editor
             var mobs = AldenFall.Data.MonsterDatabase.LoadAll();
             Debug.Log($"[Validate] monsters loaded: {mobs.Count}");
 
+            var itemList = new System.Collections.Generic.List<AldenFall.Items.ItemDef>(AldenFall.Items.ItemDatabase.All);
+            Debug.Log($"[Validate] items loaded: {itemList.Count}");
+            foreach (var it in itemList)
+            {
+                string bonuses = string.Join(",", System.Array.ConvertAll(it.Bonuses.ToArray(), b => $"{b.type}:{b.value}"));
+                Debug.Log($"[Validate]   item {it.Id}: slot={it.Slot} kind={it.WeaponKind} rar={it.Rarity} sell={it.SellValue} heal={it.HealAmount} cook='{it.CookedResult}' [{bonuses}]");
+            }
+
             var quests = new System.Collections.Generic.List<AldenFall.Quests.QuestDef>(AldenFall.Quests.QuestDatabase.All);
             Debug.Log($"[Validate] quests loaded: {quests.Count}");
             foreach (var q in quests)

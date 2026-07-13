@@ -52,12 +52,10 @@ namespace AldenFall.Items
         /// <summary>The item's bonuses with the plus applied.</summary>
         public static List<(StatType type, float value)> ScaledBonuses(ItemDef def, int plus)
         {
-            if (def == null) return new List<(StatType, float)>();
-            if (plus <= 0) return def.Bonuses;
-
-            var scaled = new List<(StatType, float)>(def.Bonuses.Count);
-            foreach (var (type, value) in def.Bonuses)
-                scaled.Add((type, value + PerPlus(type) * plus));
+            var scaled = new List<(StatType, float)>();
+            if (def == null) return scaled;
+            foreach (var (type, value) in def.Bonuses)   // StatBonus.Deconstruct
+                scaled.Add((type, plus > 0 ? value + PerPlus(type) * plus : value));
             return scaled;
         }
 
