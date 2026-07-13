@@ -56,23 +56,23 @@ namespace AldenFall.World
 
             string qid = ResolveQuest(log, out bool turnInable, out bool acceptable);
 
-            if (turnInable)
+            // Talking always satisfies a "talk to me" objective for whatever is active.
+            log.Advance(ObjectiveKind.TalkToNpc, npcId);
+
+            // Open the quest WINDOW so the player reads the story, objectives, and rewards and
+            // ACCEPTS / TURNS IN there (v9 feedback: acceptance was too minimal). Falls back to
+            // a spoken line if there is no quest to show or the panel is missing.
+            var detail = player.GetComponent<UI.QuestDetailPanel>();
+            if (qid != null && detail != null)
             {
-                log.TurnIn(qid);
-                Say($"{displayName}: Well done, adventurer.");
-            }
-            else if (acceptable)
-            {
-                log.Accept(qid);
-                log.Advance(ObjectiveKind.TalkToNpc, npcId);   // talking IS the first beat
-                Say($"{displayName}: I have a task for you.");
+                detail.OpenFor(qid);
+                Say(turnInable ? $"{displayName}: Let's see what you've done."
+                    : acceptable ? $"{displayName}: I have a task for you."
+                    : $"{displayName}: How goes the task?");
             }
             else
             {
-                log.Advance(ObjectiveKind.TalkToNpc, npcId);   // still satisfies any "talk to me" step
-                Say(qid != null
-                    ? $"{displayName}: You're still busy, off you go."
-                    : $"{displayName}: Safe travels.");
+                Say($"{displayName}: Safe travels.");
             }
 
             RefreshPrompt(log);

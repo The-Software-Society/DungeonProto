@@ -303,7 +303,7 @@ namespace AldenFall.DebugTools
             // Phase 7 gather/craft skills.
             Check("SkillRegistry has Mining", Progression.SkillRegistry.Get(Progression.SkillType.Mining).display == "Mining");
             Check("SkillRegistry has Smithing", Progression.SkillRegistry.Get(Progression.SkillType.Smithing).display == "Smithing");
-            Check("SkillRegistry has Health", Progression.SkillRegistry.Get(Progression.SkillType.Health).display == "Health");
+            Check("SkillRegistry has Hitpoints", Progression.SkillRegistry.Get(Progression.SkillType.Health).display == "Hitpoints");
             Check("recipes load (>=6)", Items.RecipeDatabase.All.Count >= 6);
             Check("anvil has smithing recipes", Items.RecipeDatabase.ForStation("anvil").Count >= 1);
             var oreItem = Items.ItemDatabase.Get("iron_ore");
@@ -538,6 +538,27 @@ namespace AldenFall.DebugTools
                 Check("forge Close() hides panel", !forgeP.IsOpen);
             }
             Check("intro seen-key bumped (v4)", Cinematics.IntroCutsceneTrigger.SeenKey == "cutscene_intro_seen_v4");
+
+            // v9 Cluster 2/3: Hitpoints rework, archery, quest window, minimap, cinematics.
+            Check("Hitpoints skill renamed", Progression.SkillRegistry.Get(Progression.SkillType.Health).display == "Hitpoints");
+            Check("hitpointsXpFraction loaded", Data.GameConfig.Progression.hitpointsXpFraction > 0f);
+            Check("short_bow + arrow items load", Items.ItemDatabase.Get("short_bow") != null && Items.ItemDatabase.Get("arrow") != null);
+            Check("ranged abilities load (power_shot)", Abilities.AbilityDatabase.Get("power_shot") != null);
+            Check("archery kit has 5 abilities", UI.WeaponChoicePanel.ArcheryKit.Length == 5);
+            var gobDef = Data.MonsterDatabase.LoadAll().Find(m => m.id == "goblin_scrapper");
+            Check("combat mobs drop arrows", gobDef != null && System.Array.Exists(gobDef.loot, e => e.itemId == "arrow"));
+            var qDetail = player.GetComponent<UI.QuestDetailPanel>();
+            Check("player has QuestDetailPanel", qDetail != null);
+            if (qDetail != null)
+            {
+                qDetail.OpenFor("q_intro");
+                Check("quest window opens", qDetail.IsOpen);
+                qDetail.Close();
+                Check("quest window closes", !qDetail.IsOpen);
+            }
+            Check("player has Minimap", player.GetComponent<UI.Minimap>() != null);
+            Check("q_first_steps start cutscene wired", Quests.QuestDatabase.Get("q_first_steps").StartCutscene == "q_first_steps_start");
+            Check("q_clear_roads turn-in cutscene wired", Quests.QuestDatabase.Get("q_clear_roads").TurnInCutscene == "q_clear_roads_turnin");
 
             // Safe zones baked into the scene (pond + city peaceful, forest not).
             Check("city center is a safe zone", World.SafeZone.IsInAnySafeZone(Vector3.zero));

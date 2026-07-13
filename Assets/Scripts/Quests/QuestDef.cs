@@ -55,6 +55,7 @@ namespace AldenFall.Quests
         public float Radius = 3f;      // ReachLocation only
         public string Description;
         public string LocationHint = "";  // optional "where to go" direction shown in the quest log
+        public string Cutscene = "";      // optional cutscene id played when THIS objective finishes (a "during"/climax beat)
 
         public ObjectiveKind Kind =>
             System.Enum.TryParse<ObjectiveKind>(kind, out var k) ? k : ObjectiveKind.KillMob;
@@ -76,8 +77,9 @@ namespace AldenFall.Quests
         public List<QuestRewardOption> RewardChoices = new List<QuestRewardOption>();  // optional pick-one
         public int GoldReward;
         public string GiverNpcId;        // "" = auto-turn-in chain quest (no NPC hand-in)
-        public string StartCutscene;     // optional cutscene id played on Accept
-        public string CompleteCutscene;  // optional cutscene id played when objectives finish
+        public string StartCutscene;     // optional cutscene id played on Accept (story/intro beat)
+        public string CompleteCutscene;  // optional cutscene id played when objectives finish (climax)
+        public string TurnInCutscene = "";  // optional cutscene id played on hand-in (resolution beat)
         public string PrereqQuestId;     // must be TurnedIn before this can be accepted
     }
 

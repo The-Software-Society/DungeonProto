@@ -166,6 +166,10 @@ namespace AldenFall.Quests
 
                     kv.Value.Progress[i] = Mathf.Min(obj.Count, kv.Value.Progress[i] + amount);
                     changed = true;
+
+                    // "During"/climax beat: fire this objective's cutscene the moment it finishes.
+                    if (kv.Value.Progress[i] >= obj.Count && !string.IsNullOrEmpty(obj.Cutscene))
+                        PlayCutscene(obj.Cutscene);
                 }
             }
 
@@ -182,6 +186,9 @@ namespace AldenFall.Quests
             var def = QuestDatabase.Get(id);
 
             st.Status = QuestStatus.TurnedIn;
+
+            // Resolution beat on hand-in (before rewards land so the scene frames the moment).
+            PlayCutscene(def.TurnInCutscene);
 
             if (def.Rewards != null)
                 foreach (var reward in def.Rewards)

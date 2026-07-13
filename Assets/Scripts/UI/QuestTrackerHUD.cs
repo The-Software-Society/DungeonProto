@@ -23,6 +23,7 @@ namespace AldenFall.UI
         private TMP_Text body;          // compact always-on tracker
         private GameObject logPanel;    // full Q-toggled log
         private TMP_Text logBody;
+        private string topQuestId;      // the first tracked quest, opened when the tracker is clicked
 
         private void Start()
         {
@@ -60,6 +61,13 @@ namespace AldenFall.UI
             if (show) RefreshLog();
         }
 
+        /// <summary>Clicking the tracker opens the full quest DETAIL window for the top quest.</summary>
+        private void OpenTopQuest()
+        {
+            if (string.IsNullOrEmpty(topQuestId)) return;
+            GetComponent<QuestDetailPanel>()?.OpenFor(topQuestId);
+        }
+
         // ==================== BUILD ====================
 
         private Canvas canvas;
@@ -86,8 +94,14 @@ namespace AldenFall.UI
             body.fontSize = 13;
             body.color = UITheme.TextMain;
             body.alignment = TextAlignmentOptions.TopRight;
-            body.raycastTarget = false;
+            body.raycastTarget = true;   // clickable: opens the detail window for the top quest
             body.enableWordWrapping = false;
+
+            if (canvas.GetComponent<GraphicRaycaster>() == null)
+                canvas.gameObject.AddComponent<GraphicRaycaster>();
+            var trackBtn = textObj.gameObject.AddComponent<Button>();
+            trackBtn.transition = Selectable.Transition.None;
+            trackBtn.onClick.AddListener(OpenTopQuest);
             body.overflowMode = TextOverflowModes.Truncate;   // a long line clips, never sprawls
             // Thin dark outline keeps the bare text readable over bright terrain.
             body.outlineWidth = 0.16f;
@@ -134,12 +148,14 @@ namespace AldenFall.UI
                 const int MaxTracked = 2;
                 var sb = new StringBuilder();
                 int shown = 0;
+                topQuestId = null;
 
                 foreach (var def in QuestDatabase.All)
                 {
                     if (shown >= MaxTracked) break;
                     var status = log.StatusOf(def.Id);
                     if (status != QuestStatus.Active && status != QuestStatus.Complete) continue;
+                    if (topQuestId == null) topQuestId = def.Id;
 
                     string tail;
                     if (status == QuestStatus.Complete)
