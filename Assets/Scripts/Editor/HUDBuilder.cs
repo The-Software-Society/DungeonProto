@@ -361,24 +361,30 @@ namespace AldenFall.Editor
 
             // ---- Paper doll (left column, top→bottom: helm/cape/chest/legs/weapon/focus)
             // Starts clear of the gold line; labels sit in the gaps between slots. ----
-            var dollSlots = new (Items.EquipSlot slot, string label, float y)[]
+            var dollSlots = new (Items.EquipSlot slot, string label, float x, float y)[]
             {
-                (Items.EquipSlot.Helm,   "HELM", -128),
-                (Items.EquipSlot.Cape,   "CAPE", -208),
-                (Items.EquipSlot.Chest,  "CHEST", -288),
-                (Items.EquipSlot.Legs,   "LEGS", -368),
-                (Items.EquipSlot.Weapon, "MAIN HAND", -448),
-                (Items.EquipSlot.Focus,  "OFF HAND (FOCUS)", -528),
+                (Items.EquipSlot.Helm,   "HELM", 56, -128),
+                (Items.EquipSlot.Cape,   "CAPE", 56, -208),
+                (Items.EquipSlot.Chest,  "CHEST", 56, -288),
+                (Items.EquipSlot.Legs,   "LEGS", 56, -368),
+                (Items.EquipSlot.Weapon, "MAIN HAND", 56, -448),
+                (Items.EquipSlot.Focus,  "OFF HAND", 56, -528),
+                // Second column: gloves/boots/jewelry.
+                (Items.EquipSlot.Gloves,   "GLOVES", 176, -128),
+                (Items.EquipSlot.Boots,    "BOOTS", 176, -208),
+                (Items.EquipSlot.Necklace, "NECKLACE", 176, -288),
+                (Items.EquipSlot.Ring1,    "RING 1", 176, -368),
+                (Items.EquipSlot.Ring2,    "RING 2", 176, -448),
             };
-            foreach (var (slot, label, y) in dollSlots)
+            foreach (var (slot, label, x, y) in dollSlots)
             {
-                var slotUI = BuildItemSlot(panel, $"Doll_{slot}", new Vector2(0, 1), new Vector2(56, y), 62);
+                var slotUI = BuildItemSlot(panel, $"Doll_{slot}", new Vector2(0, 1), new Vector2(x, y), 62);
                 charUI.equipSlots.Add(new CharacterPanelUI.EquipSlotEntry { slot = slot, ui = slotUI });
 
                 var slotLabel = Text(panel, $"DollLabel_{slot}", label, 10, UITheme.TextDim, FontStyles.Bold);
                 slotLabel.characterSpacing = 2;
                 slotLabel.textWrappingMode = TextWrappingModes.NoWrap;
-                Anchor(slotLabel.rectTransform, new Vector2(0, 1), new Vector2(56, y - 40), new Vector2(130, 12));
+                Anchor(slotLabel.rectTransform, new Vector2(0, 1), new Vector2(x, y - 40), new Vector2(120, 12));
             }
 
             // ---- Bonuses block (bottom-right, under the bag grid, table-aligned) ----

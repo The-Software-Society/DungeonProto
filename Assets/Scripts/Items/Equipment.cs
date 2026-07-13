@@ -26,7 +26,8 @@ namespace AldenFall.Items
         public static readonly EquipSlot[] Slots =
         {
             EquipSlot.Weapon, EquipSlot.Helm, EquipSlot.Chest, EquipSlot.Legs, EquipSlot.Cape,
-            EquipSlot.Focus,
+            EquipSlot.Focus, EquipSlot.Gloves, EquipSlot.Boots, EquipSlot.Necklace,
+            EquipSlot.Ring1, EquipSlot.Ring2,
         };
 
         private void Awake()
@@ -89,17 +90,22 @@ namespace AldenFall.Items
             if (def == null || def.Slot == EquipSlot.None) return false;
             if (inventory != null && !inventory.Contains(itemId)) return false;
 
-            string previous = GetEquipped(def.Slot);
+            // Rings are authored as Ring1 but fill Ring1 then Ring2.
+            EquipSlot slot = def.Slot;
+            if (slot == EquipSlot.Ring1 && GetEquipped(EquipSlot.Ring1) != null && GetEquipped(EquipSlot.Ring2) == null)
+                slot = EquipSlot.Ring2;
+
+            string previous = GetEquipped(slot);
             if (previous == itemId) return true;
 
             inventory?.Remove(itemId);
             if (previous != null)
                 inventory?.Add(previous);
 
-            equipped[def.Slot] = itemId;
-            stats?.ApplyModifiers($"equip:{def.Slot}",
+            equipped[slot] = itemId;
+            stats?.ApplyModifiers($"equip:{slot}",
                 ItemPlus.ScaledBonuses(def, ItemPlus.PlusOf(itemId)));
-            RefreshVisual(def.Slot, def);
+            RefreshVisual(slot, def);
 
             OnEquipmentChanged?.Invoke();
             return true;
@@ -166,6 +172,11 @@ namespace AldenFall.Items
                 case EquipSlot.Chest: AttachTo(visual, FindBone("chest", "spine2", "spine"), 0.52f, Vector3.zero); break;
                 case EquipSlot.Legs: AttachTo(visual, FindBone("hips", "pelvis"), 0.5f, Vector3.down * 0.15f); break;
                 case EquipSlot.Cape: AttachCape(visual); break;
+                case EquipSlot.Gloves: AttachTo(visual, FindBone("hand_r", "lowerarm_r", "forearm_r", "hand"), 0.16f, Vector3.zero); break;
+                case EquipSlot.Boots: AttachTo(visual, FindBone("foot_r", "calf_r", "foot", "toe_r"), 0.2f, Vector3.zero); break;
+                case EquipSlot.Necklace: AttachTo(visual, FindBone("neck", "spine2", "chest"), 0.16f, Vector3.up * 0.08f); break;
+                case EquipSlot.Ring1: AttachTo(visual, FindBone("hand_r", "hand"), 0.05f, Vector3.zero); break;
+                case EquipSlot.Ring2: AttachTo(visual, FindBone("hand_l", "hand_r", "hand"), 0.05f, Vector3.zero); break;
                 case EquipSlot.Focus: AttachFocus(visual); break;
             }
         }

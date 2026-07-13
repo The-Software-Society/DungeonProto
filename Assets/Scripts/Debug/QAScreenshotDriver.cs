@@ -306,6 +306,31 @@ namespace AldenFall.DebugTools
             Check("resource nodes placed (>=5)", FindObjectsByType<World.ResourceNode>(FindObjectsSortMode.None).Length >= 5);
             Check("craft stations placed (>=2)", FindObjectsByType<World.CraftingStation>(FindObjectsSortMode.None).Length >= 2);
 
+            // Phase 9 equipment slots + jewelry.
+            var gl = Items.ItemDatabase.Get("iron_gloves");
+            Check("iron_gloves slot Gloves", gl != null && gl.Slot == Items.EquipSlot.Gloves);
+            var neck = Items.ItemDatabase.Get("ember_necklace");
+            Check("ember_necklace slot Necklace, MaxHealth 20", neck != null && neck.Slot == Items.EquipSlot.Necklace && Mathf.Approximately(neck.Bonus(Stats.StatType.MaxHealth), 20f));
+            bool bossNeck = false;
+            var fbq = Quests.QuestDatabase.Get("q_floor_boss");
+            if (fbq != null) foreach (var r in fbq.Rewards) if (r.itemId == "ember_necklace") bossNeck = true;
+            Check("boss grants first-necklace roll", bossNeck);
+            var eq9 = player.GetComponent<Items.Equipment>();
+            var iv9 = player.GetComponent<Items.Inventory>();
+            var st9 = player.GetComponent<Stats.StatBlock>();
+            if (eq9 != null && iv9 != null && st9 != null)
+            {
+                iv9.Add("band_of_embers"); eq9.Equip("band_of_embers");
+                Check("first ring fills Ring1", eq9.GetEquipped(Items.EquipSlot.Ring1) == "band_of_embers");
+                iv9.Add("copper_ring"); eq9.Equip("copper_ring");
+                Check("second ring fills Ring2 (dual-ring)", eq9.GetEquipped(Items.EquipSlot.Ring2) == "copper_ring");
+                iv9.Add("iron_gloves");
+                float armorBefore = st9.Get(Stats.StatType.Armor);
+                eq9.Equip("iron_gloves");
+                Check("equipping gloves raises Armor", st9.Get(Stats.StatType.Armor) > armorBefore);
+            }
+            else Check("player has equipment/inventory/statblock (P9)", false);
+
             // Ability database + enums/flags.
             var fb = Abilities.AbilityDatabase.Get("fireball");
             Check("ability fireball loaded, kind Projectile", fb != null && fb.Kind == Abilities.AbilityKind.Projectile);

@@ -13,6 +13,11 @@ namespace AldenFall.Items
         Legs,
         Cape,
         Focus,   // off-hand magic implement (append-only enum!)
+        Gloves,
+        Boots,
+        Necklace,
+        Ring1,
+        Ring2,
     }
 
     /// <summary>
@@ -191,6 +196,11 @@ namespace AldenFall.Items
             EquipSlot.Legs => "Legs",
             EquipSlot.Cape => "Cape",
             EquipSlot.Focus => "Off Hand (Focus)",
+            EquipSlot.Gloves => "Gloves",
+            EquipSlot.Boots => "Boots",
+            EquipSlot.Necklace => "Necklace",
+            EquipSlot.Ring1 => "Ring 1",
+            EquipSlot.Ring2 => "Ring 2",
             _ => "-",
         };
     }
