@@ -48,16 +48,23 @@ namespace AldenFall.UI
         // Named teleports matching the V2 radial world (see ArenaBuilderEmberfall).
         private static readonly (string label, Vector3 pos)[] Teleports =
         {
-            ("Glade (spawn)",  new Vector3(0f, 1.5f, 84f)),
-            ("City Plaza",     new Vector3(0f, 1.5f, 8f)),
-            ("Lake Bank",      new Vector3(-74f, 1.5f, 140f)),
-            ("Dark Woods",     new Vector3(0f, 1.5f, 195f)),
-            ("Goblin Camp",    new Vector3(-190f, 1.5f, 0f)),
-            ("Bandit Camp",    new Vector3(190f, 1.5f, 0f)),
-            ("Orc Warcamp",    new Vector3(-105f, 1.5f, -114f)),
-            ("Ember Approach", new Vector3(0f, 1.5f, -170f)),
-            ("Volcano Mouth",  new Vector3(0f, 1.5f, -308f)),
-            ("Boss Chamber",   new Vector3(0f, 1.5f, -430f)),
+            ("Glade (spawn)",   new Vector3(0f, 1.5f, 84f)),
+            ("City Plaza",      new Vector3(0f, 1.5f, 8f)),
+            ("Ember Rest Tavern", new Vector3(-32f, 1.5f, 32f)),
+            ("City Forge",      new Vector3(30f, 1.5f, -24f)),
+            ("Fallen Traveler (Q)", new Vector3(7f, 1.5f, 72f)),
+            ("Lake Bank",       new Vector3(-74f, 1.5f, 140f)),
+            ("Dark Woods",      new Vector3(0f, 1.5f, 195f)),
+            ("Seal Stone West (Q)", new Vector3(-82f, 1.5f, 96f)),
+            ("Seal Stone East (Q)", new Vector3(64f, 1.5f, 110f)),
+            ("Seal Stone Deep (Q)", new Vector3(-30f, 1.5f, 184f)),
+            ("Goblin Camp",     new Vector3(-190f, 1.5f, 0f)),
+            ("Grukmar Warcamp (Q)", new Vector3(-160f, 1.5f, 30f)),
+            ("Bandit Camp",     new Vector3(190f, 1.5f, 0f)),
+            ("Orc Warcamp",     new Vector3(-105f, 1.5f, -114f)),
+            ("Ember Approach",  new Vector3(0f, 1.5f, -170f)),
+            ("Volcano Mouth",   new Vector3(0f, 1.5f, -308f)),
+            ("Boss Chamber",    new Vector3(0f, 1.5f, -430f)),
         };
 
         // The shared mocap vocabulary (MeshyCharacterImporter states). Missing states
