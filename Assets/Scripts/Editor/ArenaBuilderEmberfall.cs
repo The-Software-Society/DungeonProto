@@ -2155,6 +2155,42 @@ namespace AldenFall.Editor
             // city, per playtest feedback. Neutral dancers still retaliate if attacked. ----
             BuildSafeZone("SafeZone_Lake", new Vector3(LakeCenter.x, 0f, LakeCenter.z), LakeHalf + 12f);
             BuildSafeZone("SafeZone_City", Vector3.zero, CityHalf + 9f);
+
+            // Q4 "First Blood, First Return": a fallen traveler on the road south of the glade.
+            BuildDeadTravelerMarker(groundLayer);
+        }
+
+        private static void BuildDeadTravelerMarker(int groundLayer)
+        {
+            var go = new GameObject("DeadTravelerMarker");
+            go.transform.position = new Vector3(7f, 0f, 72f);   // road between the glade (z~84) and city gate
+
+            // A body lying in the grass (capsule on its side) plus a small cairn stone.
+            var bodyMat = Mat("DeadTravelerCloak", new Color(0.28f, 0.22f, 0.18f));
+            var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            body.name = "Body";
+            body.transform.SetParent(go.transform, false);
+            body.transform.localScale = new Vector3(0.5f, 0.9f, 0.5f);
+            body.transform.localRotation = Quaternion.Euler(90f, 20f, 0f);
+            body.transform.localPosition = new Vector3(0f, 0.28f, 0f);
+            var bodyRend = body.GetComponent<Renderer>();
+            if (bodyRend != null) bodyRend.sharedMaterial = bodyMat;
+            body.layer = groundLayer;
+
+            var stone = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            stone.name = "Cairn";
+            stone.transform.SetParent(go.transform, false);
+            stone.transform.localScale = new Vector3(0.6f, 0.5f, 0.4f);
+            stone.transform.localPosition = new Vector3(0.9f, 0.25f, 0.2f);
+            var stoneRend = stone.GetComponent<Renderer>();
+            if (stoneRend != null) stoneRend.sharedMaterial = Mat("DeadTravelerStone", new Color(0.32f, 0.3f, 0.31f));
+            stone.layer = groundLayer;
+
+            var marker = go.AddComponent<World.InspectableMarker>();
+            marker.MarkerId = "dead_traveler";
+            marker.InspectText = "A traveler, cold and still. Yet the earth is scuffed, as if he rose and walked away.";
+            marker.Prompt = "Examine the fallen traveler";
+            marker.Radius = 3.5f;
         }
 
         private static void BuildSafeZone(string name, Vector3 center, float radius)

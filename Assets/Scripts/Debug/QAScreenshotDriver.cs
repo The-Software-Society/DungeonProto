@@ -320,7 +320,8 @@ namespace AldenFall.DebugTools
                 bool turned = log.TurnIn("q_intro");
                 Check("q_intro turned in", turned && log.StatusOf("q_intro") == Quests.QuestStatus.TurnedIn);
                 Check("q_intro granted +10 gold", wallet.Gold >= goldBefore + 10);
-                Check("q_learn_skill auto-chained to Active", log.StatusOf("q_learn_skill") == Quests.QuestStatus.Active);
+                // Q2 is a giver quest at Aldric, so it becomes offerable (not auto-chained).
+                Check("Q2 q_choose_edge now offerable", log.CanAccept("q_choose_edge"));
             }
             else Check("player has questlog/wallet", false);
 
