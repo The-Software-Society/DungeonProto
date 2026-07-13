@@ -89,6 +89,11 @@ namespace AldenFall.DebugTools
             // Let the runtime NavMesh bake, spawners, and atmosphere settle.
             yield return new WaitForSeconds(5f);
 
+            // Functional gameplay self-test: proves the JSON-driven data actually
+            // works in a live host (quests complete, items equip and change stats,
+            // abilities/config load), not just that it parses. Logs [QATEST] lines.
+            RunFunctionalTests(player);
+
             if (uiMode)
             {
                 yield return CaptureUiPanels(player);
@@ -250,6 +255,77 @@ namespace AldenFall.DebugTools
         {
             Debug.LogError($"QAScreenshotDriver: FAILED, {why}");
             Application.Quit(2);
+        }
+
+        // ==================== FUNCTIONAL SELF-TEST ====================
+
+        private int qaPass, qaFail;
+
+        private void Check(string name, bool ok)
+        {
+            if (ok) { qaPass++; Debug.Log($"[QATEST] PASS  {name}"); }
+            else { qaFail++; Debug.LogError($"[QATEST] FAIL  {name}"); }
+        }
+
+        private void RunFunctionalTests(GameObject player)
+        {
+            Debug.Log("[QATEST] === functional gameplay tests (live host) ===");
+
+            // Config loaded and driving CombatMath.
+            Check("config levelGrowth == 1.085", Mathf.Approximately(Stats.CombatMath.LevelGrowth, 1.085f));
+            Check("config vendor markup == 4", Mathf.Approximately(Data.GameConfig.Economy.vendorBuyMultiplier, 4f));
+
+            // Skill registry.
+            Check("skill Attack display == 'Attack'", Progression.SkillRegistry.Get(Progression.SkillType.Attack).display == "Attack");
+
+            // Item database + string enums + bonuses.
+            var ks = Items.ItemDatabase.Get("knight_sword");
+            Check("item knight_sword loaded, slot Weapon", ks != null && ks.Slot == Items.EquipSlot.Weapon);
+            Check("item knight_sword WeaponPower == 12", ks != null && Mathf.Approximately(ks.Bonus(Stats.StatType.WeaponPower), 12f));
+            var ef = Items.ItemDatabase.Get("ember_focus");
+            Check("item ember_focus slot Focus, SpellPower 10", ef != null && ef.Slot == Items.EquipSlot.Focus && Mathf.Approximately(ef.Bonus(Stats.StatType.SpellPower), 10f));
+
+            // Ability database + enums/flags.
+            var fb = Abilities.AbilityDatabase.Get("fireball");
+            Check("ability fireball loaded, kind Projectile", fb != null && fb.Kind == Abilities.AbilityKind.Projectile);
+            var bash = Abilities.AbilityDatabase.Get("bash");
+            Check("ability bash has Stunned flag", bash != null && (bash.StatusFlags & Combat.StatusFlags.Stunned) != 0);
+
+            // Inventory + equip -> live StatBlock change.
+            var inv = player.GetComponent<Items.Inventory>();
+            var equip = player.GetComponent<Items.Equipment>();
+            var stats = player.GetComponent<Stats.StatBlock>();
+            if (inv != null && equip != null && stats != null)
+            {
+                inv.Add("knight_sword");
+                Check("inventory holds knight_sword after Add", inv.CountOf("knight_sword") >= 1);
+                float before = stats.Get(Stats.StatType.WeaponPower);
+                equip.Equip("knight_sword");
+                float after = stats.Get(Stats.StatType.WeaponPower);
+                Check("equipping knight_sword raises WeaponPower", after > before);
+            }
+            else Check("player has inventory/equipment/statblock", false);
+
+            // Quest flow end-to-end: accept -> advance -> turn in -> reward + chain.
+            var log = player.GetComponent<Quests.QuestLog>();
+            var wallet = player.GetComponent<Items.Wallet>();
+            if (log != null && wallet != null)
+            {
+                int goldBefore = wallet.Gold;
+                log.Accept("q_intro");
+                Check("q_intro accepted (Active)", log.StatusOf("q_intro") == Quests.QuestStatus.Active);
+                log.Advance(Quests.ObjectiveKind.TalkToNpc, "aldric");
+                var st = log.StatusOf("q_intro");
+                Check("q_intro objectives satisfied", st == Quests.QuestStatus.Complete || st == Quests.QuestStatus.TurnedIn);
+                bool turned = log.TurnIn("q_intro");
+                Check("q_intro turned in", turned && log.StatusOf("q_intro") == Quests.QuestStatus.TurnedIn);
+                Check("q_intro granted +10 gold", wallet.Gold >= goldBefore + 10);
+                Check("q_learn_skill auto-chained to Active", log.StatusOf("q_learn_skill") == Quests.QuestStatus.Active);
+            }
+            else Check("player has questlog/wallet", false);
+
+            if (qaFail == 0) Debug.Log($"[QATEST] === ALL {qaPass} PASSED ===");
+            else Debug.LogError($"[QATEST] === {qaPass} passed, {qaFail} FAILED ===");
         }
     }
 }
