@@ -40,7 +40,10 @@ namespace AldenFall.Multiplayer
         public override void Start()
         {
             base.Start();
-            if (Application.isBatchMode && !NetworkServer.active && !NetworkClient.active)
+            // The QA driver (-qashots) starts its own HOST, even in batchmode, so it can
+            // run the functional gameplay tests headless. Don't pre-empt it with a server.
+            bool qaRun = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-qashots") >= 0;
+            if (Application.isBatchMode && !qaRun && !NetworkServer.active && !NetworkClient.active)
             {
                 ConfigureServerPortFromEnvironment();
                 StartServer();
