@@ -438,6 +438,19 @@ namespace AldenFall.DebugTools
                 if (g.NpcId == "elowen") hasElowen = true;
             Check("Elowen quest giver placed in scene", hasElowen);
 
+            // Phase 10 persistence: save/load roundtrip + stable identity.
+            var save = new Persistence.PlayerSaveData
+            {
+                accountId = "qatest_account",
+                gold = 777,
+                skillLevels = new int[] { 5, 3, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1 }
+            };
+            Persistence.PlayerPersistence.Save(save);
+            var loaded = Persistence.PlayerPersistence.Load("qatest_account");
+            Check("persistence roundtrip: gold", loaded != null && loaded.gold == 777);
+            Check("persistence roundtrip: skills", loaded != null && loaded.skillLevels != null && loaded.skillLevels.Length == 12 && loaded.skillLevels[0] == 5);
+            Check("player identity is stable + non-empty", !string.IsNullOrEmpty(Persistence.PlayerIdentity.AccountId));
+
             // Safe zones baked into the scene (pond + city peaceful, forest not).
             Check("city center is a safe zone", World.SafeZone.IsInAnySafeZone(Vector3.zero));
             Check("lake center is a safe zone", World.SafeZone.IsInAnySafeZone(new Vector3(-138f, 0f, 138f)));

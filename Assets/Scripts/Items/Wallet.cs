@@ -22,6 +22,13 @@ namespace AldenFall.Items
 
         public int Gold => gold;
 
+        /// <summary>Set the balance directly (loading a saved profile).</summary>
+        public void SetGold(int amount)
+        {
+            gold = Mathf.Max(0, amount);
+            OnChanged?.Invoke(gold);
+        }
+
         public void Add(int amount)
         {
             if (amount <= 0) return;

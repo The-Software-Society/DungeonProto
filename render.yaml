@@ -5,6 +5,10 @@ services:
     rootDir: Deploy/Render
     plan: starter
     healthCheckPath: /
+    disk:
+      name: aldenfall-saves
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: PORT
         value: 10000
