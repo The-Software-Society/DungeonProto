@@ -898,7 +898,7 @@ namespace AldenFall.Editor
             BuildOneVendor(parent, groundLayer, "Torvald the Armorer", "Torvald", new Vector3(36f, 0f, -26f), 320f,
                 new[] { "rusty_sword", "knight_sword", "iron_helm", "iron_chestplate", "iron_legs", "bandit_cape" });
             BuildOneVendor(parent, groundLayer, "Sela the Provisioner", "Sela", new Vector3(14f, 0f, 36f), 170f,
-                new[] { "cooked_fish", "cooked_trout", "cooked_bass", "raw_fish", "fishing_pole", "apprentice_wand" });
+                new[] { "cooked_fish", "cooked_trout", "cooked_bass", "raw_fish", "fishing_pole", "apprentice_wand", "arrow", "short_bow" });
 
             // Forgemaster at the anvil: E opens the +X combine panel in-world.
             var forgeNpc = new GameObject("ForgeNPC");

@@ -55,6 +55,38 @@ namespace AldenFall.Editor
         // Back-compat alias for the earlier method name.
         public static void AddServerProgressState() => PatchScene();
 
+        /// <summary>Add archery ammo (arrow + short_bow) to Sela the Provisioner's stock in the
+        /// current scene, so the town supports archers without a full world regen (v9).</summary>
+        [MenuItem("AldenFall/World/Patch Vendor Stock (archery)", priority = 212)]
+        public static void PatchVendorStock()
+        {
+            var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            bool changed = false;
+            foreach (var v in Object.FindObjectsByType<World.VendorNPC>(FindObjectsSortMode.None))
+            {
+                if (v.gameObject.name != "VendorSela") continue;
+                var so = new SerializedObject(v);
+                var stock = so.FindProperty("stock");
+                var have = new System.Collections.Generic.HashSet<string>();
+                for (int i = 0; i < stock.arraySize; i++) have.Add(stock.GetArrayElementAtIndex(i).stringValue);
+                foreach (var id in new[] { "arrow", "short_bow" })
+                    if (have.Add(id))
+                    {
+                        stock.arraySize++;
+                        stock.GetArrayElementAtIndex(stock.arraySize - 1).stringValue = id;
+                        changed = true;
+                    }
+                so.ApplyModifiedProperties();
+            }
+            if (changed)
+            {
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+                Debug.Log("ScenePatcher: added arrow + short_bow to Sela's stock + saved.");
+            }
+            else Debug.Log("ScenePatcher: vendor stock already patched.");
+        }
+
         /// <summary>Rebuild ONLY the GameUI HUD canvas in the scene (HUDBuilder destroys + rebuilds
         /// it, and regenerates the UI sprite set), leaving the rest of the world untouched. Much
         /// safer than a full BuildDemoHeadless world regen when only the HUD changed.</summary>
