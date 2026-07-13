@@ -178,7 +178,8 @@
         }
       ],
       "GoldReward": 40,
-      "PrereqQuestId": "q_learn_eat"
+      "PrereqQuestId": "q_learn_eat",
+      "StartCutscene": "q_first_steps_start"
     },
     {
       "Id": "q_rescue",
@@ -249,7 +250,8 @@
           "TargetId": "field_bandit",
           "Count": 4,
           "Description": "Drive off bandits",
-          "LocationHint": "The bandit camp hides in the eastern woods"
+          "LocationHint": "The bandit camp hides in the eastern woods",
+          "Cutscene": "q_clear_roads_climax"
         }
       ],
       "GoldReward": 120,
@@ -260,7 +262,8 @@
         }
       ],
       "PrereqQuestId": "q_rescue",
-      "GiverNpcId": "captain_rusk"
+      "GiverNpcId": "captain_rusk",
+      "TurnInCutscene": "q_clear_roads_turnin"
     },
     {
       "Id": "q_gate",
