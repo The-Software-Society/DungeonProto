@@ -1,5 +1,6 @@
 using UnityEngine;
 using AldenFall.Combat;
+using AldenFall.World;
 
 namespace AldenFall.AI
 {
@@ -37,17 +38,21 @@ namespace AldenFall.AI
             var wallMat = RuntimeDungeonMaterial("RuntimeDungeonWall", new Color(0.10f, 0.09f, 0.11f));
             var floorMat = RuntimeDungeonMaterial("RuntimeDungeonFloor", new Color(0.14f, 0.13f, 0.15f));
 
-            // V2: the dungeon is the Emberfall Volcano to the SOUTH, interior x[-56,56],
-            // z[-450,-318] with the entrance mouth (12m gap) on the north face. This safety
-            // envelope mirrors the built volcano walls so a death-reset can never drop the
-            // player into the void; the north wall is split around the entrance.
-            Slab(root.transform, "DungeonEnvelope_Floor", new Vector3(0f, -0.55f, -384f), new Vector3(112f, 1f, 132f), floorMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_Ceiling", new Vector3(0f, 8.5f, -384f), new Vector3(112f, 1f, 132f), wallMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_West", new Vector3(-56f, 4f, -384f), new Vector3(2f, 9f, 132f), wallMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_East", new Vector3(56f, 4f, -384f), new Vector3(2f, 9f, 132f), wallMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_South", new Vector3(0f, 4f, -450f), new Vector3(112f, 9f, 2f), wallMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_NorthL", new Vector3(-31f, 4f, -318f), new Vector3(50f, 9f, 2f), wallMat, groundLayer);
-            Slab(root.transform, "DungeonEnvelope_NorthR", new Vector3(31f, 4f, -318f), new Vector3(50f, 9f, 2f), wallMat, groundLayer);
+            // The dungeon is the Emberfall Volcano to the SOUTH, with the entrance mouth
+            // (a 12m gap) on the north face. This safety envelope is derived entirely from
+            // EmberfallVolcanoGeo (the single source of truth shared with the builder) so a
+            // death-reset can never drop the player into the void; the north wall is split
+            // around the entrance. Resize the dungeon by editing EmberfallVolcanoGeo only.
+            float w = EmberfallVolcanoGeo.Width, d = EmberfallVolcanoGeo.DepthZ;
+            float cz = EmberfallVolcanoGeo.CenterZ, hx = EmberfallVolcanoGeo.HalfWidth;
+            float wy = EmberfallVolcanoGeo.WallCenterY, wh = EmberfallVolcanoGeo.WallHeight, wt = EmberfallVolcanoGeo.WallThickness;
+            Slab(root.transform, "DungeonEnvelope_Floor", new Vector3(0f, EmberfallVolcanoGeo.FloorY, cz), new Vector3(w, 1f, d), floorMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_Ceiling", new Vector3(0f, EmberfallVolcanoGeo.CeilY, cz), new Vector3(w, 1f, d), wallMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_West", new Vector3(-hx, wy, cz), new Vector3(wt, wh, d), wallMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_East", new Vector3(hx, wy, cz), new Vector3(wt, wh, d), wallMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_South", new Vector3(0f, wy, EmberfallVolcanoGeo.BackZ), new Vector3(w, wh, wt), wallMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_NorthL", new Vector3(-EmberfallVolcanoGeo.NorthSegCenterX, wy, EmberfallVolcanoGeo.NorthZ), new Vector3(EmberfallVolcanoGeo.NorthSegWidth, wh, wt), wallMat, groundLayer);
+            Slab(root.transform, "DungeonEnvelope_NorthR", new Vector3(EmberfallVolcanoGeo.NorthSegCenterX, wy, EmberfallVolcanoGeo.NorthZ), new Vector3(EmberfallVolcanoGeo.NorthSegWidth, wh, wt), wallMat, groundLayer);
         }
 
         private static void Slab(Transform parent, string name, Vector3 position, Vector3 scale, Material material, int layer)

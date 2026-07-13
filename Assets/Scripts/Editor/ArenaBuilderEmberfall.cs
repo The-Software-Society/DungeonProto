@@ -46,9 +46,10 @@ namespace AldenFall.Editor
         private const float ApproachNorthZ = -55f;  // starts at the south city gate
         private const float ApproachSouthZ = -315f;  // ends at the volcano entrance
 
-        // ---- Volcano interior envelope (kept in sync with DungeonResetController) ----
-        private const float VolcanoEntranceZ = -315f;
-        private const float BossZ = -436f;
+        // ---- Volcano interior envelope: single source of truth in World.EmberfallVolcanoGeo,
+        // shared with the runtime DungeonResetController safety envelope so they cannot desync. ----
+        private const float VolcanoEntranceZ = AldenFall.World.EmberfallVolcanoGeo.EntranceZ;
+        private const float BossZ = AldenFall.World.EmberfallVolcanoGeo.BossZ;
 
         // ==================== ENTRY ====================
 
