@@ -70,6 +70,7 @@ namespace AldenFall.Quests
         public string Name;
         public string Description;
         public List<ObjectiveDef> Objectives = new List<ObjectiveDef>();
+        public int RequiredObjectiveCount = 0;   // 0 = all objectives; N = complete any N of them (Q13 prep)
         public List<RewardEntry> Rewards = new List<RewardEntry>();
         public List<QuestRewardOption> RewardChoices = new List<QuestRewardOption>();  // optional pick-one
         public int GoldReward;

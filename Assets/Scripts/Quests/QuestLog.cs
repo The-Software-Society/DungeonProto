@@ -222,8 +222,15 @@ namespace AldenFall.Quests
             var def = QuestDatabase.Get(id);
             if (def == null) return;
 
+            // Complete when enough objectives are satisfied. RequiredObjectiveCount 0
+            // means all are required (the default); N means any N of them (Q13 prep paths).
+            int required = def.RequiredObjectiveCount > 0
+                ? Mathf.Min(def.RequiredObjectiveCount, def.Objectives.Count)
+                : def.Objectives.Count;
+            int satisfied = 0;
             for (int i = 0; i < def.Objectives.Count; i++)
-                if (st.Progress[i] < def.Objectives[i].Count) return;   // still in progress
+                if (st.Progress[i] >= def.Objectives[i].Count) satisfied++;
+            if (satisfied < required) return;   // not enough done yet
 
             st.Status = QuestStatus.Complete;
             PlayCutscene(def.CompleteCutscene);
