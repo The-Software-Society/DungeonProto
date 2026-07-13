@@ -56,7 +56,7 @@ namespace AldenFall.DebugTools
             uiMode = System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-qaui") >= 0;
 
             // Never let the intro cutscene hijack the QA run.
-            PlayerPrefs.SetInt("cutscene_intro_seen_v2", 1);
+            PlayerPrefs.SetInt("cutscene_intro_seen_v3", 1);
             PlayerPrefs.Save();
 
             var args = System.Environment.GetCommandLineArgs();

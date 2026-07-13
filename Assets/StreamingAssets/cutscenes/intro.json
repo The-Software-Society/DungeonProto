@@ -3,6 +3,16 @@
   "letterbox": true,
   "steps": [
     { "type": "fade", "target": 1, "seconds": 0 },
+
+    { "type": "subtitle", "text": "Your last morning began like any other.", "seconds": 3.2, "blocking": true },
+    { "type": "subtitle", "text": "A grey window. Somewhere to be. The small weather of an ordinary life.", "seconds": 4.0, "blocking": true },
+    { "type": "wait", "seconds": 0.5 },
+    { "type": "subtitle", "text": "You do not remember the moment it ended. Only that it did.", "seconds": 3.8, "blocking": true },
+    { "type": "fade", "target": 0.12, "seconds": 0.14, "blocking": true },
+    { "type": "fade", "target": 1, "seconds": 0.4, "blocking": true },
+    { "type": "subtitle", "text": "Then light. Falling embers. A shape reassembling out of the dark, a shape that used to be you.", "seconds": 4.6, "blocking": true },
+    { "type": "subtitle", "text": "Pines overhead. The smoke of a burning mountain at your back. And a voice.", "seconds": 4.0, "blocking": true },
+
     { "type": "camera", "pos": [14, 9, 78], "lookAt": [0, 1.4, 90], "seconds": 0 },
     { "type": "fade", "target": 0, "seconds": 2.0, "blocking": false },
     { "type": "subtitle", "text": "THE NORTHERN GLADE", "seconds": 3.2, "blocking": false },

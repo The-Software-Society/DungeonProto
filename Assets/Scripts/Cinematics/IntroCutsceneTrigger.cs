@@ -21,7 +21,7 @@ namespace AldenFall.Cinematics
     {
         // v2: reworked "meet Aldric / choose a starting weapon" intro. A new key
         // guarantees the new scene shows once even for veterans of older builds.
-        private const string SeenKey = "cutscene_intro_seen_v2";
+        private const string SeenKey = "cutscene_intro_seen_v3";
 
         [SerializeField] private bool replayEveryEditorPlay = true;
 
