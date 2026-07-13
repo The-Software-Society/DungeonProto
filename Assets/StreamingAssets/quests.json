@@ -235,7 +235,7 @@
     {
       "Id": "q_clear_roads",
       "Name": "Clear the Forest Roads",
-      "Description": "With the girl home safe, the town asks more: goblins prowl the western woods and bandits the east. Thin them out so the roads breathe again.",
+      "Description": "With the girl home safe, Captain Rusk needs the roads cleared: goblins prowl the western woods and bandits the east. Thin them out. Word is the tavern will start posting bounties once the roads are yours.",
       "Objectives": [
         {
           "kind": "KillMob",
@@ -259,7 +259,42 @@
           "count": 1
         }
       ],
-      "PrereqQuestId": "q_rescue"
+      "PrereqQuestId": "q_rescue",
+      "GiverNpcId": "captain_rusk"
+    },
+    {
+      "Id": "q_gate",
+      "Name": "Retaliation at Emberfall Gate",
+      "Description": "Grukmar's death did not go unanswered. Orcs march on the city. Stand with Captain Rusk at the gate and break their charge.",
+      "Objectives": [
+        {
+          "kind": "DefendEvent",
+          "TargetId": "gate_defense",
+          "Count": 1,
+          "Description": "Defend the gate from the orc attack",
+          "LocationHint": "Take position at the north gate with Captain Rusk"
+        }
+      ],
+      "GoldReward": 175,
+      "GiverNpcId": "captain_rusk",
+      "PrereqQuestId": "q_clear_roads"
+    },
+    {
+      "Id": "q_old_ash",
+      "Name": "Old Ash, New Fire",
+      "Description": "You saw a man fall and rise again. Aldric has stopped pretending he does not understand. Find the old seal stones in the forest and bring him what you see.",
+      "Objectives": [
+        {
+          "kind": "InspectMarker",
+          "TargetId": "seal_stone",
+          "Count": 3,
+          "Description": "Inspect the old seal stones (0/3)",
+          "LocationHint": "Weathered stones stand in the forest and deepwood, off the main paths"
+        }
+      ],
+      "GoldReward": 80,
+      "GiverNpcId": "aldric",
+      "PrereqQuestId": "q_gate"
     },
     {
       "Id": "q_ember_scout",
@@ -281,7 +316,52 @@
         }
       ],
       "GoldReward": 60,
-      "PrereqQuestId": "q_clear_roads"
+      "PrereqQuestId": "q_old_ash"
+    },
+    {
+      "Id": "q_caldera_prep",
+      "Name": "Ready for the Caldera",
+      "Description": "The mountain will not wait much longer. Prepare however suits you. Do at least two of these before you descend.",
+      "RequiredObjectiveCount": 2,
+      "Objectives": [
+        {
+          "kind": "CookFood",
+          "TargetId": "",
+          "Count": 3,
+          "Description": "Cook three provisions (0/3)",
+          "LocationHint": "Any campfire with raw fish in your bag"
+        },
+        {
+          "kind": "CatchFish",
+          "TargetId": "",
+          "Count": 5,
+          "Description": "Land five fish for the road (0/5)",
+          "LocationHint": "The lake, northwest of the city"
+        },
+        {
+          "kind": "KillMob",
+          "TargetId": "dire_goblin",
+          "Count": 1,
+          "Description": "Best a dire beast",
+          "LocationHint": "Dire creatures haunt the deep woods"
+        },
+        {
+          "kind": "UseAbility",
+          "TargetId": "",
+          "Count": 8,
+          "Description": "Drill your abilities (0/8)",
+          "LocationHint": "Anywhere, keys 1-5"
+        }
+      ],
+      "Rewards": [
+        {
+          "itemId": "cooked_fish",
+          "count": 3
+        }
+      ],
+      "GoldReward": 60,
+      "GiverNpcId": "aldric",
+      "PrereqQuestId": "q_ember_scout"
     },
     {
       "Id": "q_floor_boss",
@@ -323,7 +403,7 @@
           ]
         }
       ],
-      "PrereqQuestId": "q_ember_scout"
+      "PrereqQuestId": "q_caldera_prep"
     }
   ]
 }

@@ -17,6 +17,7 @@ namespace AldenFall.Quests
         EatFood,
         CookFood,
         InspectMarker,   // press E on a world marker with a matching id (seal stones, dead-traveler markers)
+        DefendEvent,     // survive/clear a scripted wave attack (DefendZone) with a matching event id
     }
 
     /// <summary>One granted item, JSON-friendly (JsonUtility cannot serialize tuples).</summary>

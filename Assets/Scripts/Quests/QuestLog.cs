@@ -56,7 +56,14 @@ namespace AldenFall.Quests
             // CollectItem: anything entering the bag advances "gather N of item" objectives.
             if (inventory != null && inventory.OnItemAdded != null)
                 inventory.OnItemAdded.AddListener(id => Advance(ObjectiveKind.CollectItem, id));
+
+            // DefendEvent: a DefendZone clearing advances the matching objective.
+            World.DefendZone.OnDefendComplete += HandleDefendComplete;
         }
+
+        private void OnDestroy() => World.DefendZone.OnDefendComplete -= HandleDefendComplete;
+
+        private void HandleDefendComplete(string eventId) => Advance(ObjectiveKind.DefendEvent, eventId);
 
         // ReachLocation objectives are position-driven: poll the player's spot a few
         // times a second (declared in the enum since v1, but nothing drove it until

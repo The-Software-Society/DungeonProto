@@ -2160,6 +2160,51 @@ namespace AldenFall.Editor
 
             // Named NPC roster (Elowen, Rusk, Maela, Sella, Garron, Toma, Pip) from npcs.json.
             BuildDataNpcs(root, groundLayer);
+
+            // Q10 gate-defense set-piece (orc waves; a scene NetworkBehaviour like the world-state).
+            BuildGateDefense();
+
+            // Q11 "Old Ash, New Fire": three seal stones out in the forest and deepwood.
+            BuildSealStone("SealStone_West", new Vector3(-82f, 0f, 96f), groundLayer);
+            BuildSealStone("SealStone_East", new Vector3(64f, 0f, 110f), groundLayer);
+            BuildSealStone("SealStone_Deep", new Vector3(-30f, 0f, 184f), groundLayer);
+        }
+
+        private static void BuildGateDefense()
+        {
+            var go = new GameObject("GateDefense");
+            go.transform.position = new Vector3(0f, 0f, 60f);   // just inside the north gate
+            go.AddComponent<Mirror.NetworkIdentity>();
+            var dz = go.AddComponent<World.DefendZone>();
+            var so = new SerializedObject(dz);
+            so.FindProperty("eventId").stringValue = "gate_defense";
+            so.FindProperty("requiredQuestId").stringValue = "q_gate";
+            so.FindProperty("mobId").stringValue = "orc_brute";
+            so.FindProperty("completeCutscene").stringValue = "q_gate_garron";
+            so.ApplyModifiedProperties();
+        }
+
+        private static void BuildSealStone(string name, Vector3 pos, int groundLayer)
+        {
+            var go = new GameObject(name);
+            go.transform.position = pos;
+
+            var stone = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            stone.name = "Stone";
+            stone.transform.SetParent(go.transform, false);
+            stone.transform.localScale = new Vector3(1.0f, 2.2f, 0.7f);
+            stone.transform.localPosition = new Vector3(0f, 1.1f, 0f);
+            stone.transform.localRotation = Quaternion.Euler(
+                (float)(rng.NextDouble() * 8 - 4), (float)(rng.NextDouble() * 360), (float)(rng.NextDouble() * 6 - 3));
+            var rend = stone.GetComponent<Renderer>();
+            if (rend != null) rend.sharedMaterial = Mat("SealStone", new Color(0.34f, 0.33f, 0.36f), smoothness: 0.2f);
+            if (groundLayer >= 0) stone.layer = groundLayer;
+
+            var marker = go.AddComponent<World.InspectableMarker>();
+            marker.MarkerId = "seal_stone";
+            marker.InspectText = "Old runes, worn but warm to the touch. A seal, and behind it something that stirs.";
+            marker.Prompt = "Inspect the seal stone";
+            marker.Radius = 3.5f;
         }
 
         private static void BuildDataNpcs(Transform root, int groundLayer)

@@ -340,6 +340,18 @@ namespace AldenFall.DebugTools
                 Check("reward-choice Grant adds the chosen item", inv2.CountOf("adept_focus") == before + 1);
             }
 
+            // Phase 3 chain + set-pieces.
+            var gate = Quests.QuestDatabase.Get("q_gate");
+            Check("q_gate uses DefendEvent kind", gate != null && gate.Objectives.Count > 0 && gate.Objectives[0].Kind == Quests.ObjectiveKind.DefendEvent);
+            var prep = Quests.QuestDatabase.Get("q_caldera_prep");
+            Check("q_caldera_prep is any-2-of", prep != null && prep.RequiredObjectiveCount == 2);
+            int sealStones = 0;
+            foreach (var m in FindObjectsByType<World.InspectableMarker>(FindObjectsSortMode.None))
+                if (m.MarkerId == "seal_stone") sealStones++;
+            Check("3 seal stones placed", sealStones == 3);
+            bool hasGate = FindObjectsByType<World.DefendZone>(FindObjectsSortMode.None).Length >= 1;
+            Check("gate DefendZone present", hasGate);
+
             // Named NPC roster loaded + placed in the scene.
             Check("npc roster loads 7", World.NpcRoster.LoadAll().Count == 7);
             bool hasElowen = false;
