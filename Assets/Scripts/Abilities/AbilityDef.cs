@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using AldenFall.Combat;
+using AldenFall.Items;
 using AldenFall.Progression;
 using AldenFall.Stats;
 
@@ -31,16 +32,23 @@ namespace AldenFall.Abilities
         Blink,       // instant short-range teleport in the facing direction (mobility)
     }
 
-    /// <summary>Static definition of one active ability (code-as-data, like ItemDef).</summary>
+    /// <summary>Static definition of one active ability, loaded from abilities.json.
+    /// Enums, flags, and the nullable projectile tint serialize as editable strings
+    /// (get/set properties over string backing fields); readers use the typed accessors.</summary>
+    [System.Serializable]
     public class AbilityDef
     {
         public string Id;
         public string Name;
         public string Description;
         public string IconSprite;          // UISpriteGenerator sprite name
-        public SkillType Tree;             // which combat skill tree it lives under
-        public WeaponClass RequiredWeapon;
-        public AbilityKind Kind;
+
+        public string tree = "Attack";             // SkillType name: which combat skill tree it lives under
+        public string requiredWeapon = "Any";      // WeaponClass name: Any/Sword/Focus
+        public string kind = "Projectile";         // AbilityKind name
+        public SkillType Tree { get => Parse(tree, SkillType.Attack); set => tree = value.ToString(); }
+        public WeaponClass RequiredWeapon { get => Parse(requiredWeapon, WeaponClass.Any); set => requiredWeapon = value.ToString(); }
+        public AbilityKind Kind { get => Parse(kind, AbilityKind.Projectile); set => kind = value.ToString(); }
 
         public float Cooldown;
         public float BaseDamage;           // spell base for Projectile/Nova
@@ -60,30 +68,52 @@ namespace AldenFall.Abilities
         public float StatusDuration;
         public float StatusTickInterval;
         public float StatusTickDamage;
-        public StatusFlags StatusFlags;            // e.g. Stunned for Bash
+        public string statusFlags = "None";        // StatusFlags name(s), e.g. "Stunned" (comma-separated for combos)
+        public StatusFlags StatusFlags { get => Parse(statusFlags, StatusFlags.None); set => statusFlags = value.ToString(); }
         public float StatusMoveSpeedMultiplier;    // 0 = none; 0.5 = half speed (Hamstring)
         // On-target debuff stat mods (e.g. Hex shredding Defence/Armor to amp incoming damage).
         // Routed through StatusSystem → the target's StatBlock, cleared when the status expires.
-        public List<(StatType type, float value)> StatusStatMods = new List<(StatType, float)>();
+        public List<StatBonus> StatusStatMods = new List<StatBonus>();
 
-        // Projectile visual/behaviour overrides. Tint null = the default orange fireball look.
-        public Color? ProjectileTint;
+        // Projectile visual/behaviour overrides. Empty tint = the default orange fireball look.
+        public string projectileTint = "";         // hex like "#E4622A", empty = default look
+        public Color? ProjectileTint
+        {
+            get => string.IsNullOrEmpty(projectileTint)
+                ? (Color?)null
+                : (ColorUtility.TryParseHtmlString(projectileTint, out var c) ? c : (Color?)null);
+            set => projectileTint = value.HasValue ? "#" + ColorUtility.ToHtmlStringRGBA(value.Value) : "";
+        }
         public float ProjectileSpeed;      // 0 = use PlayerAbilities.fireballSpeed
 
         public float ImpactDelay;          // GroundAoe: seconds from cast to the AoE landing
 
-        public List<(StatType type, float value)> BuffMods = new List<(StatType, float)>();
+        public List<StatBonus> BuffMods = new List<StatBonus>();
         public float BuffDuration;
+
+        private static T Parse<T>(string s, T fallback) where T : struct =>
+            System.Enum.TryParse<T>(s, out var v) ? v : fallback;
+    }
+
+    /// <summary>File wrapper for JsonUtility (mirrors Data.MonsterFile).</summary>
+    [System.Serializable]
+    public class AbilityFile
+    {
+        public AbilityDef[] abilities = new AbilityDef[0];
     }
 
     /// <summary>
-    /// Code-defined ability registry. Demo content is deliberately minimal -
-    /// one ability per weapon class per tree, but everything downstream
-    /// (tree UI, action bar, mastery) iterates this, so growth is data-only.
+    /// Ability registry, loaded from StreamingAssets/abilities.json. Everything
+    /// downstream (tree UI, action bar, mastery) iterates this, so growth is
+    /// data-only, no code change.
     /// </summary>
     public static class AbilityDatabase
     {
+        public const string FileName = "abilities.json";
         private static Dictionary<string, AbilityDef> abilities;
+
+        public static string FilePath =>
+            System.IO.Path.Combine(Application.streamingAssetsPath, FileName);
 
         public static AbilityDef Get(string id)
         {
@@ -101,295 +131,33 @@ namespace AldenFall.Abilities
             if (abilities != null) return;
             abilities = new Dictionary<string, AbilityDef>();
 
-            Register(new AbilityDef
+            try
             {
-                Id = "fireball",
-                Name = "Fireball",
-                Description = "Hurl a homing bolt of flame that sets the target burning.",
-                IconSprite = "icon_fireball",
-                Tree = SkillType.Magic,
-                RequiredWeapon = WeaponClass.Any,
-                Kind = AbilityKind.Projectile,
-                Cooldown = 2.5f,
-                BaseDamage = 14f,
-                Range = 30f,
-                AppliesStatusId = "burn",
-                StatusDuration = 2f,
-                StatusTickInterval = 0.5f,
-                StatusTickDamage = 1.5f,
-            });
-
-            Register(new AbilityDef
+                if (!System.IO.File.Exists(FilePath))
+                {
+                    Debug.LogError($"AbilityDatabase: {FilePath} not found");
+                    return;
+                }
+                var file = JsonUtility.FromJson<AbilityFile>(System.IO.File.ReadAllText(FilePath));
+                if (file?.abilities == null)
+                {
+                    Debug.LogError("AbilityDatabase: abilities.json parsed to nothing");
+                    return;
+                }
+                foreach (var d in file.abilities)
+                {
+                    if (d == null || string.IsNullOrEmpty(d.Id)) continue;
+                    abilities[d.Id] = d;
+                }
+                Debug.Log($"AbilityDatabase: loaded {abilities.Count} abilities");
+            }
+            catch (System.Exception e)
             {
-                Id = "ember_nova",
-                Name = "Ember Nova",
-                Description = "Detonate a ring of fire around you, blasting enemies away.",
-                IconSprite = "icon_nova",
-                Tree = SkillType.Magic,
-                RequiredWeapon = WeaponClass.Focus,
-                Kind = AbilityKind.Nova,
-                Cooldown = 8f,
-                BaseDamage = 18f,
-                Radius = 5f,
-                Knockback = 10f,   // the one player knockback left
-            });
-
-            Register(new AbilityDef
-            {
-                Id = "blade_rush",
-                Name = "Blade Rush",
-                Description = "Dash to your target and slam them with the flat of your blade, stunning them.",
-                IconSprite = "icon_dash",
-                Tree = SkillType.Attack,
-                RequiredWeapon = WeaponClass.Sword,
-                Kind = AbilityKind.DashStun,
-                Cooldown = 7f,
-                MeleeMultiplier = 1.6f,
-                Range = 9f,
-                DashSpeed = 22f,
-                StunDuration = 1.2f,
-            });
-
-            Register(new AbilityDef
-            {
-                Id = "savage_cleave",
-                Name = "Savage Cleave",
-                Description = "A brutal overhead cleave that hits far harder than any swing.",
-                IconSprite = "icon_cleave",
-                Tree = SkillType.Strength,
-                RequiredWeapon = WeaponClass.Sword,
-                Kind = AbilityKind.SingleHit,
-                Cooldown = 7f,
-                MeleeMultiplier = 2.2f,
-                Range = 3f,
-            });
-
-            Register(new AbilityDef
-            {
-                Id = "bulwark",
-                Name = "Bulwark",
-                Description = "Brace behind your guard: +8 Armor and +10 Defence for 8 seconds.",
-                IconSprite = "icon_bulwark",
-                Tree = SkillType.Defence,
-                RequiredWeapon = WeaponClass.Any,
-                Kind = AbilityKind.SelfBuff,
-                Cooldown = 15f,
-                BuffMods = { (StatType.Armor, 8f), (StatType.Defence, 10f) },
-                BuffDuration = 8f,
-            });
-
-            // ---- v5: three abilities per combat tree ----
-
-            Register(new AbilityDef
-            {
-                Id = "blade_flurry",
-                Name = "Blade Flurry",
-                Description = "A blur of quick stabs that leaves the target bleeding.",
-                IconSprite = "icon_flurry",
-                Tree = SkillType.Attack,
-                RequiredWeapon = WeaponClass.Sword,
-                Kind = AbilityKind.MultiHit,
-                Cooldown = 6f,
-                MeleeMultiplier = 0.55f,
-                Range = 3f,
-                HitCount = 4,
-                HitInterval = 0.16f,
-                AppliesStatusId = "bleed",
-                StatusDuration = 5f,
-                StatusTickInterval = 1f,
-                StatusTickDamage = 2.5f,
-            });
-
-            Register(new AbilityDef
-            {
-                Id = "hamstring",
-                Name = "Hamstring",
-                Description = "Slash the legs: solid damage and the target limps at half speed.",
-                IconSprite = "icon_slow",
-                Tree = SkillType.Attack,
-                RequiredWeapon = WeaponClass.Sword,
-                Kind = AbilityKind.SingleHit,
-                Cooldown = 6f,
-                MeleeMultiplier = 1.2f,
-                Range = 3f,
-                AppliesStatusId = "slow",
-                StatusDuration = 4f,
-                StatusMoveSpeedMultiplier = 0.5f,
-            });
-
-            Register(new AbilityDef
-            {
-                Id = "whirlwind",
-                Name = "Whirlwind",
-                Description = "Spin with blade out, striking and shoving everything around you.",
-                IconSprite = "icon_whirl",
-                Tree = SkillType.Strength,
-                RequiredWeapon = WeaponClass.Sword,
-                Kind = AbilityKind.Nova,
-                Cooldown = 8f,
-                SpinCaster = true,
-                MeleeMultiplier = 1.4f,
-                Radius = 4.5f,
-                Knockback = 6f,
-            });
-
-            Register(new AbilityDef
-            {
-                Id = "seismic_slam",
-                Name = "Seismic Slam",
-                Description = "Slam the ground: everything nearby is damaged and dragged toward you.",
-                IconSprite = "icon_slam",
-                Tree = SkillType.Strength,
-                RequiredWeapon = WeaponClass.Sword,
-                Kind = AbilityKind.Nova,
-                Cooldown = 10f,
-                MeleeMultiplier = 1.1f,
-                Radius = 6.5f,
-                Knockback = -14f,   // negative = pull toward the caster
-            });
-
-            Register(new AbilityDef
-            {
-                Id = "challenging_shout",
-                Name = "Challenging Shout",
-                Description = "Bellow a challenge: every enemy nearby turns on you.",
-                IconSprite = "icon_taunt",
-                Tree = SkillType.Defence,
-                RequiredWeapon = WeaponClass.Any,
-                Kind = AbilityKind.Taunt,
-                Cooldown = 12f,
-                Radius = 12f,
-            });
-
-            Register(new AbilityDef
-            {
-                Id = "bash",
-                Name = "Bash",
-                Description = "Crack the target with your pommel, stunning them briefly.",
-                IconSprite = "icon_bash",
-                Tree = SkillType.Defence,
-                RequiredWeapon = WeaponClass.Sword,
-                Kind = AbilityKind.SingleHit,
-                Cooldown = 10f,
-                MeleeMultiplier = 0.8f,
-                Range = 3f,
-                AppliesStatusId = "stun",
-                StatusDuration = 1.5f,
-                StatusFlags = StatusFlags.Stunned,
-            });
-
-            Register(new AbilityDef
-            {
-                Id = "veil",
-                Name = "Veil of Shadows",
-                Description = "Fade from sight for 6 seconds, enemies forget you. Attacking breaks the veil.",
-                IconSprite = "icon_veil",
-                Tree = SkillType.Magic,
-                RequiredWeapon = WeaponClass.Focus,
-                Kind = AbilityKind.SelfBuff,
-                Cooldown = 25f,
-                AppliesStatusId = "invisible",   // the aggro-drop status EnemyAI checks
-                BuffDuration = 6f,
-            });
-
-            // ---- v7: magic depth, a full magic-only kit ----
-            // A single-target filler nuke, a ranged ground AoE, a curse/DoT debuff,
-            // a blink mobility, and a magic ward, so a pure caster has real options.
-
-            // Fast, low-cooldown bolt: less punch than Fireball but spammable and
-            // it CHILLS (a movement slow, no burn), the caster's kiting tool.
-            Register(new AbilityDef
-            {
-                Id = "frost_bolt",
-                Name = "Frost Bolt",
-                Description = "A darting shard of ice, quick to cast and it chills the target, slowing them.",
-                IconSprite = "icon_bolt",
-                Tree = SkillType.Magic,
-                RequiredWeapon = WeaponClass.Any,
-                Kind = AbilityKind.Projectile,
-                Cooldown = 1.5f,
-                BaseDamage = 11f,
-                Range = 30f,
-                ProjectileTint = new Color(0.45f, 0.75f, 1f, 1f),
-                ProjectileSpeed = 30f,   // noticeably faster than the fireball
-                AppliesStatusId = "chill",
-                StatusDuration = 2.5f,
-                StatusMoveSpeedMultiplier = 0.6f,
-            });
-
-            // Ranged targeted AoE: lands where the target stands after a short
-            // fall, distinct from the self-centred Ember Nova.
-            Register(new AbilityDef
-            {
-                Id = "meteor_strike",
-                Name = "Meteor Strike",
-                Description = "Call down a blazing meteor onto your target, scorching everything nearby.",
-                IconSprite = "icon_flame",
-                Tree = SkillType.Magic,
-                RequiredWeapon = WeaponClass.Focus,
-                Kind = AbilityKind.GroundAoe,
-                Cooldown = 12f,
-                BaseDamage = 28f,
-                Range = 28f,
-                Radius = 5f,
-                ImpactDelay = 0.7f,
-            });
-
-            // Curse: light direct hit, a lingering arcane DoT, and, the point -
-            // it SHREDS the target's Defence/Armor, amplifying all incoming damage.
-            Register(new AbilityDef
-            {
-                Id = "hex",
-                Name = "Hex of Frailty",
-                Description = "Curse the target: it withers over time and its defences crumble, taking more damage.",
-                IconSprite = "icon_veil",
-                Tree = SkillType.Magic,
-                RequiredWeapon = WeaponClass.Focus,
-                Kind = AbilityKind.Projectile,
-                Cooldown = 10f,
-                BaseDamage = 6f,
-                Range = 30f,
-                ProjectileTint = new Color(0.7f, 0.35f, 0.95f, 1f),
-                ProjectileSpeed = 20f,
-                AppliesStatusId = "hex",
-                StatusDuration = 6f,
-                StatusTickInterval = 1f,
-                StatusTickDamage = 3f,
-                StatusStatMods = { (StatType.Defence, -6f), (StatType.Armor, -4f) },
-            });
-
-            // Mobility: instant short teleport in the facing direction. No damage -
-            // the caster's escape / gap-closer so magic isn't rooted in place.
-            Register(new AbilityDef
-            {
-                Id = "blink",
-                Name = "Arcane Blink",
-                Description = "Wink out and reappear a short distance ahead, a caster's escape.",
-                IconSprite = "icon_dash",
-                Tree = SkillType.Magic,
-                RequiredWeapon = WeaponClass.Any,
-                Kind = AbilityKind.Blink,
-                Cooldown = 9f,
-                Range = 8f,
-            });
-
-            // Defensive ward: the caster's answer to Bulwark, a timed Armor/Defence
-            // buff so a mage can turtle a burst instead of only kiting.
-            Register(new AbilityDef
-            {
-                Id = "arcane_ward",
-                Name = "Arcane Ward",
-                Description = "Wreathe yourself in a shield of force: +6 Armor and +8 Defence for 8 seconds.",
-                IconSprite = "icon_shield",
-                Tree = SkillType.Magic,
-                RequiredWeapon = WeaponClass.Focus,
-                Kind = AbilityKind.SelfBuff,
-                Cooldown = 18f,
-                BuffMods = { (StatType.Armor, 6f), (StatType.Defence, 8f) },
-                BuffDuration = 8f,
-            });
+                Debug.LogError($"AbilityDatabase: failed to load {FileName}: {e.Message}");
+            }
         }
 
-        private static void Register(AbilityDef def) => abilities[def.Id] = def;
+        /// <summary>Drop the cache so the next access reloads abilities.json (hot-reload).</summary>
+        public static void Reload() { abilities = null; EnsureInitialized(); }
     }
 }

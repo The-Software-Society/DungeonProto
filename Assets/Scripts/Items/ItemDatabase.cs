@@ -53,6 +53,14 @@ namespace AldenFall.Items
             t = System.Enum.TryParse<StatType>(type, out var k) ? k : default;
             v = value;
         }
+
+        /// <summary>Convert to the (StatType,float) tuple list that StatBlock.ApplyModifiers expects.</summary>
+        public static List<(StatType type, float value)> ToTuples(List<StatBonus> list)
+        {
+            var r = new List<(StatType, float)>(list?.Count ?? 0);
+            if (list != null) foreach (var (t, v) in list) r.Add((t, v));
+            return r;
+        }
     }
 
     /// <summary>Static definition of an item type, loaded from items.json. Bonuses are StatBlock modifiers.</summary>

@@ -46,6 +46,12 @@ namespace AldenFall.Editor
                 Debug.Log($"[Validate]   item {it.Id}: slot={it.Slot} kind={it.WeaponKind} rar={it.Rarity} sell={it.SellValue} heal={it.HealAmount} cook='{it.CookedResult}' [{bonuses}]");
             }
 
+            var abils = new System.Collections.Generic.List<AldenFall.Abilities.AbilityDef>(AldenFall.Abilities.AbilityDatabase.All);
+            Debug.Log($"[Validate] abilities loaded: {abils.Count}");
+            foreach (var ab in abils)
+                Debug.Log($"[Validate]   ability {ab.Id}: tree={ab.Tree} req={ab.RequiredWeapon} kind={ab.Kind} flags={ab.StatusFlags} " +
+                          $"tint={(ab.ProjectileTint.HasValue ? "yes" : "no")} statmods={ab.StatusStatMods.Count} buffs={ab.BuffMods.Count}");
+
             var quests = new System.Collections.Generic.List<AldenFall.Quests.QuestDef>(AldenFall.Quests.QuestDatabase.All);
             Debug.Log($"[Validate] quests loaded: {quests.Count}");
             foreach (var q in quests)

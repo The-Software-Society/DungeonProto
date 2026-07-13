@@ -632,7 +632,7 @@ namespace AldenFall.Abilities
                 Id = string.IsNullOrEmpty(def.AppliesStatusId) ? def.Id : def.AppliesStatusId,
                 DisplayName = def.Name,
                 Duration = def.BuffDuration,
-                StatMods = def.BuffMods,
+                StatMods = AldenFall.Items.StatBonus.ToTuples(def.BuffMods),
                 Source = gameObject,
             });
             skills?.AddXp(TreeSkill(def), 20f);
@@ -790,7 +790,7 @@ namespace AldenFall.Abilities
                 MoveSpeedMultiplier = def.StatusMoveSpeedMultiplier,
                 // Debuff stat mods (Hex: negative Defence/Armor = damage amp) routed
                 // through the target's StatBlock, cleared when the status expires.
-                StatMods = def.StatusStatMods != null && def.StatusStatMods.Count > 0 ? def.StatusStatMods : null,
+                StatMods = def.StatusStatMods != null && def.StatusStatMods.Count > 0 ? AldenFall.Items.StatBonus.ToTuples(def.StatusStatMods) : null,
                 Source = gameObject,
             });
         }
