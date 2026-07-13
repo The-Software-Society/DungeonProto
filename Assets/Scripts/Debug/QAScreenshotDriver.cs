@@ -312,6 +312,21 @@ namespace AldenFall.DebugTools
             var bash = Abilities.AbilityDatabase.Get("bash");
             Check("ability bash has Stunned flag", bash != null && (bash.StatusFlags & Combat.StatusFlags.Stunned) != 0);
 
+            // Phase 8 ability mastery ranks 1-6.
+            Check("AbilityMastery MaxRank == 6", Abilities.AbilityMastery.MaxRank == 6);
+            var meteor = Abilities.AbilityDatabase.Get("meteor_strike");
+            Check("meteor_strike loads rankMods", meteor != null && meteor.rankMods.Count >= 3);
+            var mast = player.GetComponent<Abilities.AbilityMastery>();
+            if (mast != null)
+            {
+                mast.ResetAll();
+                for (int i = 0; i < 20; i++) mast.AddUse("meteor_strike");   // -> rank 3 (>=15 uses)
+                Check("mastery rank climbs with use (>=3)", mast.RankFor("meteor_strike") >= 3);
+                Check("mastery resolves rankMod (radius bonus at rank 3)", mast.Modifiers("meteor_strike").bonusRadius > 0f);
+                Check("mastery DamageMultiplier > 1 at higher rank", mast.DamageMultiplier("meteor_strike") > 1f);
+            }
+            else Check("player has AbilityMastery", false);
+
             // Inventory + equip -> live StatBlock change.
             var inv = player.GetComponent<Items.Inventory>();
             var equip = player.GetComponent<Items.Equipment>();

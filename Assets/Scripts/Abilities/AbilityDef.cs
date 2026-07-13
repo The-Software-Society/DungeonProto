@@ -33,6 +33,22 @@ namespace AldenFall.Abilities
         Blink,       // instant short-range teleport in the facing direction (mobility)
     }
 
+    /// <summary>Per-mastery-rank upgrade for an ability (rank 1 to 6). The applicable
+    /// entry is the highest whose rank is at or below the player's current rank, so
+    /// the array lists breakpoints. Mechanical fields are applied by PlayerAbilities;
+    /// vfxTier/anim/addsStatus name upgrade tiers for the visual pass.</summary>
+    [System.Serializable]
+    public class AbilityRankMod
+    {
+        public int rank = 1;
+        public float damageMult = 1f;
+        public float bonusRadius = 0f;
+        public int extraHits = 0;
+        public string addsStatus = "";
+        public string vfxTier = "a";
+        public string anim = "";
+    }
+
     /// <summary>Static definition of one active ability, loaded from abilities.json.
     /// Enums, flags, and the nullable projectile tint serialize as editable strings
     /// (get/set properties over string backing fields); readers use the typed accessors.</summary>
@@ -91,6 +107,9 @@ namespace AldenFall.Abilities
 
         public List<StatBonus> BuffMods = new List<StatBonus>();
         public float BuffDuration;
+
+        // Per-rank mastery upgrades (empty = the default +damage-per-rank curve applies).
+        public List<AbilityRankMod> rankMods = new List<AbilityRankMod>();
 
         private static T Parse<T>(string s, T fallback) where T : struct =>
             System.Enum.TryParse<T>(s, out var v) ? v : fallback;

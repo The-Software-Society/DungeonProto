@@ -12,8 +12,8 @@ namespace AldenFall.Abilities
     public class AbilityMastery : MonoBehaviour
     {
         private const string PrefsKey = "mastery_v1";
-        public const int MaxRank = 5;
-        private static readonly int[] RankThresholds = { 0, 5, 15, 35, 70 };
+        public const int MaxRank = 6;
+        private static readonly int[] RankThresholds = { 0, 5, 15, 35, 70, 120 };
 
         private readonly Dictionary<string, int> uses = new Dictionary<string, int>();
 
@@ -34,8 +34,26 @@ namespace AldenFall.Abilities
             return rank;
         }
 
-        public float DamageMultiplier(string abilityId) =>
-            1f + 0.08f * (RankFor(abilityId) - 1);
+        public float DamageMultiplier(string abilityId) => Modifiers(abilityId).damageMult;
+
+        /// <summary>
+        /// The resolved rank upgrade for an ability at its current rank: the highest
+        /// rankMods entry whose rank is at or below the current rank. Abilities with no
+        /// rankMods fall back to the default curve (+8% damage per rank, no other change).
+        /// </summary>
+        public AbilityRankMod Modifiers(string abilityId)
+        {
+            int rank = RankFor(abilityId);
+            var def = AbilityDatabase.Get(abilityId);
+            if (def != null && def.rankMods != null && def.rankMods.Count > 0)
+            {
+                AbilityRankMod best = null;
+                foreach (var m in def.rankMods)
+                    if (m != null && m.rank <= rank && (best == null || m.rank > best.rank)) best = m;
+                if (best != null) return best;
+            }
+            return new AbilityRankMod { rank = rank, damageMult = 1f + 0.08f * (rank - 1) };
+        }
 
         /// <summary>Progress toward the next rank, 0..1 (1 at max rank).</summary>
         public float MasteryProgress01(string abilityId)

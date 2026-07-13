@@ -388,21 +388,23 @@ namespace AldenFall.Abilities
                 animator.SetTrigger(def.Knockback < 0f ? SpecialAttackHash : AttackHash);
 
             Vector3 center = transform.position + Vector3.up;
-            var colliders = Physics.OverlapSphere(center, def.Radius,
+            var mods = mastery != null ? mastery.Modifiers(def.Id) : new AbilityRankMod();
+            float radius = def.Radius + mods.bonusRadius;   // mastery widens the AoE
+            var colliders = Physics.OverlapSphere(center, radius,
                 GameLayers.GetEnemyMask(), QueryTriggerInteraction.Ignore);
 
             // Radius telegraph so AoE range always reads on screen
-            GroundRingEffect.Create(transform.position, def.Radius,
+            GroundRingEffect.Create(transform.position, radius,
                 def.MeleeMultiplier > 0f ? new Color(1f, 0.8f, 0.35f) : new Color(0.45f, 0.7f, 1f));
             if (def.Id == "whirlwind")
-                CreateWhirlwindVisual(def.Radius);
+                CreateWhirlwindVisual(radius);
             else if (def.Id == "seismic_slam")
-                CreateSeismicVisual(def.Radius);
+                CreateSeismicVisual(radius);
 
             // Melee novas (Whirlwind/Seismic Slam) scale off weapon damage;
             // spell novas (Ember Nova) off spell power.
             bool meleeNova = def.MeleeMultiplier > 0f;
-            float multiplier = mastery != null ? mastery.DamageMultiplier(def.Id) : 1f;
+            float multiplier = mods.damageMult;
             var damaged = new HashSet<Health>();
             foreach (var col in colliders)
             {
@@ -437,7 +439,8 @@ namespace AldenFall.Abilities
 
         private IEnumerator MultiHitRoutine(AbilityDef def, Transform target)
         {
-            int hits = Mathf.Max(1, def.HitCount);
+            var mhMods = mastery != null ? mastery.Modifiers(def.Id) : new AbilityRankMod();
+            int hits = Mathf.Max(1, def.HitCount + mhMods.extraHits);   // mastery adds strikes
             for (int i = 0; i < hits; i++)
             {
                 if (target == null) yield break;
@@ -656,15 +659,18 @@ namespace AldenFall.Abilities
             if (target != null)
                 FaceInstantly(target.position);
 
+            var mods = mastery != null ? mastery.Modifiers(def.Id) : new AbilityRankMod();
+            float radius = def.Radius + mods.bonusRadius;   // mastery widens the blast
+
             Vector3 point = ResolveGroundPoint(def, target, transform.position, transform.forward);
-            FallingOrbEffect.Create(point, def.Radius, def.ImpactDelay, MeteorColor);
+            FallingOrbEffect.Create(point, radius, def.ImpactDelay, MeteorColor);
 
             yield return new WaitForSeconds(def.ImpactDelay);
 
-            var colliders = Physics.OverlapSphere(point + Vector3.up * 0.5f, def.Radius,
+            var colliders = Physics.OverlapSphere(point + Vector3.up * 0.5f, radius,
                 GameLayers.GetEnemyMask(), QueryTriggerInteraction.Ignore);
 
-            float multiplier = mastery != null ? mastery.DamageMultiplier(def.Id) : 1f;
+            float multiplier = mods.damageMult;
             var damaged = new HashSet<Health>();
             foreach (var col in colliders)
             {
