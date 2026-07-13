@@ -59,6 +59,10 @@ namespace AldenFall.DebugTools
             PlayerPrefs.SetInt("cutscene_intro_seen_v3", 1);
             PlayerPrefs.Save();
 
+            // Start each QA run from a clean save so the live PlayerSave auto-load is
+            // deterministic (a prior run's roundtrip test wrote this account's file).
+            Persistence.PlayerPersistence.Delete(Persistence.PlayerIdentity.AccountId);
+
             var args = System.Environment.GetCommandLineArgs();
             int dirArg = System.Array.IndexOf(args, "-qadir");
             outDir = dirArg >= 0 && dirArg + 1 < args.Length
@@ -450,6 +454,24 @@ namespace AldenFall.DebugTools
             Check("persistence roundtrip: gold", loaded != null && loaded.gold == 777);
             Check("persistence roundtrip: skills", loaded != null && loaded.skillLevels != null && loaded.skillLevels.Length == 12 && loaded.skillLevels[0] == 5);
             Check("player identity is stable + non-empty", !string.IsNullOrEmpty(Persistence.PlayerIdentity.AccountId));
+
+            // Phase 10d: full capture -> save -> load -> apply roundtrip on the LIVE host
+            // player via its PlayerSave component (gold + a skill actually restore).
+            var pSave = player.GetComponent<Persistence.PlayerSave>();
+            Check("live player has PlayerSave component", pSave != null);
+            if (pSave != null)
+            {
+                var pWallet = player.GetComponent<Items.Wallet>();
+                var pSkills = player.GetComponent<Progression.Skills>();
+                pWallet?.SetGold(4321);
+                pSkills?.Restore(Progression.SkillType.Strength, 7, 0f);
+                pSave.ForceSave();                                    // writes PlayerIdentity account
+                pWallet?.SetGold(0);
+                pSkills?.Restore(Progression.SkillType.Strength, 1, 0f);
+                pSave.ForceLoad();                                    // pulls it back and applies
+                Check("PlayerSave restores gold", pWallet != null && pWallet.Gold == 4321);
+                Check("PlayerSave restores skill level", pSkills != null && pSkills.Level(Progression.SkillType.Strength) == 7);
+            }
 
             // Safe zones baked into the scene (pond + city peaceful, forest not).
             Check("city center is a safe zone", World.SafeZone.IsInAnySafeZone(Vector3.zero));
