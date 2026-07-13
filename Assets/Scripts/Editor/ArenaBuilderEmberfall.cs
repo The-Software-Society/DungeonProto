@@ -2174,8 +2174,7 @@ namespace AldenFall.Editor
         {
             var go = new GameObject("GateDefense");
             go.transform.position = new Vector3(0f, 0f, 60f);   // just inside the north gate
-            go.AddComponent<Mirror.NetworkIdentity>();
-            var dz = go.AddComponent<World.DefendZone>();
+            var dz = go.AddComponent<World.DefendZone>();   // plain MonoBehaviour, server-driven (like MobCamp)
             var so = new SerializedObject(dz);
             so.FindProperty("eventId").stringValue = "gate_defense";
             so.FindProperty("requiredQuestId").stringValue = "q_gate";

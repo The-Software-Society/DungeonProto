@@ -8,14 +8,15 @@ namespace AldenFall.World
 {
     /// <summary>
     /// A scripted wave-defense set-piece (the Q10 orc attack on Emberfall Gate).
-    /// Arms when the LOCAL player is near with the required quest active, then the
-    /// server spawns timed waves of a mob. When the waves are cleared (or time
-    /// out), every client is told: the local QuestLog advances its DefendEvent
-    /// objective and the completion cutscene (Garron's death and return) plays.
-    /// Server-authoritative spawning (mirrors MobCamp); the mob prefab is resolved
-    /// at runtime from the NetworkManager spawn list so it needs no build-time wiring.
+    /// Plain MonoBehaviour, server-authoritative like MobCamp (NOT a scene network
+    /// object): on the server it waits for a player to approach with the required
+    /// quest active, spawns timed waves of a mob (prefab resolved from the spawn
+    /// list), and when they are cleared fires a static event so the local QuestLog
+    /// advances its DefendEvent objective and the completion cutscene plays.
+    /// (Host mode reads the local player's quest state; pure-client triggering on a
+    /// dedicated server is a Phase-13 multiplayer-validation item.)
     /// </summary>
-    public class DefendZone : NetworkBehaviour
+    public class DefendZone : MonoBehaviour
     {
         [SerializeField] private string eventId = "gate_defense";
         [SerializeField] private string requiredQuestId = "q_gate";
@@ -23,7 +24,7 @@ namespace AldenFall.World
         [SerializeField] private int waves = 3;
         [SerializeField] private int perWave = 2;
         [SerializeField] private float spawnRadius = 11f;
-        [SerializeField] private float triggerRadius = 20f;
+        [SerializeField] private float triggerRadius = 22f;
         [SerializeField] private string completeCutscene = "q_gate_garron";
 
         public string EventId { get => eventId; set => eventId = value; }
@@ -31,31 +32,35 @@ namespace AldenFall.World
         public string MobId { get => mobId; set => mobId = value; }
         public string CompleteCutscene { get => completeCutscene; set => completeCutscene = value; }
 
-        /// <summary>Fired on every client when a defense event clears (arg = eventId).</summary>
+        /// <summary>Fired when a defense event clears (arg = eventId). Local QuestLog listens.</summary>
         public static event System.Action<string> OnDefendComplete;
 
-        private bool serverStarted, armSent;
         private readonly List<GameObject> alive = new List<GameObject>();
+        private bool started;
 
-        // ---- client: arm the event when the local player is near with the quest active ----
-        private void Update()
+        private IEnumerator Start()
         {
-            if (armSent || !NetworkClient.active) return;
-            var p = NetworkClient.localPlayer;
-            if (p == null) return;
-            var log = p.GetComponent<Quests.QuestLog>();
-            if (log == null || !log.IsActive(requiredQuestId)) return;
-            if ((p.transform.position - transform.position).sqrMagnitude > triggerRadius * triggerRadius) return;
-            armSent = true;
-            CmdBegin();
+            // Server owns the set-piece (host counts). Wait for the role like MobCamp.
+            while (!NetworkServer.active && !NetworkClient.active)
+                yield return null;
+            if (!NetworkServer.active) yield break;
+
+            while (!started)
+            {
+                if (PlayerReady()) { started = true; StartCoroutine(RunWaves()); }
+                yield return new WaitForSeconds(0.5f);
+            }
         }
 
-        [Command(requiresAuthority = false)]
-        private void CmdBegin()
+        private bool PlayerReady()
         {
-            if (serverStarted) return;
-            serverStarted = true;
-            StartCoroutine(RunWaves());
+            foreach (var pc in FindObjectsByType<Player.PlayerController>(FindObjectsSortMode.None))
+            {
+                if ((pc.transform.position - transform.position).sqrMagnitude > triggerRadius * triggerRadius) continue;
+                var log = pc.GetComponent<Quests.QuestLog>();
+                if (log != null && log.IsActive(requiredQuestId)) return true;
+            }
+            return false;
         }
 
         private IEnumerator RunWaves()
@@ -63,8 +68,8 @@ namespace AldenFall.World
             var prefab = ResolveMobPrefab();
             if (prefab == null)
             {
-                Debug.LogWarning($"DefendZone {eventId}: mob prefab '{mobId}' not found in spawnPrefabs");
-                RpcCleared();   // do not soft-lock the quest if the prefab is missing
+                Debug.LogWarning($"DefendZone {eventId}: mob '{mobId}' not in spawnPrefabs");
+                Complete();   // never soft-lock the quest
                 yield break;
             }
 
@@ -75,7 +80,14 @@ namespace AldenFall.World
                 float t = 0f;
                 while (AliveCount() > 0 && t < 50f) { t += 1f; yield return new WaitForSeconds(1f); }
             }
-            RpcCleared();
+            Complete();
+        }
+
+        private void Complete()
+        {
+            OnDefendComplete?.Invoke(eventId);
+            if (!string.IsNullOrEmpty(completeCutscene))
+                Cinematics.CutsceneDirector.Instance?.Play(completeCutscene);
         }
 
         private void SpawnOne(GameObject prefab, int index)
@@ -105,14 +117,6 @@ namespace AldenFall.World
             foreach (var p in nm.spawnPrefabs)
                 if (p != null && p.name == mobId) return p;
             return null;
-        }
-
-        [ClientRpc]
-        private void RpcCleared()
-        {
-            OnDefendComplete?.Invoke(eventId);
-            if (!string.IsNullOrEmpty(completeCutscene))
-                Cinematics.CutsceneDirector.Instance?.Play(completeCutscene);
         }
     }
 }
