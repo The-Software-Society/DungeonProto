@@ -68,7 +68,7 @@ namespace AldenFall.Editor
                  + TileNoise(u, v, baseFreq * 4f) * 0.1f;
         }
 
-        private static Color32[] Grass(int s)
+        public static Color32[] Grass(int s)
         {
             var px = new Color32[s * s];
             Color dark = new Color(0.14f, 0.28f, 0.10f);
@@ -89,7 +89,45 @@ namespace AldenFall.Editor
             return px;
         }
 
-        private static Color32[] Dirt(int s)
+        public static Color32[] Sand(int s)
+        {
+            var px = new Color32[s * s];
+            Color dark = new Color(0.42f, 0.37f, 0.27f);
+            Color mid = new Color(0.55f, 0.49f, 0.36f);
+            Color light = new Color(0.66f, 0.60f, 0.46f);
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    float u = x / (float)s, v = y / (float)s;
+                    float n = Fbm(u, v, 6f);
+                    float grit = Fbm(u, v, 34f);
+                    Color c = Color.Lerp(dark, mid, Mathf.Clamp01(n * 1.4f));
+                    c = Color.Lerp(c, light, Mathf.Clamp01((grit - 0.5f) * 1.8f));
+                    px[y * s + x] = c;
+                }
+            return px;
+        }
+
+        public static Color32[] Soot(int s)
+        {
+            var px = new Color32[s * s];
+            Color dark = new Color(0.08f, 0.065f, 0.06f);
+            Color mid = new Color(0.14f, 0.11f, 0.10f);
+            Color ember = new Color(0.35f, 0.12f, 0.05f);
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    float u = x / (float)s, v = y / (float)s;
+                    float n = Fbm(u, v, 8f);
+                    float cracks = Fbm(u, v, 24f);
+                    Color c = Color.Lerp(dark, mid, Mathf.Clamp01(n * 1.5f));
+                    if (cracks > 0.74f) c = Color.Lerp(c, ember, (cracks - 0.74f) * 2.5f);   // glowing embers in cracks
+                    px[y * s + x] = c;
+                }
+            return px;
+        }
+
+        public static Color32[] Dirt(int s)
         {
             var px = new Color32[s * s];
             Color dark = new Color(0.24f, 0.17f, 0.11f);

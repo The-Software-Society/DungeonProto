@@ -61,7 +61,7 @@ namespace AldenFall.Editor
         // implementation (BuildEmberfallTerrain + helpers) stays for in-editor
         // iteration: the missing pieces are a proper URP detail-grass shader and
         // hand-tuned splat textures, not structure.
-        private const bool UseUnityTerrain = false;
+        private const bool UseUnityTerrain = true;   // v9: revived - real rolling terrain + splat + instanced grass
 
         private static void BuildEmberfallWorld(Transform root, int groundLayer)
         {
@@ -317,14 +317,14 @@ namespace AldenFall.Editor
                     if (Mathf.Abs(wx - LakeCenter.x) < LakeHalf + 10f
                      && Mathf.Abs(wz - LakeCenter.z) < LakeHalf + 10f) continue;
                     if (SootAmount(wx, wz) > 0.25f) continue;
-                    if (Mathf.Abs(wx) < 7f && wz > -60f) continue;      // keep the road clear
+                    if (Mathf.Abs(wx) < 7f && wz > -60f && wz < 66f) continue;   // road clear (stops before the glade)
                     float ring = Mathf.Sqrt(wx * wx + wz * wz);
                     if (ring > 250f) continue;
 
-                    // Clumpy coverage reads more natural than a uniform lawn.
+                    // Dense carpet with natural variation: near-full coverage, thicker in clumps.
                     float clump = Mathf.PerlinNoise(wx * 0.05f + 7.7f, wz * 0.05f + 3.1f);
-                    if (clump < 0.35f) continue;
-                    density[iz, ix] = clump > 0.6f ? 3 : 1;
+                    if (clump < 0.2f) continue;   // occasional bare patches only
+                    density[iz, ix] = clump > 0.5f ? 16 : 9;
                 }
             }
             data.SetDetailLayer(0, 0, 0, density);
@@ -338,7 +338,7 @@ namespace AldenFall.Editor
             if (groundLayer >= 0) terrainObj.layer = groundLayer;
             terrainObj.isStatic = true;
             var terrain = terrainObj.GetComponent<Terrain>();
-            terrain.detailObjectDistance = 120f;
+            terrain.detailObjectDistance = 220f;
             terrain.detailObjectDensity = 1f;
             terrain.heightmapPixelError = 6f;
             // Default basemapDistance (~20m) swaps to the washed-out low-res basemap one
@@ -349,25 +349,28 @@ namespace AldenFall.Editor
 
         private static TerrainLayer MakeTerrainLayer(string name, Color baseColor, float noise)
         {
-            var tex = new Texture2D(64, 64, TextureFormat.RGBA32, true);
-            var px = new Color[64 * 64];
-            var r = new System.Random(name.GetHashCode());
-            for (int i = 0; i < px.Length; i++)
+            // Rich procedural albedo (256px) per surface kind instead of a flat 64px noise wash
+            // (the pale-ground problem that shelved the terrain). Tiles tightly so detail reads.
+            const int s = 256;
+            Color32[] px = name switch
             {
-                float n = ((float)r.NextDouble() * 2f - 1f) * noise * 3f;
-                px[i] = new Color(
-                    Mathf.Clamp01(baseColor.r + n),
-                    Mathf.Clamp01(baseColor.g + n),
-                    Mathf.Clamp01(baseColor.b + n), 1f);
-            }
-            tex.SetPixels(px);
+                "TL_Grass" => GroundTextureGenerator.Grass(s),
+                "TL_Sand"  => GroundTextureGenerator.Sand(s),
+                "TL_Soot"  => GroundTextureGenerator.Soot(s),
+                "TL_Dirt"  => GroundTextureGenerator.Dirt(s),
+                _          => GroundTextureGenerator.Grass(s),
+            };
+            AssetDatabase.DeleteAsset($"{MaterialDir}/{name}_Tex.asset");
+            var tex = new Texture2D(s, s, TextureFormat.RGBA32, true);
+            tex.SetPixels32(px);
             tex.Apply(true);
             AssetDatabase.CreateAsset(tex, $"{MaterialDir}/{name}_Tex.asset");
 
+            AssetDatabase.DeleteAsset($"{MaterialDir}/{name}.terrainlayer");
             var layer = new TerrainLayer
             {
                 diffuseTexture = tex,
-                tileSize = new Vector2(14f, 14f),
+                tileSize = new Vector2(6f, 6f),
                 specular = Color.black,
                 smoothness = 0.03f,
             };
@@ -383,8 +386,9 @@ namespace AldenFall.Editor
         private static GameObject MakeGrassTuftPrefab()
         {
             string prefabPath = $"{MaterialDir}/GrassTuft.prefab";
-            var existing = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
-            if (existing != null) return existing;
+            // Always rebuild so the up-normal + alpha-grass-texture fixes take effect on regen.
+            AssetDatabase.DeleteAsset(prefabPath);
+            AssetDatabase.DeleteAsset($"{MaterialDir}/GrassTuftMesh.asset");
 
             var mesh = new Mesh { name = "GrassTuftMesh" };
             var verts = new List<Vector3>();
@@ -412,11 +416,32 @@ namespace AldenFall.Editor
             mesh.SetUVs(0, uvs);
             mesh.SetColors(cols);
             mesh.SetTriangles(tris, 0);
-            mesh.RecalculateNormals();
+            // UP normals (not RecalculateNormals, which gives the vertical faces sideways
+            // normals that catch no overhead light and render as the black shards that shelved
+            // the terrain). Lit as ground cover, the instanced tufts read as bright grass.
+            var upN = new List<Vector3>(verts.Count);
+            for (int i = 0; i < verts.Count; i++) upN.Add(Vector3.up);
+            mesh.SetNormals(upN);
             mesh.RecalculateBounds();
             AssetDatabase.CreateAsset(mesh, $"{MaterialDir}/GrassTuftMesh.asset");
 
-            var mat = Mat("GrassTuft", new Color(0.3f, 0.5f, 0.2f), smoothness: 0.05f);
+            // Alpha-cut grass-blade texture (double-sided) so each quad reads as a fuzzy tuft,
+            // not a solid green card. Falls back to a solid material if the texture is missing.
+            var grassTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Ground/grass_tuft_alpha.png");
+            Material mat;
+            if (grassTex != null)
+            {
+                string mp = $"{MaterialDir}/GrassTuftDetail.mat";
+                AssetDatabase.DeleteAsset(mp);
+                mat = new Material(LitShader());
+                mat.SetTexture("_BaseMap", grassTex);
+                mat.SetColor("_BaseColor", Color.white);
+                if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.05f);
+                mat.SetFloat("_AlphaClip", 1f); mat.EnableKeyword("_ALPHATEST_ON"); mat.SetFloat("_Cutoff", 0.3f);
+                if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
+                AssetDatabase.CreateAsset(mat, mp);
+            }
+            else mat = Mat("GrassTuft", new Color(0.3f, 0.5f, 0.2f), smoothness: 0.05f);
 
             var go = new GameObject("GrassTuft");
             var mf = go.AddComponent<MeshFilter>();
@@ -2064,11 +2089,14 @@ namespace AldenFall.Editor
             var container = Child(root, "AldricGlade");
             Vector3 center = new Vector3(GladeCenter.x, 0f, GladeCenter.y);   // (0,0,90)
 
-            // Lush overgrowth carpeting the clearing.
-            BuildGrassBladeField(container, "GladeGrass",
-                center.x - GladeRadius, center.x + GladeRadius, center.z - GladeRadius, center.z + GladeRadius, 6,
-                new Color(0.34f, 0.56f, 0.26f),
-                (x, z) => Vector2.Distance(new Vector2(x, z), GladeCenter) < GladeRadius);
+            // Lush overgrowth carpeting the clearing. In terrain mode the instanced detail
+            // grass already covers the glade, so skip the old blade field (it rendered as
+            // scattered shards on top of the terrain grass).
+            if (!UseUnityTerrain)
+                BuildGrassBladeField(container, "GladeGrass",
+                    center.x - GladeRadius, center.x + GladeRadius, center.z - GladeRadius, center.z + GladeRadius, 6,
+                    new Color(0.34f, 0.56f, 0.26f),
+                    (x, z) => Vector2.Distance(new Vector2(x, z), GladeCenter) < GladeRadius);
 
             // A soft ring of lush trees framing the glade (trunk-only colliders).
             var trunkMat = Mat("GladeTrunk", new Color(0.32f, 0.22f, 0.14f), smoothness: 0.05f);
