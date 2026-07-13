@@ -1,0 +1,21 @@
+{
+  "id": "q_breach",
+  "letterbox": true,
+  "steps": [
+    { "type": "fade", "target": 1, "seconds": 0.5, "blocking": true },
+    { "type": "camera", "pos": [0, 3.5, -440], "lookAt": [0, 9, -448], "seconds": 0 },
+    { "type": "fade", "target": 0, "seconds": 1.2, "blocking": false },
+    { "type": "subtitle", "text": "Past the fallen Guardian, the rock has split from floor to sky.", "seconds": 3.6, "blocking": true },
+    { "type": "camera", "pos": [0, 6, -446], "lookAt": [0, 26, -452], "seconds": 4.5 },
+    { "type": "subtitle", "text": "Through the breach, a wound in the world hangs open, and something on the far side is awake.", "seconds": 4.6, "blocking": true },
+    { "type": "wait", "seconds": 0.3 },
+    { "type": "subtitle", "text": "A shadow tears loose. Vast, scaled, burning at the edges. A dragon.", "seconds": 4.2, "blocking": true },
+    { "type": "camera", "pos": [0, 10, -444], "lookAt": [0, 30, -420], "seconds": 5.0 },
+    { "type": "subtitle", "text": "It climbs through the crack, wheels once over the distant lights of Emberfall, and is gone back through the breach.", "seconds": 5.6, "blocking": true },
+    { "type": "wait", "seconds": 0.4 },
+    { "type": "subtitle", "text": "The city still stands. But you understand now. Emberfall was only the first.", "seconds": 4.4, "blocking": true },
+    { "type": "wait", "seconds": 0.6 },
+    { "type": "fade", "target": 1, "seconds": 1.2, "blocking": true },
+    { "type": "fade", "target": 0, "seconds": 1.0 }
+  ]
+}

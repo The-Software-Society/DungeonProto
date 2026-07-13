@@ -1,0 +1,21 @@
+{
+  "id": "q_beyond",
+  "letterbox": true,
+  "steps": [
+    { "type": "fade", "target": 1, "seconds": 0.5, "blocking": true },
+    { "type": "camera", "pos": [6, 3, -446], "lookAt": [0, 3.5, -450], "seconds": 0 },
+    { "type": "fade", "target": 0, "seconds": 1.2, "blocking": false },
+    { "type": "subtitle", "text": "The old stair stands unsealed, its gate ground open now that the floor is clear.", "seconds": 3.8, "blocking": true },
+    { "type": "subtitle", "text": "Aldric:  I told myself I was done with all this. Songs, heroes, roads that only go up.", "seconds": 4.6, "blocking": true },
+    { "type": "camera", "pos": [3, 2.6, -448], "lookAt": [0, 3.4, -451], "seconds": 4.0 },
+    { "type": "subtitle", "text": "Aldric:  But you cleared Emberfall, and the sky just proved there is more of it. You should not climb that alone.", "seconds": 5.4, "blocking": true },
+    { "type": "wait", "seconds": 0.3 },
+    { "type": "subtitle", "text": "Aldric:  So I am coming with you. Do not make me regret it, outsider.", "seconds": 4.2, "blocking": true },
+    { "type": "subtitle", "text": "He does not say how he knows the way. Not yet.", "seconds": 3.4, "blocking": true },
+    { "type": "wait", "seconds": 0.4 },
+    { "type": "subtitle", "text": "You set your foot on the first step beyond Emberfall.", "seconds": 3.6, "blocking": true },
+    { "type": "wait", "seconds": 0.6 },
+    { "type": "fade", "target": 1, "seconds": 1.2, "blocking": true },
+    { "type": "fade", "target": 0, "seconds": 1.0 }
+  ]
+}

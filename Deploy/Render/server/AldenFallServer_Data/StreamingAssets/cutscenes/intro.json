@@ -3,6 +3,16 @@
   "letterbox": true,
   "steps": [
     { "type": "fade", "target": 1, "seconds": 0 },
+
+    { "type": "subtitle", "text": "Your last morning began like any other.", "seconds": 3.2, "blocking": true },
+    { "type": "subtitle", "text": "A grey window. Somewhere to be. The small weather of an ordinary life.", "seconds": 4.0, "blocking": true },
+    { "type": "wait", "seconds": 0.5 },
+    { "type": "subtitle", "text": "You do not remember the moment it ended. Only that it did.", "seconds": 3.8, "blocking": true },
+    { "type": "fade", "target": 0.12, "seconds": 0.14, "blocking": true },
+    { "type": "fade", "target": 1, "seconds": 0.4, "blocking": true },
+    { "type": "subtitle", "text": "Then light. Falling embers. A shape reassembling out of the dark, a shape that used to be you.", "seconds": 4.6, "blocking": true },
+    { "type": "subtitle", "text": "Pines overhead. The smoke of a burning mountain at your back. And a voice.", "seconds": 4.0, "blocking": true },
+
     { "type": "camera", "pos": [14, 9, 78], "lookAt": [0, 1.4, 90], "seconds": 0 },
     { "type": "fade", "target": 0, "seconds": 2.0, "blocking": false },
     { "type": "subtitle", "text": "THE NORTHERN GLADE", "seconds": 3.2, "blocking": false },
@@ -20,12 +30,12 @@
     { "type": "subtitle", "text": "Aldric:  So I came up here, to the quiet, and let the trees forget my name for me.", "seconds": 4.6, "blocking": false },
 
     { "type": "camera", "pos": [-1.2, 2.4, 86.0], "lookAt": [0.4, 1.5, 90], "seconds": 4.0 },
-    { "type": "subtitle", "text": "Aldric:  But the quiet's ending. South of here the mountain burns — the volcano is waking, and its embers reach for the town.", "seconds": 5.8, "blocking": false },
+    { "type": "subtitle", "text": "Aldric:  But the quiet's ending. South of here the mountain burns, the volcano is waking, and its embers reach for the town.", "seconds": 5.8, "blocking": false },
     { "type": "wait", "seconds": 0.3 },
     { "type": "subtitle", "text": "Aldric:  Someone has to go down into that fire and end it. And you have the look of someone with little left to lose.", "seconds": 5.4, "blocking": false },
 
     { "type": "camera", "pos": [2.2, 1.7, 87.5], "lookAt": [0, 1.4, 90.5], "seconds": 3.8 },
-    { "type": "subtitle", "text": "Aldric:  I've two gifts left in me. A blade, for a steady hand — or the flame, for a restless mind. Choose what suits you.", "seconds": 5.6, "blocking": false },
+    { "type": "subtitle", "text": "Aldric:  I've two gifts left in me. A blade, for a steady hand, or the flame, for a restless mind. Choose what suits you.", "seconds": 5.6, "blocking": false },
     { "type": "anim", "actor": "player", "state": "Idle" },
 
     { "type": "choice", "blocking": true },

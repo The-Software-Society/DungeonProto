@@ -1,0 +1,13 @@
+{
+  "_doc": [
+    "PROGRESSION TUNING. Read by Progression/Skills.cs.",
+    "xpForLevel = sum over l=1..L-1 of floor(xpCoefficient * l^xpExponent).",
+    "practicalCap is the public wall players see (99). hardCap is the real secret ceiling (500),",
+    "never surfaced in UI; the level clamp currently uses practicalCap (see WORLD1_COMPLETION_PLAN F5).",
+    "All fields must be present."
+  ],
+  "xpCoefficient": 50.0,
+  "xpExponent": 1.35,
+  "practicalCap": 99,
+  "hardCap": 500
+}

@@ -1,0 +1,140 @@
+{
+  "_doc": [
+    "CRAFTING RECIPES. Loaded by Items/RecipeDatabase. skill=SkillType name, station matches a CraftingStation.",
+    "inputs consumed, outputs produced, gated by requiredLevel of skill. Smithing at 'anvil', Fletching at 'fletch_bench'."
+  ],
+  "recipes": [
+    {
+      "id": "smelt_copper_bar",
+      "skill": "Smithing",
+      "station": "anvil",
+      "requiredLevel": 1,
+      "inputs": [
+        {
+          "itemId": "copper_ore",
+          "count": 2
+        }
+      ],
+      "outputs": [
+        {
+          "itemId": "copper_bar",
+          "count": 1
+        }
+      ],
+      "xp": 12,
+      "seconds": 2.0
+    },
+    {
+      "id": "smelt_iron_bar",
+      "skill": "Smithing",
+      "station": "anvil",
+      "requiredLevel": 10,
+      "inputs": [
+        {
+          "itemId": "iron_ore",
+          "count": 2
+        }
+      ],
+      "outputs": [
+        {
+          "itemId": "iron_bar",
+          "count": 1
+        }
+      ],
+      "xp": 20,
+      "seconds": 2.2
+    },
+    {
+      "id": "smelt_steel_bar",
+      "skill": "Smithing",
+      "station": "anvil",
+      "requiredLevel": 20,
+      "inputs": [
+        {
+          "itemId": "iron_bar",
+          "count": 1
+        },
+        {
+          "itemId": "copper_bar",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "itemId": "steel_bar",
+          "count": 1
+        }
+      ],
+      "xp": 30,
+      "seconds": 2.5
+    },
+    {
+      "id": "forge_steel_sword",
+      "skill": "Smithing",
+      "station": "anvil",
+      "requiredLevel": 25,
+      "inputs": [
+        {
+          "itemId": "steel_bar",
+          "count": 3
+        }
+      ],
+      "outputs": [
+        {
+          "itemId": "steel_sword",
+          "count": 1
+        }
+      ],
+      "xp": 55,
+      "seconds": 3.0
+    },
+    {
+      "id": "fletch_arrows",
+      "skill": "Fletching",
+      "station": "fletch_bench",
+      "requiredLevel": 1,
+      "inputs": [
+        {
+          "itemId": "iron_bar",
+          "count": 1
+        },
+        {
+          "itemId": "oak_log",
+          "count": 1
+        }
+      ],
+      "outputs": [
+        {
+          "itemId": "arrow",
+          "count": 15
+        }
+      ],
+      "xp": 15,
+      "seconds": 2.0
+    },
+    {
+      "id": "fletch_steel_bow",
+      "skill": "Fletching",
+      "station": "fletch_bench",
+      "requiredLevel": 20,
+      "inputs": [
+        {
+          "itemId": "steel_bar",
+          "count": 2
+        },
+        {
+          "itemId": "oak_log",
+          "count": 2
+        }
+      ],
+      "outputs": [
+        {
+          "itemId": "steel_bow",
+          "count": 1
+        }
+      ],
+      "xp": 45,
+      "seconds": 3.0
+    }
+  ]
+}

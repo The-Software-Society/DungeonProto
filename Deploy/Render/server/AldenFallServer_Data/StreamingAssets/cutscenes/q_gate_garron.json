@@ -1,0 +1,29 @@
+{
+  "id": "q_gate_garron",
+  "letterbox": true,
+  "steps": [
+    { "type": "fade", "target": 1, "seconds": 0.4, "blocking": true },
+    { "type": "camera", "pos": [4, 3.4, 52], "lookAt": [2, 1.4, 46], "seconds": 0 },
+    { "type": "fade", "target": 0, "seconds": 1.0, "blocking": false },
+    { "type": "subtitle", "text": "The last orc falls. The gate holds.", "seconds": 3.0, "blocking": true },
+    { "type": "subtitle", "text": "But Garron Vale, third watch, does not rise. A blade found him in the press.", "seconds": 4.4, "blocking": true },
+    { "type": "anim", "actor": "Garron Vale", "state": "Death" },
+    { "type": "wait", "seconds": 1.0 },
+
+    { "type": "fade", "target": 1, "seconds": 1.2, "blocking": true },
+    { "type": "move", "actor": "Garron Vale", "pos": [3, 0, 16], "seconds": 0 },
+    { "type": "face", "actor": "Garron Vale", "lookAt": [0, 0, 14] },
+    { "type": "anim", "actor": "Garron Vale", "state": "Idle" },
+    { "type": "camera", "pos": [5, 2.6, 20], "lookAt": [2.5, 1.4, 15.5], "seconds": 0 },
+    { "type": "fade", "target": 0, "seconds": 1.4, "blocking": false },
+    { "type": "subtitle", "text": "By the fountain, a man stands blinking in the torchlight. Garron Vale. Whole. Confused.", "seconds": 4.6, "blocking": true },
+    { "type": "subtitle", "text": "Garron:  I was at the gate. There was a spear. How am I standing here?", "seconds": 4.4, "blocking": true },
+    { "type": "wait", "seconds": 0.4 },
+    { "type": "subtitle", "text": "Somewhere in the quiet north, Aldric goes very still.", "seconds": 3.2, "blocking": true },
+    { "type": "subtitle", "text": "Aldric:  No. Not here. Not already.", "seconds": 3.8, "blocking": true },
+    { "type": "wait", "seconds": 0.6 },
+
+    { "type": "fade", "target": 1, "seconds": 1.2, "blocking": true },
+    { "type": "fade", "target": 0, "seconds": 1.0 }
+  ]
+}

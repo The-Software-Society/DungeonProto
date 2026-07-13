@@ -1,0 +1,106 @@
+{
+  "_doc": [
+    "SKILL METADATA. Loaded by Progression/SkillRegistry. id must match a SkillType enum name.",
+    "category: combat | gather | craft | support (drives wiring: combat skills feed StatBlock via PlayerStatBridge).",
+    "glyph: UISprite name. color: hex accent used by the XP feed and skill panels. xpRate: per-skill XP multiplier.",
+    "To add a skill: append a SkillType enum value (append-only), add an entry here, then its behavior controller."
+  ],
+  "skills": [
+    {
+      "id": "Attack",
+      "category": "combat",
+      "display": "Attack",
+      "glyph": "icon_sword",
+      "color": "#FF9E73",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Strength",
+      "category": "combat",
+      "display": "Strength",
+      "glyph": "icon_strength",
+      "color": "#FF7366",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Defence",
+      "category": "combat",
+      "display": "Defence",
+      "glyph": "icon_shield",
+      "color": "#8CBFFF",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Magic",
+      "category": "combat",
+      "display": "Magic",
+      "glyph": "icon_magic",
+      "color": "#B88CFF",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Fishing",
+      "category": "gather",
+      "display": "Fishing",
+      "glyph": "icon_fish",
+      "color": "#73D9E6",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Cooking",
+      "category": "craft",
+      "display": "Cooking",
+      "glyph": "icon_flame",
+      "color": "#FFBF66",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Ranged",
+      "category": "combat",
+      "display": "Archery",
+      "glyph": "icon_sword",
+      "color": "#5FA845",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Mining",
+      "category": "gather",
+      "display": "Mining",
+      "glyph": "icon_strength",
+      "color": "#9A8478",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Woodcutting",
+      "category": "gather",
+      "display": "Woodcutting",
+      "glyph": "icon_sword",
+      "color": "#6B8E4E",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Smithing",
+      "category": "craft",
+      "display": "Smithing",
+      "glyph": "icon_flame",
+      "color": "#B0763C",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Fletching",
+      "category": "craft",
+      "display": "Fletching",
+      "glyph": "icon_sword",
+      "color": "#A8935E",
+      "xpRate": 1.0
+    },
+    {
+      "id": "Health",
+      "category": "support",
+      "display": "Health",
+      "glyph": "icon_shield",
+      "color": "#FF5555",
+      "xpRate": 1.0
+    }
+  ]
+}

@@ -93,7 +93,7 @@
           "y": 0,
           "z": 60,
           "respawn": 16,
-          "count": 3,
+          "count": 2,
           "radius": 8
         },
         {
@@ -116,7 +116,7 @@
           "y": 0,
           "z": 60,
           "respawn": 45,
-          "count": 3,
+          "count": 2,
           "radius": 5
         },
         {
@@ -330,6 +330,15 @@
           "respawn": 999999,
           "count": 2,
           "radius": 5
+        },
+        {
+          "kind": "camp",
+          "x": -24,
+          "y": 0,
+          "z": -388,
+          "respawn": 999999,
+          "count": 2,
+          "radius": 3
         }
       ]
     },
@@ -394,7 +403,7 @@
           "y": 0,
           "z": 0,
           "respawn": 14,
-          "count": 4,
+          "count": 2,
           "radius": 10
         },
         {
@@ -613,20 +622,6 @@
           "respawn": 16,
           "count": 3,
           "radius": 10
-        },
-        {
-          "kind": "spawner",
-          "x": 62,
-          "y": 0.1,
-          "z": 58,
-          "respawn": 14
-        },
-        {
-          "kind": "spawner",
-          "x": -62,
-          "y": 0.1,
-          "z": 58,
-          "respawn": 14
         },
         {
           "kind": "camp",
@@ -1009,16 +1004,16 @@
       "spawns": [
         {
           "kind": "spawner",
-          "x": -110,
+          "x": -100,
           "y": 0.1,
-          "z": -120,
+          "z": -110,
           "respawn": 999999
         }
       ]
     },
     {
       "id": "cave_troll_boss",
-      "displayName": "Grukk, Cave Troll",
+      "displayName": "Cinderbound Guardian",
       "level": 18,
       "character": "CaveTroll",
       "heightMeters": 3.2,

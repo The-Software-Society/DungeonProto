@@ -1,0 +1,115 @@
+{
+  "_doc": [
+    "NAMED NPC ROSTER. Loaded by World.NpcRoster, placed by ArenaBuilderEmberfall.BuildDataNpcs.",
+    "role: quest (QuestGiverNPC, uses questNpcId) | vendor (VendorNPC) | townsfolk (TownsfolkNPC, barks).",
+    "x/z are world coords, yaw degrees. model is a generated-visual folder (HeroMale/HeroFemale/Goblin);",
+    "a robed capsule (robeHex tint) stands in when the model is missing. Add NPCs here, no builder edit.",
+    "Edit + rebuild the scene (AldenFall > Build Emberfall Demo) to place changes."
+  ],
+  "npcs": [
+    {
+      "id": "elowen",
+      "displayName": "Elowen",
+      "role": "quest",
+      "questNpcId": "elowen",
+      "x": 10,
+      "z": -6,
+      "yaw": 0,
+      "model": "HeroFemale",
+      "robeHex": "#6E5A7A",
+      "barks": [
+        "Please, has anyone seen my Mira?",
+        "The warcamp took her. I cannot go alone."
+      ]
+    },
+    {
+      "id": "captain_rusk",
+      "displayName": "Captain Rusk",
+      "role": "quest",
+      "questNpcId": "captain_rusk",
+      "x": 9,
+      "z": 44,
+      "yaw": 180,
+      "model": "HeroMale",
+      "robeHex": "#3E4A5A",
+      "barks": [
+        "The roads are not safe. Trade is failing.",
+        "Hold the gate if the horns sound."
+      ]
+    },
+    {
+      "id": "sister_maela",
+      "displayName": "Sister Maela",
+      "role": "quest",
+      "questNpcId": "sister_maela",
+      "x": -32,
+      "z": 8,
+      "yaw": 90,
+      "model": "HeroFemale",
+      "robeHex": "#5A5A62",
+      "barks": [
+        "The dead should rest. Lately they do not.",
+        "Say a word for the fallen, traveler."
+      ]
+    },
+    {
+      "id": "sella_hart",
+      "displayName": "Sella Hart",
+      "role": "quest",
+      "x": 20,
+      "z": -4,
+      "yaw": 200,
+      "model": "HeroFemale",
+      "robeHex": "#7A5A3E",
+      "barks": [
+        "Ale and rumors, both fresh at the Ember Rest.",
+        "Bounties on the board, coin for the brave."
+      ],
+      "questNpcId": "sella_hart"
+    },
+    {
+      "id": "garron_vale",
+      "displayName": "Garron Vale",
+      "role": "townsfolk",
+      "x": 2,
+      "z": 46,
+      "yaw": 180,
+      "model": "HeroMale",
+      "robeHex": "#46504A",
+      "barks": [
+        "Name's Garron, third watch.",
+        "Quiet enough tonight. Long may it hold."
+      ]
+    },
+    {
+      "id": "toma_reed",
+      "displayName": "Toma Reed",
+      "role": "quest",
+      "x": -120,
+      "z": 150,
+      "yaw": 210,
+      "model": "HeroMale",
+      "robeHex": "#3E6A6E",
+      "barks": [
+        "Lake's been strange. Pulled up a stone warm as a coal.",
+        "Cast from the east bank, they bite at dusk."
+      ],
+      "questNpcId": "toma_reed"
+    },
+    {
+      "id": "pip",
+      "displayName": "Pip",
+      "role": "quest",
+      "x": -150,
+      "z": 124,
+      "yaw": 45,
+      "model": "Goblin",
+      "robeHex": "#4C7A3F",
+      "barks": [
+        "Wanna see me dance? Course you do!",
+        "Someone nicked me drum. RUDE."
+      ],
+      "questNpcId": "pip"
+    }
+  ]
+}
