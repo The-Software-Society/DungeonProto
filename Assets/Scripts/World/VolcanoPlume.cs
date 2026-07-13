@@ -104,7 +104,11 @@ namespace AldenFall.World
 
             var vel = ps.velocityOverLifetime;
             vel.enabled = true;
+            // All three axes must share a curve mode (TwoConstants here) or Unity spams
+            // "Particle Velocity curves must all be in the same mode" every frame.
             vel.x = new ParticleSystem.MinMaxCurve(0.4f, 1.4f);   // prevailing wind to the east
+            vel.y = new ParticleSystem.MinMaxCurve(0f, 0f);
+            vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
             vel.space = ParticleSystemSimulationSpace.World;
 
             var col = ps.colorOverLifetime;
