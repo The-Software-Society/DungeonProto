@@ -404,6 +404,193 @@
         }
       ],
       "PrereqQuestId": "q_caldera_prep"
+    },
+    {
+      "Id": "q_breach",
+      "Name": "The Breach Beyond",
+      "Description": "The Guardian is dead and the eruption calmed, yet Aldric's face is grim. He asks you to walk past the fallen beast, to where the mountain has cracked open, and see what waits.",
+      "Objectives": [
+        {
+          "kind": "ReachLocation",
+          "TargetId": "",
+          "Count": 1,
+          "Description": "Walk past the Guardian to the breach",
+          "LocationHint": "Beyond the boss chamber, where the rock has split",
+          "Location": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": -444.0
+          },
+          "Radius": 9.0
+        }
+      ],
+      "GoldReward": 0,
+      "GiverNpcId": "aldric",
+      "PrereqQuestId": "q_floor_boss",
+      "CompleteCutscene": "q_breach"
+    },
+    {
+      "Id": "q_beyond",
+      "Name": "Beyond Emberfall",
+      "Description": "A dragon tore through the sky and vanished into another world. Emberfall is only the first. Aldric will not let you climb alone. Stand at the sealed stair and take the first step beyond.",
+      "Objectives": [
+        {
+          "kind": "ReachLocation",
+          "TargetId": "",
+          "Count": 1,
+          "Description": "Stand at the threshold to Floor 2",
+          "LocationHint": "The old stair beyond the breach, unsealed now that the floor is clear",
+          "Location": {
+            "x": 0.0,
+            "y": 0.0,
+            "z": -447.0
+          },
+          "Radius": 8.0
+        }
+      ],
+      "Rewards": [
+        {
+          "itemId": "cooked_carp",
+          "count": 1
+        }
+      ],
+      "GoldReward": 50,
+      "GiverNpcId": "aldric",
+      "PrereqQuestId": "q_breach",
+      "CompleteCutscene": "q_beyond"
+    },
+    {
+      "Id": "sq_lake_oddities",
+      "Name": "Lake Oddities",
+      "GiverNpcId": "toma_reed",
+      "PrereqQuestId": "q_learn_fish",
+      "GoldReward": 50,
+      "Description": "Toma Reed swears the lake has turned strange, warm stones and fish that swim wrong. Land a good haul and see for yourself.",
+      "Objectives": [
+        {
+          "kind": "CatchFish",
+          "TargetId": "",
+          "Count": 5,
+          "Description": "Land five fish for Toma (0/5)",
+          "LocationHint": "Fish the lake from the east bank or swim in"
+        }
+      ]
+    },
+    {
+      "Id": "sq_goblin_games",
+      "Name": "Goblin Games",
+      "GiverNpcId": "pip",
+      "GoldReward": 35,
+      "Description": "Pip the lake goblin will not stop pestering you for a show. Flourish your skills a few times and he promises to leave you be. Probably.",
+      "Objectives": [
+        {
+          "kind": "UseAbility",
+          "TargetId": "",
+          "Count": 5,
+          "Description": "Show off for Pip (0/5)",
+          "LocationHint": "Use abilities near the lake, keys 1-5"
+        }
+      ]
+    },
+    {
+      "Id": "sq_bandit_ledger",
+      "Name": "Bandit Ledger",
+      "PrereqQuestId": "q_clear_roads",
+      "GoldReward": 80,
+      "Description": "Marla is missing a ledger, taken by the road bandits. Cut a few down and take it back so trade can be squared.",
+      "Objectives": [
+        {
+          "kind": "KillMob",
+          "TargetId": "field_bandit",
+          "Count": 3,
+          "Description": "Recover the ledger from bandits (0/3)",
+          "LocationHint": "The bandit camp on the east road"
+        }
+      ]
+    },
+    {
+      "Id": "sq_iron_forge",
+      "Name": "Iron for the Forge",
+      "PrereqQuestId": "q_first_steps",
+      "GoldReward": 75,
+      "Description": "Bram Ironbell needs orc iron to keep the forge hot. Bring him scrap the only way orcs give it up.",
+      "Objectives": [
+        {
+          "kind": "KillMob",
+          "TargetId": "orc_brute",
+          "Count": 2,
+          "Description": "Break orc brutes for their iron (0/2)",
+          "LocationHint": "Orcs range the deeper woods and warcamp"
+        }
+      ]
+    },
+    {
+      "Id": "sq_old_stones",
+      "Name": "The Old Seal Stones",
+      "GiverNpcId": "aldric",
+      "PrereqQuestId": "q_old_ash",
+      "GoldReward": 120,
+      "Description": "Aldric wants the deepwood stone found too, the one furthest from any path. Go where the trees close over and look.",
+      "Objectives": [
+        {
+          "kind": "InspectMarker",
+          "TargetId": "seal_stone",
+          "Count": 1,
+          "Description": "Find the deepwood seal stone",
+          "LocationHint": "Deep in the northern woods, off every trail"
+        }
+      ]
+    },
+    {
+      "Id": "sq_dire_hunt",
+      "Name": "Dire Hunt",
+      "GiverNpcId": "captain_rusk",
+      "PrereqQuestId": "q_clear_roads",
+      "GoldReward": 150,
+      "Description": "Captain Rusk posts a standing bounty on the dire beasts, the big ones that come out of the deep wood. Bring one down.",
+      "Objectives": [
+        {
+          "kind": "KillMob",
+          "TargetId": "dire_goblin",
+          "Count": 1,
+          "Description": "Slay a dire beast",
+          "LocationHint": "Dire creatures haunt the deep woods"
+        }
+      ]
+    },
+    {
+      "Id": "sq_empty_grave",
+      "Name": "The Empty Grave",
+      "GiverNpcId": "sister_maela",
+      "PrereqQuestId": "q_gate",
+      "GoldReward": 60,
+      "Description": "Sister Maela tends a grave whose stone was carved for a man now walking the streets. She asks you to look on it and understand what she cannot.",
+      "Objectives": [
+        {
+          "kind": "InspectMarker",
+          "TargetId": "empty_grave",
+          "Count": 1,
+          "Description": "Inspect the empty grave",
+          "LocationHint": "By the shrine in the city"
+        }
+      ]
+    },
+    {
+      "Id": "sq_tavern_bounty",
+      "Name": "Tavern Board: Local Bounties",
+      "GiverNpcId": "sella_hart",
+      "PrereqQuestId": "q_first_steps",
+      "GoldReward": 60,
+      "Description": "Sella Hart keeps the bounty board at the Ember Rest. Clear the standing goblin bounty and the coin is yours.",
+      "Objectives": [
+        {
+          "kind": "KillMob",
+          "TargetId": "goblin_scrapper",
+          "Count": 5,
+          "Description": "Clear the goblin bounty (0/5)",
+          "LocationHint": "Goblins prowl the western woods"
+        }
+      ]
     }
   ]
 }

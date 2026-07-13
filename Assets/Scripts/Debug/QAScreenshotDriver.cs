@@ -345,10 +345,20 @@ namespace AldenFall.DebugTools
             Check("q_gate uses DefendEvent kind", gate != null && gate.Objectives.Count > 0 && gate.Objectives[0].Kind == Quests.ObjectiveKind.DefendEvent);
             var prep = Quests.QuestDatabase.Get("q_caldera_prep");
             Check("q_caldera_prep is any-2-of", prep != null && prep.RequiredObjectiveCount == 2);
-            int sealStones = 0;
+            var beyond = Quests.QuestDatabase.Get("q_beyond");
+            Check("mainline ends at q_beyond (Q16)", beyond != null && beyond.PrereqQuestId == "q_breach");
+            int sealStones = 0, emptyGraves = 0;
             foreach (var m in FindObjectsByType<World.InspectableMarker>(FindObjectsSortMode.None))
+            {
                 if (m.MarkerId == "seal_stone") sealStones++;
+                if (m.MarkerId == "empty_grave") emptyGraves++;
+            }
             Check("3 seal stones placed", sealStones == 3);
+            Check("empty grave marker placed", emptyGraves == 1);
+            int questCount = 0;
+            foreach (var _ in Quests.QuestDatabase.All) questCount++;
+            Check("24 quests loaded (16 main + 8 side)", questCount == 24);
+            Check("side quest sq_dire_hunt loads", Quests.QuestDatabase.Get("sq_dire_hunt") != null);
             bool hasGate = FindObjectsByType<World.DefendZone>(FindObjectsSortMode.None).Length >= 1;
             Check("gate DefendZone present", hasGate);
 

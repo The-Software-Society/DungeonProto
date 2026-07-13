@@ -2182,6 +2182,39 @@ namespace AldenFall.Editor
 
             // Near-city eruption consequences: lava breaks through the streets only while Erupting.
             BuildEruptionSpawns(root, groundLayer);
+
+            // Side quest "The Empty Grave": a grave near Sister Maela's shrine, never filled.
+            BuildEmptyGrave(new Vector3(-36f, 0f, 13f), groundLayer);
+        }
+
+        private static void BuildEmptyGrave(Vector3 pos, int groundLayer)
+        {
+            var go = new GameObject("EmptyGrave");
+            go.transform.position = pos;
+
+            var mound = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            mound.name = "Mound";
+            mound.transform.SetParent(go.transform, false);
+            mound.transform.localScale = new Vector3(1.4f, 0.35f, 2.2f);
+            mound.transform.localPosition = new Vector3(0f, 0.17f, 0f);
+            var mrend = mound.GetComponent<Renderer>();
+            if (mrend != null) mrend.sharedMaterial = Mat("GraveMound", new Color(0.22f, 0.18f, 0.14f), smoothness: 0.05f);
+            if (groundLayer >= 0) mound.layer = groundLayer;
+
+            var stone = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            stone.name = "Headstone";
+            stone.transform.SetParent(go.transform, false);
+            stone.transform.localScale = new Vector3(0.9f, 1.1f, 0.25f);
+            stone.transform.localPosition = new Vector3(0f, 0.55f, -1.0f);
+            var srend = stone.GetComponent<Renderer>();
+            if (srend != null) srend.sharedMaterial = Mat("GraveStone", new Color(0.4f, 0.4f, 0.42f), smoothness: 0.1f);
+            if (groundLayer >= 0) stone.layer = groundLayer;
+
+            var marker = go.AddComponent<World.InspectableMarker>();
+            marker.MarkerId = "empty_grave";
+            marker.InspectText = "The stone bears a name you heard at the gate. The earth is undisturbed, the grave never filled.";
+            marker.Prompt = "Inspect the empty grave";
+            marker.Radius = 3f;
         }
 
         private static void BuildEruptionSpawns(Transform root, int groundLayer)
