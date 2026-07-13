@@ -87,6 +87,30 @@ namespace AldenFall.Editor
             else Debug.Log("ScenePatcher: vendor stock already patched.");
         }
 
+        /// <summary>Fix grass-blade meshes already baked in the scene: point their normals UP so
+        /// they light as bright ground cover instead of rendering as black shards (v9 visual).</summary>
+        [MenuItem("AldenFall/World/Fix Grass Blade Lighting", priority = 214)]
+        public static void FixGrassBlades()
+        {
+            var scene = EditorSceneManager.OpenScene(ScenePath, OpenSceneMode.Single);
+            int fixedCount = 0;
+            foreach (var mf in Object.FindObjectsByType<MeshFilter>(FindObjectsSortMode.None))
+            {
+                var n = mf.gameObject.name;
+                if (!n.Contains("Grass")) continue;
+                var m = mf.sharedMesh;
+                if (m == null || m.vertexCount == 0) continue;
+                var ups = new Vector3[m.vertexCount];
+                for (int i = 0; i < ups.Length; i++) ups[i] = Vector3.up;
+                m.SetNormals(ups);
+                m.RecalculateBounds();
+                fixedCount++;
+            }
+            EditorSceneManager.MarkSceneDirty(scene);
+            EditorSceneManager.SaveScene(scene);
+            Debug.Log($"ScenePatcher: set UP normals on {fixedCount} grass meshes + saved.");
+        }
+
         /// <summary>Rebuild ONLY the GameUI HUD canvas in the scene (HUDBuilder destroys + rebuilds
         /// it, and regenerates the UI sprite set), leaving the rest of the world untouched. Much
         /// safer than a full BuildDemoHeadless world regen when only the HUD changed.</summary>

@@ -13,7 +13,31 @@ namespace AldenFall.Editor
     /// </summary>
     public static class ScreenshotTool
     {
-        public static void CaptureDemo()
+        public static void CaptureDemo() => Run(new (string, Vector3, Vector3)[]
+        {
+            ("overview",  new Vector3(0, 55f, -70f),  new Vector3(0, 0, 0)),
+            ("plaza",     new Vector3(8f, 4f, -14f),  new Vector3(0, 1.5f, 0)),
+            ("goblin",    new Vector3(3f, 2.5f, 4f),  new Vector3(0, 1f, 8f)),
+            ("player",    new Vector3(2.5f, 2.5f, -34f), new Vector3(0, 1f, -30f)),
+            ("pond",      new Vector3(-12f, 5f, -10f), new Vector3(-24f, 0f, 0f)),
+            ("props",     new Vector3(24f, 3f, -6f),  new Vector3(29f, 1f, 0f)),
+        });
+
+        /// <summary>Ground-focused close-ups: grass/dirt patches in several biomes + inside and
+        /// outside the tavern. Low camera angled down so the ground texture fills the frame.</summary>
+        public static void CaptureGround() => Run(new (string, Vector3, Vector3)[]
+        {
+            ("grass_glade",     new Vector3(0f, 2.4f, 84f),    new Vector3(0f, 0f, 92f)),
+            ("grass_forest",    new Vector3(-60f, 2.4f, 34f),  new Vector3(-60f, 0f, 44f)),
+            ("grass_northfield",new Vector3(40f, 2.4f, 120f),  new Vector3(40f, 0f, 132f)),
+            ("dirt_lakeshore",  new Vector3(-100f, 2.4f, 118f),new Vector3(-108f, 0f, 128f)),
+            ("dirt_approach",   new Vector3(0f, 2.4f, -150f),  new Vector3(0f, 0f, -162f)),
+            ("city_lot",        new Vector3(-20f, 2.4f, 14f),  new Vector3(-20f, 0f, 24f)),
+            ("tavern_outside",  new Vector3(-32f, 2.6f, 46f),  new Vector3(-32f, 1.2f, 32f)),
+            ("tavern_inside",   new Vector3(-32f, 2.0f, 37f),  new Vector3(-32f, 1.0f, 28f)),
+        });
+
+        private static void Run((string name, Vector3 pos, Vector3 lookAt)[] shots)
         {
             string outDir = "Screenshots";
             var args = System.Environment.GetCommandLineArgs();
@@ -22,16 +46,6 @@ namespace AldenFall.Editor
             Directory.CreateDirectory(outDir);
 
             EditorSceneManager.OpenScene("Assets/Scenes/EmberfallDemo.unity");
-
-            var shots = new (string name, Vector3 pos, Vector3 lookAt)[]
-            {
-                ("overview",  new Vector3(0, 55f, -70f),  new Vector3(0, 0, 0)),
-                ("plaza",     new Vector3(8f, 4f, -14f),  new Vector3(0, 1.5f, 0)),
-                ("goblin",    new Vector3(3f, 2.5f, 4f),  new Vector3(0, 1f, 8f)),
-                ("player",    new Vector3(2.5f, 2.5f, -34f), new Vector3(0, 1f, -30f)),
-                ("pond",      new Vector3(-12f, 5f, -10f), new Vector3(-24f, 0f, 0f)),
-                ("props",     new Vector3(24f, 3f, -6f),  new Vector3(29f, 1f, 0f)),
-            };
 
             var camObj = new GameObject("QA_Camera");
             var cam = camObj.AddComponent<Camera>();

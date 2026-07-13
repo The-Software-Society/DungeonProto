@@ -2944,7 +2944,12 @@ namespace AldenFall.Editor
             mesh.SetVertices(vertices);
             mesh.SetTriangles(triangles, 0);
             mesh.SetUVs(0, uvs);
-            mesh.RecalculateNormals();
+            // Point every blade normal UP (not RecalculateNormals, which gives vertical faces
+            // sideways normals that catch no overhead light and render as black shards). Lit as
+            // ground cover, the blades read as bright grass matching the textured ground.
+            var upNormals = new List<Vector3>(vertices.Count);
+            for (int n = 0; n < vertices.Count; n++) upNormals.Add(Vector3.up);
+            mesh.SetNormals(upNormals);
             mesh.RecalculateBounds();
 
             obj.AddComponent<MeshFilter>().sharedMesh = mesh;
