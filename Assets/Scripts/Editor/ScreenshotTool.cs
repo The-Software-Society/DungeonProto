@@ -66,6 +66,16 @@ namespace AldenFall.Editor
             ("12_volcano",       new Vector3(0f, 30f, -230f),  new Vector3(0f, 10f, -330f)),
         });
 
+        /// <summary>Tight close-ups of the exact problem spots for verify-driven fixing.</summary>
+        public static void CaptureDiag() => Run(new (string, Vector3, Vector3)[]
+        {
+            ("diag_volcano_ground", new Vector3(0f, 3.5f, -210f),  new Vector3(20f, 0f, -260f)),
+            ("diag_volcano_face",   new Vector3(0f, 20f, -240f),   new Vector3(0f, 25f, -340f)),
+            ("diag_waterfall",      new Vector3(18f, 6f, 458f),    new Vector3(0f, 6f, 486f)),
+            ("diag_road",           new Vector3(6f, 3f, 110f),     new Vector3(-1f, 0.4f, 150f)),
+            ("diag_lake_shore",     new Vector3(40f, 2.5f, 200f),  new Vector3(0f, 1f, 260f)),
+        });
+
         /// <summary>High aerial of the whole expanded world to judge the macro layout.</summary>
         public static void CaptureMacro() => Run(new (string, Vector3, Vector3)[]
         {
@@ -73,6 +83,24 @@ namespace AldenFall.Editor
             ("macro_top",new Vector3(0f, 620f, 40f),    new Vector3(0f, 0f, 45f)),    // near top-down
             ("macro_E",  new Vector3(-420f, 300f, 120f),new Vector3(60f, 0f, 160f)),  // from the west
         });
+
+        public static void CheckTerrain()
+        {
+            EditorSceneManager.OpenScene("Assets/Scenes/EmberfallDemo.unity");
+            var terrain = Object.FindObjectOfType<Terrain>();
+            if (terrain == null) { Debug.Log("CHECK: no Terrain in scene"); return; }
+            var data = terrain.terrainData;
+            Debug.Log($"CHECK layers={data.terrainLayers.Length} splatRes={data.alphamapResolution} " +
+                      $"names=[{string.Join(",", System.Array.ConvertAll(data.terrainLayers, l => l == null ? "NULL" : l.name))}]");
+            var mat = terrain.materialTemplate;
+            Debug.Log($"CHECK terrain material={(mat == null ? "NULL(default)" : mat.name)} shader={(mat == null ? "?" : mat.shader.name)}");
+            // world (0,-250) -> alphamap index. origin z=-470 sizeZ=1040, origin x=-450 sizeX=900, res=512
+            int res = data.alphamapResolution;
+            int ix = Mathf.RoundToInt((0f - (-450f)) / 900f * (res - 1));
+            int iz = Mathf.RoundToInt((-250f - (-470f)) / 1040f * (res - 1));
+            var a = data.GetAlphamaps(ix, iz, 1, 1);
+            Debug.Log($"CHECK volcano alphamap grass={a[0, 0, 0]:F2} sand={a[0, 0, 1]:F2} soot={a[0, 0, 2]:F2} dirt={a[0, 0, 3]:F2} rock={a[0, 0, 4]:F2}");
+        }
 
         private static void Run((string name, Vector3 pos, Vector3 lookAt)[] shots)
         {

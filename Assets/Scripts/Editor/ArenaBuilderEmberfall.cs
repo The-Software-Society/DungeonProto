@@ -298,7 +298,7 @@ namespace AldenFall.Editor
                     float soot = SootAmount(wx, wz);
                     float lakeR = Vector2.Distance(new Vector2(wx, wz), new Vector2(LakeCenter.x, LakeCenter.z));
                     bool shore = (lakeR > LakeHalf - 12f && lakeR < LakeHalf + 8f) || InAnyRiver(wx, wz);  // thin sand/mud band
-                    bool road = (Mathf.Abs(wx) < 6f && wz > -60f && wz < 210f);   // N-S dirt road (city -> lakeside)
+                    bool road = (Mathf.Abs(wx) < 7f && wz > -66f && wz < 214f);   // N-S dirt road (city -> lakeside)
                     float edge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
                                            Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
                     bool southCorridor = Mathf.Abs(wx) < ApproachHalfW + 24f && wz < -90f;
@@ -315,6 +315,11 @@ namespace AldenFall.Editor
                         g *= Mathf.Clamp01(1f - southT * 1.9f);                            // green fades out going south
                         rk *= 1f - so;
                     }
+                    // Worn dirt + dry patches break the flat lawn in the lush ring (depth/erosion,
+                    // not a golf course). Two noise octaves so patches read at both scales.
+                    float wear = Mathf.PerlinNoise(wx * 0.028f + 40.1f, wz * 0.028f + 22.7f) * 0.65f
+                               + Mathf.PerlinNoise(wx * 0.09f + 3.3f, wz * 0.09f + 8.8f) * 0.35f;
+                    if (wear > 0.62f) { float w = Mathf.Clamp01((wear - 0.62f) * 3.4f) * 0.7f; d = Mathf.Max(d, w); g *= 1f - w; }
                     if (shore) { s = 0.8f; g *= 0.2f; rk *= 0.2f; }                                                 // sand/mud shores
                     if (road || InCityFootprint(wx, wz)) { d = Mathf.Max(d, 0.85f); g *= 0.15f; so *= 0.4f; }       // dirt roads + city
 
@@ -363,21 +368,40 @@ namespace AldenFall.Editor
                     if (Mathf.Abs(wx - LakeCenter.x) < LakeHalf + 10f
                      && Mathf.Abs(wz - LakeCenter.z) < LakeHalf + 10f) continue;
                     if (SootAmount(wx, wz) > 0.25f) continue;
-                    if (Mathf.Abs(wx) < 7f && wz > -60f && wz < 66f) continue;   // city road clear
+                    if (Mathf.Abs(wx) < 8f && wz > -66f && wz < 214f) continue;  // full dirt-road clear (matches splat road)
+                    // Keep the water sources (waterfall gorges) bare so they read as rock, not a
+                    // green hill: clear grass around each river source + the lake outflow notch.
+                    bool nearSource = false;
+                    foreach (int rsi in RiverSourceFalls)
+                    {
+                        Vector3 sp = RiverPaths[rsi][0];
+                        if ((wx - sp.x) * (wx - sp.x) + (wz - sp.z) * (wz - sp.z) < 26f * 26f) { nearSource = true; break; }
+                    }
+                    if (nearSource) continue;
                     // No grass on the rock mountains (rising terrain at the world edge).
                     float dEdge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
                                             Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
-                    if (dEdge < 78f) continue;
+                    if (dEdge < 82f) continue;
+                    // Let the worn-dirt splat patches read as bare earth (no grass carpet on top).
+                    float wearD = Mathf.PerlinNoise(wx * 0.028f + 40.1f, wz * 0.028f + 22.7f) * 0.65f
+                                + Mathf.PerlinNoise(wx * 0.09f + 3.3f, wz * 0.09f + 8.8f) * 0.35f;
+                    if (wearD > 0.66f) continue;
 
-                    // Dense carpet with natural variation: near-full coverage, thicker in clumps.
-                    float clump = Mathf.PerlinNoise(wx * 0.05f + 7.7f, wz * 0.05f + 3.1f);
-                    if (clump < 0.2f) continue;   // occasional bare patches only
-                    density[iz, ix] = clump > 0.5f ? 16 : 9;
+                    // Varied carpet with real bare patches (not a uniform lawn): thicker in clumps.
+                    float clump = Mathf.PerlinNoise(wx * 0.055f + 7.7f, wz * 0.055f + 3.1f);
+                    if (clump < 0.33f) continue;   // larger bare/thin patches for depth
+                    density[iz, ix] = clump > 0.62f ? 14 : 6;
                 }
             }
             data.SetDetailLayer(0, 0, 0, density);
 
             AssetDatabase.CreateAsset(data, $"{MaterialDir}/EmberfallTerrain.asset");
+            // Re-apply the splat on the now asset-backed TerrainData: assigning terrainLayers
+            // re-initialises the alphamap to layer-0 (all grass), and that reset is what gets
+            // serialised unless we write the weights again once the asset exists, then flush.
+            data.SetAlphamaps(0, 0, alpha);
+            EditorUtility.SetDirty(data);
+            AssetDatabase.SaveAssets();
 
             var terrainObj = Terrain.CreateTerrainGameObject(data);
             terrainObj.name = "EmberfallTerrain";
