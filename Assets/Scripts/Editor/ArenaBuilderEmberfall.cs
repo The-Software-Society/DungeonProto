@@ -573,6 +573,12 @@ namespace AldenFall.Editor
                 "TL_Rock"  => GroundTextureGenerator.Rock(s),
                 _          => GroundTextureGenerator.Grass(s),
             };
+            // CRITICAL: terrain layers use SmoothnessSource=AlbedoAlpha, so the diffuse ALPHA (not
+            // the layer's m_Smoothness=0) drives gloss. Color32 albedo lands opaque (a=255) =>
+            // smoothness ~1 => the bare dirt/road/approach terrain rendered as a WET MIRROR (Jon:
+            // "roads too shiny, like the water bed"). Grass hid it under tuft billboards; roads
+            // didn't. Zero the alpha so the ground is genuinely matte.
+            for (int i = 0; i < px.Length; i++) px[i].a = 0;
             AssetDatabase.DeleteAsset($"{MaterialDir}/{name}_Tex.asset");
             var tex = new Texture2D(s, s, TextureFormat.RGBA32, true);
             tex.SetPixels32(px);

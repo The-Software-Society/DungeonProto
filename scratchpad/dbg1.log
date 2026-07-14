@@ -1,0 +1,925 @@
+Unity Editor version:    6000.3.2f1 (a9779f353c9b)
+Branch:                  6000.3/staging
+Build type:              Release
+Batch mode:              YES
+macOS version:           Version 15.5 (Build 24F74)
+Darwin version:          24.5.0
+Architecture:            arm64
+Running under Rosetta:   NO
+Available memory:        32768 MB
+Date:                    2026-07-14T16:17:00Z
+[Licensing::Module] Trying to connect to existing licensing client channel...
+[Licensing::IpcConnector] Channel LicenseClient-jon doesn't exist
+Launching external process: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Helpers/UnityLicensingClient.app/Contents/MacOS/Unity.Licensing.Client
+[Licensing::Module] Successfully launched the LicensingClient (PId: 68726)
+Launching external process: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/Server/UnityPackageManager
+
+COMMAND LINE ARGUMENTS:
+/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/MacOS/Unity
+-batchmode
+-projectPath
+/Users/jon/Developer/AldenFall
+-executeMethod
+AldenFall.Editor.ScreenshotTool.CaptureLoop
+-screenshotDir
+/Users/jon/Developer/AldenFall/scratchpad/dbg1
+-logFile
+/Users/jon/Developer/AldenFall/scratchpad/dbg1.log
+-quit
+Successfully changed project path to: /Users/jon/Developer/AldenFall
+/Users/jon/Developer/AldenFall
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=33554432"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=33554432"
+    "memorysetup-bucket-allocator-block-count=8"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=33554432"
+    "memorysetup-profiler-bucket-allocator-block-count=8"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=16777216"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+Player connection [8547163904]  Target information:
+
+Player connection [8547163904]  * "[IP] 192.168.1.109 [Port] 55504 [Flags] 2 [Guid] 3497726228 [EditorId] 3497726228 [Version] 1048832 [Id] OSXEditor(0,Jons-MacBook-Pro-2.local) [Debug] 1 [PackageName] OSXEditor [ProjectName] Editor" 
+
+Player connection [8547163904] Host joined multi-casting on [225.0.0.222:54997]...
+Player connection [8547163904] Host joined alternative multi-casting on [225.0.0.222:34997]...
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-jon" at "2026-07-14T16:17:00.976534Z"
+[Package Manager] Connected to IPC stream "Upm-68722" after 0.4 seconds.
+[Licensing::Module] Licensing is not yet initialized.
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.17.4+4293ba1
+  Session Id:              d692e0e8bb464b6296c5f17b43a60aea
+  Correlation Id:          36ff60912a4a3baaca41f90386e8b66d
+  External correlation Id: 7204076311401846065
+  Machine Id:              9QFA+W3uzqm4t40ck31ccBOg81s=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-jon" (connect: 0.57s, validation: 0.04s, handshake: 0.37s)
+[Licensing::IpcConnector] Successfully connected to: "LicenseClient-jon-notifications" at "2026-07-14T16:17:01.384682Z"
+[Licensing::Module] Connected to LicensingClient (PId: 68726, launch time: 0.00, total connection time: 0.98s)
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] License group:
+  Id: 2475915425808-UnityPersXXXX
+  Product: Unity Personal
+  Type: Assigned
+  Expiration: Unlimited
+[Licensing::Client] Successfully updated license, isAsync: True, time: 0.01
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] Licensing Background thread has ended after 1.00s
+[Licensing::Module] Licensing is initialized (took 0.41s).
+[Licensing::Client] Successfully resolved entitlement details
+Library Redirect Path: Library/
+[Physics::Module] Selected backend.
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+Artifact Garbage Collection - Removed 2 unused hashed content files
+Refreshing native plugins compatible for Editor in 4.02 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Initialize engine version: 6000.3.2f1 (a9779f353c9b)
+[Subsystems] Discovering subsystems at path /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/UnitySubsystems
+[Subsystems] Discovering subsystems at path /Users/jon/Developer/AldenFall/Assets
+GfxDevice: creating device client; kGfxThreadingModeNonThreaded
+ preferred device: Apple M1 Max (high power)
+Metal devices available: 1
+0: Apple M1 Max (high power)
+Using device Apple M1 Max (high power)
+Initializing Metal device caps: Apple M1 Max
+Mac GPU Family: 2
+Apple GPU Family: 7
+MSL Version: 3.0
+Has Float MSAA: 1
+Has Float Filtering: 1
+ReadWrite Texture Tier: 2
+Initialize mono
+Mono path[0] = '/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/Managed'
+Mono path[1] = '/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/MonoBleedingEdge/lib/mono/unityjit-macos'
+Mono config path = '/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/MonoBleedingEdge/etc'
+Using monoOptions --debugger-agent=transport=dt_socket,embedding=1,server=y,suspend=n,address=127.0.0.1:56722
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+ImportWorker Server TCP listen port: 0
+AcceleratorClientConnectionCallback - disconnected - :0
+Begin MonoManager ReloadAssembly
+Registering precompiled unity dll's ...
+Register platform support module: /Applications/Unity/Hub/Editor/6000.3.2f1/PlaybackEngines/WebGLSupport/UnityEditor.WebGL.Extensions.dll
+Register platform support module: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/PlaybackEngines/MacStandaloneSupport/UnityEditor.OSXStandalone.Extensions.dll
+Register platform support module: /Applications/Unity/Hub/Editor/6000.3.2f1/PlaybackEngines/WindowsStandaloneSupport/UnityEditor.WindowsStandalone.Extensions.dll
+Register platform support module: /Applications/Unity/Hub/Editor/6000.3.2f1/PlaybackEngines/LinuxStandaloneSupport/UnityEditor.LinuxStandalone.Extensions.dll
+Registered in 0.002742 seconds.
+- Loaded All Assemblies, in  0.464 seconds
+Native extension for LinuxStandalone target not found
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Native extension for WebGL target not found
+Package Manager log level set to [2]
+[Licensing::Client] Successfully resolved entitlement details
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  1.607 seconds
+Domain Reload Profiling: 2071ms
+	BeginReloadAssembly (165ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (0ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (7ms)
+	RebuildCommonClasses (42ms)
+	RebuildNativeTypeToScriptingClass (11ms)
+	initialDomainReloadingComplete (56ms)
+	LoadAllAssembliesAndSetupDomain (189ms)
+		LoadAssemblies (159ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (183ms)
+			TypeCache.Refresh (182ms)
+				TypeCache.ScanAssembly (166ms)
+			BuildScriptInfoCaches (0ms)
+			ResolveRequiredComponents (1ms)
+	FinalizeReload (1607ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (1572ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (88ms)
+			SetLoadedEditorAssemblies (5ms)
+			BeforeProcessingInitializeOnLoad (88ms)
+			ProcessInitializeOnLoadAttributes (123ms)
+			ProcessInitializeOnLoadMethodAttributes (1268ms)
+			AfterProcessingInitializeOnLoad (0ms)
+			EditorAssembliesLoaded (0ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (0ms)
+[Licensing::Client] Successfully resolved entitlement details
+Application.AssetDatabase Initial Refresh Start
+[Package Manager] Restoring resolved packages state from cache
+[Package Manager] Registered 59 packages:
+  Packages from [https://packages.unity.com]:
+    com.unity.ai.navigation@2.0.4 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.ai.navigation@3f89ad87253d)
+    com.unity.cinemachine@3.1.2 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.cinemachine@b2e7bffab772)
+    com.unity.inputsystem@1.11.2 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.inputsystem@3c4a97c3950f)
+    com.unity.sdk.linux-x86_64@1.1.0 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.sdk.linux-x86_64@6d12be270055)
+    com.unity.toolchain.macos-arm64-linux@1.1.0 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.toolchain.macos-arm64-linux@aca88ed9a772)
+    com.unity.sysroot.base@1.1.0 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.sysroot.base@3559fe1aa613)
+    com.unity.splines@2.8.2 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.splines@1cb7d86fc7ff)
+    com.unity.searcher@4.9.4 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.searcher@d45a78918735)
+    com.unity.burst@1.8.26 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.burst@21aa83e7fd8f)
+    com.unity.mathematics@1.3.3 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.mathematics@19a9377c4ffa)
+    com.unity.collections@2.6.2 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.collections@aea9d3bd5e19)
+    com.unity.settings-manager@2.1.1 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.settings-manager@0b8638c5ce86)
+    com.unity.nuget.mono-cecil@1.11.6 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.nuget.mono-cecil@ecb9724e46ff)
+    com.unity.test-framework.performance@3.2.0 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.test-framework.performance@0840f58e4562)
+  Built-in packages:
+    com.unity.multiplayer.center@1.0.1 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.multiplayer.center@f01f4ba8d00a)
+    com.unity.render-pipelines.universal@17.3.0 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.render-pipelines.universal@66e99ffa09c7)
+    com.unity.test-framework@1.6.0 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.test-framework@0b7a23ab2e1d)
+    com.unity.textmeshpro@5.0.0 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.textmeshpro@53f43edfd2e0)
+    com.unity.modules.accessibility@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.accessibility)
+    com.unity.modules.adaptiveperformance@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.adaptiveperformance)
+    com.unity.modules.ai@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.ai)
+    com.unity.modules.androidjni@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.androidjni)
+    com.unity.modules.animation@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.animation)
+    com.unity.modules.assetbundle@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.assetbundle)
+    com.unity.modules.audio@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.audio)
+    com.unity.modules.cloth@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.cloth)
+    com.unity.modules.director@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.director)
+    com.unity.modules.imageconversion@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.imageconversion)
+    com.unity.modules.imgui@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.imgui)
+    com.unity.modules.jsonserialize@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.jsonserialize)
+    com.unity.modules.particlesystem@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.particlesystem)
+    com.unity.modules.physics@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.physics)
+    com.unity.modules.physics2d@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.physics2d)
+    com.unity.modules.screencapture@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.screencapture)
+    com.unity.modules.terrain@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.terrain)
+    com.unity.modules.terrainphysics@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.terrainphysics)
+    com.unity.modules.tilemap@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.tilemap)
+    com.unity.modules.ui@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.ui)
+    com.unity.modules.uielements@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.uielements)
+    com.unity.modules.umbra@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.umbra)
+    com.unity.modules.unityanalytics@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.unityanalytics)
+    com.unity.modules.unitywebrequest@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequest)
+    com.unity.modules.unitywebrequestassetbundle@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestassetbundle)
+    com.unity.modules.unitywebrequestaudio@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestaudio)
+    com.unity.modules.unitywebrequesttexture@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequesttexture)
+    com.unity.modules.unitywebrequestwww@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestwww)
+    com.unity.modules.vectorgraphics@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.vectorgraphics)
+    com.unity.modules.vehicles@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.vehicles)
+    com.unity.modules.video@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.video)
+    com.unity.modules.vr@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.vr)
+    com.unity.modules.wind@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.wind)
+    com.unity.modules.xr@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.xr)
+    com.unity.modules.subsystems@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.subsystems)
+    com.unity.modules.hierarchycore@1.0.0 (location: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/PackageManager/BuiltInPackages/com.unity.modules.hierarchycore)
+    com.unity.ugui@2.0.0 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.ugui@52e65280e89e)
+    com.unity.ext.nunit@2.0.5 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.ext.nunit@d8c07649098d)
+    com.unity.render-pipelines.core@17.3.0 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.render-pipelines.core@ce86d16dfe9d)
+    com.unity.shadergraph@17.3.0 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.shadergraph@3cfe1d1f3f8c)
+    com.unity.render-pipelines.universal-config@17.0.3 (location: /Users/jon/Developer/AldenFall/Library/PackageCache/com.unity.render-pipelines.universal-config@8dc1aab4af1d)
+[Package Manager] com.unity.textmeshpro is deprecated: This package is no longer supported. TextMeshPro functionalities are now included in the com.unity.ugui package. To continue using them, consider adding it to your project dependencies.
+[Subsystems] No new subsystems found in resolved package list.
+[Package Manager] Done registering packages in 0.00 seconds
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+[ScriptCompilation] Requested script compilation because: Assetdatabase observed changes in script compilation related files
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://unix:/tmp/ilpp.sock-bb46f7721b065bd6ace844e988d15e15
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Production
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[0]
+      Content root path: /Users/jon/Developer/AldenFall/
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping application/grpc -
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping application/grpc - - 200 - application/grpc 51.6312ms
+Starting: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/BuildPipeline/bee_backend --ipc --defer-dag-verification --dagfile="Library/Bee/1900b0aE.dag" --continue-on-failure --profile="Library/Bee/backend1.traceevents" ScriptAssemblies
+WorkingDir: /Users/jon/Developer/AldenFall
+DisplayProgressbar: Compiling Scripts
+ExitCode: 4 Duration: 0s191ms
+Rebuilding DAG because FileSignature timestamp changed: Library/Bee/1900b0aE-inputdata.json
+*** Tundra requires additional run (0.13 seconds), 0 items updated, 0 evaluated
+Starting: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/netcorerun/netcorerun "/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/BuildPipeline/ScriptCompilationBuildProgram.exe" "Library/Bee/1900b0aE.dag.json" "Library/Bee/1900b0aE-inputdata.json" "Library/Bee/buildprogram0.traceevents"
+WorkingDir: /Users/jon/Developer/AldenFall
+ExitCode: 0 Duration: 0s958ms
+Starting: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/BuildPipeline/bee_backend --ipc --defer-dag-verification --dagfile="Library/Bee/1900b0aE.dag" --continue-on-failure --dagfilejson="Library/Bee/1900b0aE.dag.json" --profile="Library/Bee/backend2.traceevents" ScriptAssemblies
+WorkingDir: /Users/jon/Developer/AldenFall
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/ConfigurePostProcessors application/grpc -
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/ConfigurePostProcessors'
+[40m[1m[33mwarn[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Assembly system.runtime.interopservices.windowsruntime has duplicate hint path. Ignoring "/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/UnityReferenceAssemblies/unity-4.8-api/Facades/System.Runtime.InteropServices.WindowsRuntime.dll" in favor of "/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/NetStandard/Extensions/2.0.0/System.Runtime.InteropServices.WindowsRuntime.dll"
+[40m[1m[33mwarn[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Assembly system.componentmodel.composition has duplicate hint path. Ignoring "/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/UnityReferenceAssemblies/unity-4.8-api/System.ComponentModel.Composition.dll" in favor of "/Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/NetStandard/compat/2.1.0/shims/netfx/System.ComponentModel.Composition.dll"
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Resolved Unity.Burst.Cecil, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e with Library/PackageCache/com.unity.burst@21aa83e7fd8f/Unity.Burst.CodeGen/Unity.Burst.Cecil.dll
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Resolved Mono.Cecil, Version=0.11.5.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e with Library/PackageCache/com.unity.nuget.mono-cecil@ecb9724e46ff/Mono.Cecil.dll
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Resolved Mono.CecilX, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e with Assets/Mirror/Plugins/Mono.Cecil/Mono.CecilX.dll
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/ConfigurePostProcessors'
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/ConfigurePostProcessors application/grpc - - 200 - application/grpc 20.4324ms
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/PostProcessAssembly application/grpc -
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/PostProcessAssembly'
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      Processing assembly Library/Bee/artifacts/1900b0aE.dag/AldenFall.Editor.dll, with 142 defines and 291 references
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      processors: Mirror.Weaver.ILPostProcessorHook, Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running Mirror.Weaver.ILPostProcessorHook
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Resolved Mirror, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null with Library/Bee/artifacts/1900b0aE.dag/Mirror.dll
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Resolved UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null with /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/Managed/UnityEngine/UnityEngine.CoreModule.dll
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Resolved UnityEditor.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null with /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Resources/Scripting/Managed/UnityEngine/UnityEditor.CoreModule.dll
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/PostProcessAssembly application/grpc -
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/PostProcessAssembly'
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      Processing assembly Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp.dll, with 144 defines and 327 references
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      processors: Mirror.Weaver.ILPostProcessorHook, Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running Mirror.Weaver.ILPostProcessorHook
+Find all reader and writers took 38 milliseconds
+Script Module: Assembly-CSharp.dll
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Resolved Mono.CecilX.Rocks, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e with Assets/Mirror/Plugins/Mono.Cecil/Mono.CecilX.Rocks.dll
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/PostProcessAssembly application/grpc -
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/PostProcessAssembly'
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      Processing assembly Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp-Editor.dll, with 142 defines and 342 references
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      processors: Mirror.Weaver.ILPostProcessorHook, Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running Mirror.Weaver.ILPostProcessorHook
+Weave behaviours and messages took 39 milliseconds
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running Unity.Jobs.CodeGen.JobsILPostProcessor
+Find all reader and writers took 80 milliseconds
+Script Module: AldenFall.Editor.dll
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Resolved Unity.Collections, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null with Library/Bee/artifacts/1900b0aE.dag/Unity.Collections.dll
+Find all reader and writers took 28 milliseconds
+Script Module: Assembly-CSharp-Editor.dll
+Weave behaviours and messages took 0 milliseconds
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running Unity.Jobs.CodeGen.JobsILPostProcessor
+Weave behaviours and messages took 49 milliseconds
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running Unity.Jobs.CodeGen.JobsILPostProcessor
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/PostProcessAssembly'
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/PostProcessAssembly application/grpc - - 200 - application/grpc 278.8267ms
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingPipeline[0]
+      running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      Resolved Unity.Burst.Cecil.Rocks, Version=0.11.4.0, Culture=neutral, PublicKeyToken=50cebf1cceb9d05e with Library/PackageCache/com.unity.burst@21aa83e7fd8f/Unity.Burst.CodeGen/Unity.Burst.Cecil.Rocks.dll
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/PostProcessAssembly'
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/PostProcessAssembly'
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/PostProcessAssembly application/grpc - - 200 - application/grpc 278.0847ms
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/PostProcessAssembly application/grpc - - 200 - application/grpc 396.6861ms
+ExitCode: 0 Duration: 4s710ms
+Finished compiling graph: 848 nodes, 17444 flattened edges (14094 ToBuild, 144 ToUse), maximum node priority 987
+[441/845    0s] WriteText Library/Bee/artifacts/1900b0aE.dag/AldenFall.Editor.rsp
+[446/845    0s] CopyFiles Library/ScriptAssemblies/UnityEngine.TestRunner.pdb
+[447/845    0s] CopyFiles Library/ScriptAssemblies/UnityEngine.TestRunner.dll
+[452/845    0s] CopyFiles Library/ScriptAssemblies/UnityEditor.TestRunner.dll
+[453/845    0s] CopyFiles Library/ScriptAssemblies/UnityEditor.TestRunner.pdb
+[601/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Mirror.CodeGen.pdb
+[602/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Collections.CodeGen.pdb
+[603/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Collections.CodeGen.dll
+[604/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Mirror.CodeGen.dll
+[605/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Burst.CodeGen.dll
+[607/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Burst.CodeGen.pdb
+[640/845    0s] ILPP-Configuration Library/ilpp-configuration.nevergeneratedoutput
+[699/845    0s] CopyFiles Library/ScriptAssemblies/Unity.InternalAPIEngineBridge.004.dll
+[701/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Core.ShaderLibrary.dll
+[702/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.Shaders.dll
+[703/845    0s] CopyFiles Library/ScriptAssemblies/AldenFall.Tests.dll
+[705/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.GPUDriven.Runtime.dll
+[707/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Mathematics.dll
+[708/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.Components.dll
+[709/845    0s] CopyFiles Library/ScriptAssemblies/Telepathy.dll
+[710/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Burst.dll
+[711/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.Runtime.dll
+[712/845    0s] CopyFiles Library/ScriptAssemblies/Unity.AI.Navigation.dll
+[714/845    0s] CopyFiles Library/ScriptAssemblies/Unity.PerformanceTesting.dll
+[715/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Multiplayer.Center.Common.dll
+[716/845    0s] CopyFiles Library/ScriptAssemblies/Unity.TextMeshPro.dll
+[718/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Collections.dll
+[720/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Core.Runtime.dll
+[721/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Splines.dll
+[722/845    0s] CopyFiles Library/ScriptAssemblies/Unity.UnifiedRayTracing.Runtime.dll
+[723/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.Authenticators.dll
+[724/845    0s] CopyFiles Library/ScriptAssemblies/kcp2k.dll
+[725/845    0s] CopyFiles Library/ScriptAssemblies/Unity.InputSystem.ForUI.dll
+[726/845    0s] CopyFiles Library/ScriptAssemblies/SimpleWebTransport.dll
+[727/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.Examples.dll
+[728/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.2D.Runtime.dll
+[729/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Core.Runtime.Shared.dll
+[730/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.dll
+[731/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.dll
+[732/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.Transports.dll
+[733/845    0s] CopyFiles Library/ScriptAssemblies/AldenFall.dll
+[734/845    0s] CopyFiles Library/ScriptAssemblies/UnityEngine.UI.dll
+[735/845    0s] CopyFiles Library/ScriptAssemblies/Unity.InputSystem.dll
+[736/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipeline.Universal.ShaderLibrary.dll
+[737/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Cinemachine.dll
+[738/845    0s] CopyFiles Library/ScriptAssemblies/Unity.InputSystem.TestFramework.dll
+[739/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.Config.Runtime.dll
+[740/845    0s] CopyFiles Library/ScriptAssemblies/Edgegap.dll
+[741/845    0s] CopyFiles Library/ScriptAssemblies/Edgegap.pdb
+[742/845    0s] CopyFiles Library/ScriptAssemblies/Unity.TextMeshPro.Editor.pdb
+[743/845    0s] CopyFiles Library/ScriptAssemblies/EncryptionTransportEditor.dll
+[744/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Rendering.LightTransport.Editor.dll
+[745/845    0s] CopyFiles Library/ScriptAssemblies/Unity.AI.Navigation.Updater.pdb
+[746/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Core.Editor.Shared.dll
+[747/845    0s] CopyFiles Library/ScriptAssemblies/Unity.AI.Navigation.Updater.dll
+[748/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Rendering.LightTransport.Editor.pdb
+[749/845    0s] CopyFiles Library/ScriptAssemblies/Unity.TextMeshPro.Editor.dll
+[750/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Core.Editor.Shared.pdb
+[751/845    0s] CopyFiles Library/ScriptAssemblies/Unity.PerformanceTesting.Editor.pdb
+[752/845    0s] CopyFiles Library/ScriptAssemblies/EncryptionTransportEditor.pdb
+[753/845    0s] CopyFiles Library/ScriptAssemblies/Unity.PerformanceTesting.Editor.dll
+[754/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Core.Editor.dll
+[755/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Burst.Editor.dll
+[756/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Burst.Editor.pdb
+[757/845    0s] CopyFiles Library/ScriptAssemblies/Unity.ShaderGraph.Utilities.dll
+[758/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Core.Editor.pdb
+[759/845    0s] CopyFiles Library/ScriptAssemblies/Unity.AI.Navigation.Editor.pdb
+[760/845    0s] CopyFiles Library/ScriptAssemblies/Unity.ShaderGraph.Utilities.pdb
+[761/845    0s] CopyFiles Library/ScriptAssemblies/Unity.ShaderGraph.Editor.pdb
+[762/845    0s] CopyFiles Library/ScriptAssemblies/Unity.AI.Navigation.Editor.dll
+[763/845    0s] CopyFiles Library/ScriptAssemblies/Unity.ShaderGraph.Editor.dll
+[764/845    0s] CopyFiles Library/ScriptAssemblies/Unity.SysrootPackage.Editor.dll
+[765/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Sysroot.Linux_x86_64.dll
+[766/845    0s] CopyFiles Library/ScriptAssemblies/Unity.SysrootPackage.Editor.pdb
+[767/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Sysroot.Linux_x86_64.pdb
+[768/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Settings.Editor.pdb
+[769/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Splines.Editor.dll
+[770/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.Editor.pdb
+[771/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Settings.Editor.dll
+[772/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.Editor.dll
+[773/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Splines.Editor.pdb
+[774/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.Editor.pdb
+[775/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.Editor.dll
+[776/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Toolchain.Macos-arm64-Linux.pdb
+[777/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Toolchain.Macos-arm64-Linux.dll
+[778/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.CompilerSymbols.dll
+[779/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.CompilerSymbols.pdb
+[780/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Cinemachine.Editor.pdb
+[781/845    0s] CopyFiles Library/ScriptAssemblies/UnityEditor.UI.dll
+[782/845    0s] CopyFiles Library/ScriptAssemblies/UnityEditor.UI.pdb
+[783/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Cinemachine.Editor.dll
+[784/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Multiplayer.Center.Editor.dll
+[785/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Multiplayer.Center.Editor.pdb
+[786/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Collections.Editor.pdb
+[787/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Searcher.Editor.dll
+[788/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Collections.Editor.dll
+[789/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.2D.Editor.Overrides.pdb
+[790/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Searcher.Editor.pdb
+[791/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.2D.Editor.Overrides.dll
+[792/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Mathematics.Editor.pdb
+[793/845    0s] CopyFiles Library/ScriptAssemblies/Unity.AI.Navigation.Editor.ConversionSystem.dll
+[794/845    0s] CopyFiles Library/ScriptAssemblies/Unity.AI.Navigation.Editor.ConversionSystem.pdb
+[795/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Mathematics.Editor.dll
+[796/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.Transports.pdb
+[797/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.ShaderGraph.ShaderGraphLibrary.pdb
+[798/845    0s] CopyFiles Library/ScriptAssemblies/PPv2URPConverters.pdb
+[799/845    0s] CopyFiles Library/ScriptAssemblies/UnityEngine.UI.pdb
+[800/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.Config.Runtime.pdb
+[801/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.2D.Runtime.pdb
+[802/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Core.Runtime.Shared.pdb
+[803/845    0s] CopyFiles Library/ScriptAssemblies/PPv2URPConverters.dll
+[804/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.Authenticators.pdb
+[805/845    0s] CopyFiles Library/ScriptAssemblies/AldenFall.pdb
+[806/845    0s] CopyFiles Library/ScriptAssemblies/SimpleWebTransport.pdb
+[807/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Splines.pdb
+[808/845    0s] CopyFiles Library/ScriptAssemblies/Unity.TextMeshPro.pdb
+[809/845    0s] CopyFiles Library/ScriptAssemblies/Telepathy.pdb
+[810/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.Shaders.pdb
+[811/845    0s] CopyFiles Library/ScriptAssemblies/Unity.InputSystem.pdb
+[812/845    0s] CopyFiles Library/ScriptAssemblies/Unity.InputSystem.TestFramework.pdb
+[813/845    0s] CopyFiles Library/ScriptAssemblies/Unity.PerformanceTesting.pdb
+[814/845    0s] CopyFiles Library/ScriptAssemblies/Unity.InputSystem.ForUI.pdb
+[815/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Universal.Runtime.pdb
+[816/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Core.ShaderLibrary.pdb
+[817/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.GPUDriven.Runtime.pdb
+[818/845    0s] CopyFiles Library/ScriptAssemblies/Unity.UnifiedRayTracing.Runtime.pdb
+[819/845    0s] CopyFiles Library/ScriptAssemblies/kcp2k.pdb
+[820/845    0s] CopyFiles Library/ScriptAssemblies/Unity.InternalAPIEngineBridge.004.pdb
+[821/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Mathematics.pdb
+[822/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Collections.pdb
+[823/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.pdb
+[824/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.Components.pdb
+[825/845    0s] CopyFiles Library/ScriptAssemblies/AldenFall.Tests.pdb
+[826/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Multiplayer.Center.Common.pdb
+[827/845    0s] CopyFiles Library/ScriptAssemblies/Mirror.Examples.pdb
+[828/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipeline.Universal.ShaderLibrary.pdb
+[829/845    0s] CopyFiles Library/ScriptAssemblies/Unity.RenderPipelines.Core.Runtime.pdb
+[830/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Cinemachine.pdb
+[831/845    0s] CopyFiles Library/ScriptAssemblies/Unity.Burst.pdb
+[832/845    0s] CopyFiles Library/ScriptAssemblies/Unity.AI.Navigation.pdb
+[833/845    3s] Csc Library/Bee/artifacts/1900b0aE.dag/AldenFall.Editor.dll (+2 others)
+Assets/Scripts/Editor/MeshyCharacterImporter.cs(137,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/MultiplayerBuildTools.cs(142,38): warning CS0618: 'PlayerSettings.GetApplicationIdentifier(BuildTargetGroup)' is obsolete: 'Use GetApplicationIdentifier(NamedBuildTarget buildTarget) instead'
+Assets/Scripts/Editor/MultiplayerBuildTools.cs(143,17): warning CS0618: 'PlayerSettings.SetApplicationIdentifier(BuildTargetGroup, string)' is obsolete: 'Use SetApplicationIdentifier(NamedBuildTarget buildTarget, string identifier) instead'
+Assets/Scripts/Editor/ArenaBuilder.cs(308,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilder.cs(319,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ScreenshotTool.cs(135,27): warning CS0618: 'Object.FindObjectOfType<T>()' is obsolete: 'Object.FindObjectOfType has been deprecated. Use Object.FindFirstObjectByType instead or if finding any instance is acceptable the faster Object.FindAnyObjectByType'
+Assets/Scripts/Editor/ScreenshotTool.cs(153,27): warning CS0618: 'Object.FindObjectOfType<T>()' is obsolete: 'Object.FindObjectOfType has been deprecated. Use Object.FindFirstObjectByType instead or if finding any instance is acceptable the faster Object.FindAnyObjectByType'
+Assets/Scripts/Editor/ScreenshotTool.cs(199,31): warning CS0618: 'Object.FindObjectsOfType<T>()' is obsolete: 'Object.FindObjectsOfType has been deprecated. Use Object.FindObjectsByType instead which lets you decide whether you need the results sorted or not.  FindObjectsOfType sorts the results by InstanceID but if you do not need this using FindObjectSortMode.None is considerably faster.'
+Assets/Scripts/Editor/ScreenshotTool.cs(208,36): warning CS0618: 'Object.FindObjectsOfType<T>()' is obsolete: 'Object.FindObjectsOfType has been deprecated. Use Object.FindObjectsByType instead which lets you decide whether you need the results sorted or not.  FindObjectsOfType sorts the results by InstanceID but if you do not need this using FindObjectSortMode.None is considerably faster.'
+Assets/Scripts/Editor/ScreenshotTool.cs(216,27): warning CS0618: 'Object.FindObjectOfType<T>()' is obsolete: 'Object.FindObjectOfType has been deprecated. Use Object.FindFirstObjectByType instead or if finding any instance is acceptable the faster Object.FindAnyObjectByType'
+Assets/Scripts/Editor/ArenaBuilder.cs(2730,17): warning CS0618: 'NetworkAnimator.clientAuthority' is obsolete: 'clientAuthority was replaced with syncDirection. To enable client authority, set SyncDirection to ClientToServer in the Inspector.'
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(81,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(1695,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(1720,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(1747,35): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(2083,21): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(2116,21): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(2920,17): warning CS0162: Unreachable code detected
+[834/845    0s] Csc Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp.dll (+2 others)
+[835/845    0s] Csc Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp-Editor.dll (+2 others)
+[836/845    0s] ILPostProcess Library/Bee/artifacts/1900b0aE.dag/post-processed/AldenFall.Editor.dll (+pdb)
+Processing assembly Library/Bee/artifacts/1900b0aE.dag/AldenFall.Editor.dll, with 142 defines and 291 references
+processors: Mirror.Weaver.ILPostProcessorHook, Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+running Mirror.Weaver.ILPostProcessorHook
+running Unity.Jobs.CodeGen.JobsILPostProcessor
+running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[837/845    0s] CopyFiles Library/ScriptAssemblies/AldenFall.Editor.pdb
+[838/845    0s] CopyFiles Library/ScriptAssemblies/AldenFall.Editor.dll
+[839/845    0s] ILPostProcess Library/Bee/artifacts/1900b0aE.dag/post-processed/Assembly-CSharp-Editor.dll (+pdb)
+Processing assembly Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp-Editor.dll, with 142 defines and 342 references
+processors: Mirror.Weaver.ILPostProcessorHook, Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+running Mirror.Weaver.ILPostProcessorHook
+running Unity.Jobs.CodeGen.JobsILPostProcessor
+running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[840/845    0s] ILPostProcess Library/Bee/artifacts/1900b0aE.dag/post-processed/Assembly-CSharp.dll (+pdb)
+Processing assembly Library/Bee/artifacts/1900b0aE.dag/Assembly-CSharp.dll, with 144 defines and 327 references
+processors: Mirror.Weaver.ILPostProcessorHook, Unity.Jobs.CodeGen.JobsILPostProcessor, zzzUnity.Burst.CodeGen.BurstILPostProcessor
+running Mirror.Weaver.ILPostProcessorHook
+running Unity.Jobs.CodeGen.JobsILPostProcessor
+running zzzUnity.Burst.CodeGen.BurstILPostProcessor
+[841/845    0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp.dll
+[842/845    0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp-Editor.pdb
+[843/845    0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp-Editor.dll
+[844/845    0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp.pdb
+*** Tundra build success (4.69 seconds), 152 items updated, 845 evaluated
+Assets/Scripts/Editor/MeshyCharacterImporter.cs(137,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/MultiplayerBuildTools.cs(142,38): warning CS0618: 'PlayerSettings.GetApplicationIdentifier(BuildTargetGroup)' is obsolete: 'Use GetApplicationIdentifier(NamedBuildTarget buildTarget) instead'
+Assets/Scripts/Editor/MultiplayerBuildTools.cs(143,17): warning CS0618: 'PlayerSettings.SetApplicationIdentifier(BuildTargetGroup, string)' is obsolete: 'Use SetApplicationIdentifier(NamedBuildTarget buildTarget, string identifier) instead'
+Assets/Scripts/Editor/ArenaBuilder.cs(308,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilder.cs(319,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ScreenshotTool.cs(135,27): warning CS0618: 'Object.FindObjectOfType<T>()' is obsolete: 'Object.FindObjectOfType has been deprecated. Use Object.FindFirstObjectByType instead or if finding any instance is acceptable the faster Object.FindAnyObjectByType'
+Assets/Scripts/Editor/ScreenshotTool.cs(153,27): warning CS0618: 'Object.FindObjectOfType<T>()' is obsolete: 'Object.FindObjectOfType has been deprecated. Use Object.FindFirstObjectByType instead or if finding any instance is acceptable the faster Object.FindAnyObjectByType'
+Assets/Scripts/Editor/ScreenshotTool.cs(199,31): warning CS0618: 'Object.FindObjectsOfType<T>()' is obsolete: 'Object.FindObjectsOfType has been deprecated. Use Object.FindObjectsByType instead which lets you decide whether you need the results sorted or not.  FindObjectsOfType sorts the results by InstanceID but if you do not need this using FindObjectSortMode.None is considerably faster.'
+Assets/Scripts/Editor/ScreenshotTool.cs(208,36): warning CS0618: 'Object.FindObjectsOfType<T>()' is obsolete: 'Object.FindObjectsOfType has been deprecated. Use Object.FindObjectsByType instead which lets you decide whether you need the results sorted or not.  FindObjectsOfType sorts the results by InstanceID but if you do not need this using FindObjectSortMode.None is considerably faster.'
+Assets/Scripts/Editor/ScreenshotTool.cs(216,27): warning CS0618: 'Object.FindObjectOfType<T>()' is obsolete: 'Object.FindObjectOfType has been deprecated. Use Object.FindFirstObjectByType instead or if finding any instance is acceptable the faster Object.FindAnyObjectByType'
+Assets/Scripts/Editor/ArenaBuilder.cs(2730,17): warning CS0618: 'NetworkAnimator.clientAuthority' is obsolete: 'clientAuthority was replaced with syncDirection. To enable client authority, set SyncDirection to ClientToServer in the Inspector.'
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(81,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(1695,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(1720,17): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(1747,35): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(2083,21): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(2116,21): warning CS0162: Unreachable code detected
+Assets/Scripts/Editor/ArenaBuilderEmberfall.cs(2920,17): warning CS0162: Unreachable code detected
+AssetDatabase: script compilation time: 6.654598s
+Begin MonoManager ReloadAssembly
+- Loaded All Assemblies, in  0.794 seconds
+'Packages/com.unity.cinemachine/Editor/Editors/CinemachineVirtualCameraBaseEditor.cs' contains partial class of Unity.Object, exactly 1 of the partial classes needs to be in a file with the same filename. This is to know the one that can be referenced from ie. GameObjects
+'Packages/com.unity.cinemachine/Editor/Obsolete/CinemachineVirtualCameraBaseEditor.cs' contains partial class of Unity.Object, exactly 1 of the partial classes needs to be in a file with the same filename. This is to know the one that can be referenced from ie. GameObjects
+Refreshing native plugins compatible for Editor in 0.65 ms, found 0 plugins.
+Native extension for LinuxStandalone target not found
+Native extension for WindowsStandalone target not found
+Native extension for OSXStandalone target not found
+Native extension for WebGL target not found
+Assembly reference Packages/com.unity.cinemachine/Editor/Samples/ExposeHDRPInternals/HDRP-Editor-ref.asmref has no target assembly definition
+Refreshing native plugins compatible for Editor in 0.53 ms, found 0 plugins.
+Moved ScriptTemplates to Assets folder.
+Moved ScriptTemplates to Assets folder.
+Mirror | mirror-networking.com | discord.gg/N9QVxbM
+Edgegap requires Json.NET to be imported to function. To import Json.NET navigate to Window -> Package Manager -> Click the + symbol and choose 'Add package by name' -> com.unity.nuget.newtonsoft-json -> Leave version blank and click Add. If you are not currently using Edgegap you may ignore this message.
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:LogWarning (object)
+Newtonsoft.Json.FallbackDisplayer:Initialize () (at Assets/Mirror/Hosting/Edgegap/Newtonsoft_Package_Patch.cs:47)
+System.Reflection.RuntimeMethodInfo:Invoke (object,System.Reflection.BindingFlags,System.Reflection.Binder,object[],System.Globalization.CultureInfo)
+System.Reflection.MethodBase:Invoke (object,object[])
+UnityEditor.EditorAssemblies:ProcessInitializeOnLoadMethodAttributes () (at /Users/bokken/build/output/unity/unity/Editor/Mono/EditorAssemblies.cs:153)
+
+(Filename: Assets/Mirror/Hosting/Edgegap/Newtonsoft_Package_Patch.cs Line: 47)
+
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  3.218 seconds
+Domain Reload Profiling: 4011ms
+	BeginReloadAssembly (342ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (11ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (169ms)
+	RebuildCommonClasses (40ms)
+	RebuildNativeTypeToScriptingClass (12ms)
+	initialDomainReloadingComplete (22ms)
+	LoadAllAssembliesAndSetupDomain (376ms)
+		LoadAssemblies (329ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (168ms)
+			TypeCache.Refresh (130ms)
+				TypeCache.ScanAssembly (118ms)
+			BuildScriptInfoCaches (23ms)
+			ResolveRequiredComponents (13ms)
+	FinalizeReload (3218ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (3055ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (40ms)
+			SetLoadedEditorAssemblies (8ms)
+			BeforeProcessingInitializeOnLoad (193ms)
+			ProcessInitializeOnLoadAttributes (2364ms)
+			ProcessInitializeOnLoadMethodAttributes (448ms)
+			AfterProcessingInitializeOnLoad (1ms)
+			EditorAssembliesLoaded (0ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (6ms)
+Refreshing native plugins compatible for Editor in 0.29 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=738057ddd6852459c8c395db34133d02): Total: 12.400 seconds - Initiated by InitialRefreshV2(ForceSynchronousImport)
+	Summary:
+		Imports: total=0 (actual=0, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=4403 ms
+		Asset DB Callback time: managed=460 ms, native=49 ms
+		Scripting: domain reloads=1, domain reload time=794 ms, compile time=6656 ms, other=35 ms
+		Project Asset Count: scripts=1308, non-scripts=3583
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 1
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 5.386ms
+	ApplyChangesToAssetFolders: 1.016ms
+	Scan: 796.250ms
+	OnSourceAssetsModified: 0.628ms
+	CategorizeAssetsWithTransientArtifact: 27.812ms
+	ProcessAssetsWithTransientArtifactChanges: 50.248ms
+	CategorizeAssets: 150.278ms
+	ImportOutOfDateAssets: 3227.843ms (-3431.337ms without children)
+		CompileScripts: 6655.858ms
+		ReloadNativeAssets: 0.026ms
+		UnloadImportedAssets: 1.163ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.742ms
+		InitializingProgressBar: 0.000ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.000ms
+		OnDemandSchedulerStart: 1.391ms
+	PostProcessAllAssets: 485.399ms
+	Hotreload: 19.831ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.000ms
+	UnloadStreamsBegin: 4.363ms
+	PersistCurrentRevisions: 0.125ms
+	UnloadStreamsEnd: 0.002ms
+	GenerateScriptTypeHashes: 8.418ms
+	Untracked: 7630.439ms
+
+Application.AssetDatabase Initial Refresh End
+Launching external process: /Applications/Unity/Hub/Editor/6000.3.2f1/Unity.app/Contents/Helpers/UnityShaderCompiler
+Launched and connected shader compiler UnityShaderCompiler after 2.64 seconds
+Scanning for USB devices : 0.292ms
+Initializing Unity extensions:
+[MODES] ModeService[none].Initialize
+[MODES] ModeService[none].LoadModes
+[MODES] Loading mode Default (0) for mode-current-id-AldenFall
+2026-07-14 12:17:23.261 Unity[68722:129031924] NSEventModifierFlagFunction specified to -setKeyEquivalentModifierMask: for item <NSMenuItem: 0x34f540950 Fullscreen Game View, ke='Command-F8'>, but is only supported for system-provided menu items; will not be used
+2026-07-14 12:17:23.265 Unity[68722:129031924] NSEventModifierFlagFunction specified to -setKeyEquivalentModifierMask: for item <NSMenuItem: 0x36450b490 SDF, ke='Command-F12'>, but is only supported for system-provided menu items; will not be used
+Unloading 21 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 4863 unused Assets / (2.3 MB). Loaded Objects now: 5673.
+Memory consumption went from 232.4 MB to 230.1 MB.
+Total: 32.046334 ms (FindLiveObjects: 0.299584 ms CreateObjectMapping: 0.181250 ms MarkObjects: 25.434209 ms  DeleteObjects: 6.127959 ms)
+
+2026-07-14 12:17:23.418 Unity[68722:129031924] NSEventModifierFlagFunction specified to -setKeyEquivalentModifierMask: for item <NSMenuItem: 0x34f550090 Fullscreen Game View, ke='Command-F8'>, but is only supported for system-provided menu items; will not be used
+2026-07-14 12:17:23.421 Unity[68722:129031924] NSEventModifierFlagFunction specified to -setKeyEquivalentModifierMask: for item <NSMenuItem: 0x34f5b0640 SDF, ke='Command-F12'>, but is only supported for system-provided menu items; will not be used
+Opening scene 'Assets/Scenes/EmberfallDemo.unity'
+Unloading 84 Unused Serialized files (Serialized files now loaded: 0)
+Loaded scene 'Assets/Scenes/EmberfallDemo.unity'
+	Deserialize:            503.657 ms
+	Integration:            1401.949 ms
+	Integration of assets:  732.798 ms
+	Thread Wait Time:       -0.287 ms
+	Total Operation Time:   2638.117 ms
+Unloading 2 unused Assets / (1.3 KB). Loaded Objects now: 44158.
+Memory consumption went from 0.93 GB to 0.93 GB.
+Total: 19.859625 ms (FindLiveObjects: 3.679875 ms CreateObjectMapping: 1.036792 ms MarkObjects: 14.982917 ms  DeleteObjects: 0.159042 ms)
+
+SCREENSHOT saved loop_lakevista.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved loop_lake_lo.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved loop_spawn.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved loop_fall_front.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved loop_fall_side.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved loop_culvert_w.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved loop_culvert_e.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved loop_volcano.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved dbg_approachroad.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved dbg_nsroad.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved dbg_nsroad_lo.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved dbg_riverforest.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved dbg_reeds.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved dbg_mob_water.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved dbg_meadow.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+SCREENSHOT saved dbg_fall_rocks.png
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /Users/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:35)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+AldenFall.Editor.ScreenshotTool:Run (System.ValueTuple`3<string, UnityEngine.Vector3, UnityEngine.Vector3>[]) (at Assets/Scripts/Editor/ScreenshotTool.cs:276)
+AldenFall.Editor.ScreenshotTool:CaptureLoop () (at Assets/Scripts/Editor/ScreenshotTool.cs:99)
+
+(Filename: Assets/Scripts/Editor/ScreenshotTool.cs Line: 276)
+
+Thread 0x3642ff000 may have been prematurely finalized
+Batchmode quit successfully invoked - shutting down!
+Thread 0x36b343000 may have been prematurely finalized
+Input System module state changed to: ShutdownInProgress.
+Input System polling thread exited.
+Input System module state changed to: Shutdown.
+[Physics::Module] Cleanup current backend.
+[Physics::Module] Id: 0xf2b8ea05
+[Licensing::IpcConnector] LicenseClient-jon-notifications channel disconnected successfully.
+[Licensing::IpcConnector] LicenseClient-jon channel disconnected successfully.
+Thread 0x17e247000 may have been prematurely finalized
+Thread 0x17e2d3000 may have been prematurely finalized
+Thread 0x17e503000 may have been prematurely finalized
+Thread 0x17e477000 may have been prematurely finalized
+Thread 0x17e58f000 may have been prematurely finalized
+Thread 0x17e3eb000 may have been prematurely finalized
+Thread 0x17e35f000 may have been prematurely finalized
+Thread 0x17e61b000 may have been prematurely finalized
+Thread 0x17e6a7000 may have been prematurely finalized
+AcceleratorClientConnectionCallback - disconnected - :0
+Cleanup mono
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[0]
+      Application is shutting down...
+[40m[32minfo[39m[22m[49m: Unity.ILPP.Runner.PostProcessingAssemblyLoadContext[0]
+      ALC ILPP context 1 is unloading
+debugger-agent: Unable to listen on 44
+Exiting batchmode successfully now!
+[Package Manager] Server process was shutdown

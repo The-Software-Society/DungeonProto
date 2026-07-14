@@ -106,7 +106,57 @@ namespace AldenFall.Editor
             ("loop_culvert_w",  new Vector3(-92f, 12f, 34f),  new Vector3(-55f, 2f, 34f)),   // west canal culvert from outside
             ("loop_culvert_e",  new Vector3(92f, 12f, 12f),   new Vector3(55f, 2f, 12f)),    // east canal culvert from outside
             ("loop_volcano",    new Vector3(0f, 24f, -120f),  new Vector3(0f, 40f, -350f)),  // dormant volcano
+            // --- this loop: road shine, trees-in-water, reeds, water realism ---
+            ("dbg_approachroad",new Vector3(0f, 3.5f, -70f),  new Vector3(0f, 2f, -260f)),   // img19: ember-approach "road" wet/shiny?
+            ("dbg_nsroad",      new Vector3(2f, 4f, 90f),     new Vector3(0f, 1.5f, 200f)),  // N-S dirt road toward lake
+            ("dbg_nsroad_lo",   new Vector3(3f, 2.2f, 140f),  new Vector3(0f, 1.2f, 210f)),  // road grazing (shine)
+            ("dbg_riverforest", new Vector3(150f, 5f, 360f),  new Vector3(120f, 1f, 380f)),  // img20: trees in river?
+            ("dbg_reeds",       new Vector3(70f, 6f, 205f),   new Vector3(45f, 0.5f, 224f)), // img21: reed tufts + base disc
+            ("dbg_mob_water",   new Vector3(90f, 4f, 300f),   new Vector3(40f, 1f, 300f)),   // mobs/props on water?
+            ("dbg_meadow",      new Vector3(-120f, 5f, 150f), new Vector3(-90f, 1f, 190f)),  // open-field ecosystem density
+            ("dbg_fall_rocks",  new Vector3(40f, 12f, 430f),  new Vector3(0f, 8f, 486f)),    // waterfall rock variety + foam
         });
+
+        /// <summary>Probe what surface(s) sit at road/approach/reed points: raycast down + list
+        /// every renderer near the point with its material shader + smoothness. Diagnoses the
+        /// "shiny road" (is it a water mesh? a smooth material?).</summary>
+        public static void ProbeSurfaces()
+        {
+            var pts = new (string, Vector3)[] {
+                ("NS_road z150",   new Vector3(0f, 5f, 150f)),
+                ("NS_road z190",   new Vector3(0f, 5f, 190f)),
+                ("approach z-150", new Vector3(0f, 5f, -150f)),
+                ("approach z-250", new Vector3(0f, 5f, -250f)),
+                ("reeds z218",     new Vector3(45f, 5f, 218f)),
+            };
+            var terrain = Terrain.activeTerrain;
+            if (terrain != null)
+            {
+                var tm = terrain.materialTemplate;
+                Debug.Log($"PROBE TERRAIN mat={tm?.name} shader={tm?.shader?.name}");
+                var td = terrain.terrainData;
+                foreach (var l in td.terrainLayers)
+                {
+                    float alphaSample = 1f;
+                    if (l.diffuseTexture != null && l.diffuseTexture.isReadable)
+                        alphaSample = l.diffuseTexture.GetPixel(8, 8).a;
+                    Debug.Log($"PROBE   layer={l.name} smooth={l.smoothness:F2} metallic={l.metallic:F2} specular={l.specular} normalScale={l.normalScale} diffAlpha@8,8={alphaSample:F2} maskMap={(l.maskMapTexture != null)}");
+                }
+            }
+            foreach (var (label, p) in pts)
+            {
+                Debug.Log($"PROBE === {label} @ {p.x},{p.z} ===");
+                foreach (var r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+                {
+                    var b = r.bounds;
+                    if (p.x < b.min.x - 4 || p.x > b.max.x + 4 || p.z < b.min.z - 4 || p.z > b.max.z + 4) continue;
+                    if (b.max.y < -3f || b.min.y > 4f) continue;
+                    var m = r.sharedMaterial;
+                    float sm = m != null && m.HasProperty("_Smoothness") ? m.GetFloat("_Smoothness") : -1f;
+                    Debug.Log($"PROBE   {r.gameObject.name} y=[{b.min.y:F2},{b.max.y:F2}] mat={m?.name} shader={m?.shader?.name} smooth={sm:F2}");
+                }
+            }
+        }
 
         public static void CheckMesh()
         {
