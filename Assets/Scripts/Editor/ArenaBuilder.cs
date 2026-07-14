@@ -202,18 +202,26 @@ namespace AldenFall.Editor
 
             // Warm, neutral daylight ambient (the old strong blue ambient tinted dark ground a
             // cold wet blue - part of the "everything looks flooded" read).
+            // Sky ambient WARMED + slightly dimmed: the cool-blue sky ambient tinted distant
+            // up-facing terrain (beyond grass-render range) a pale cold blue that read as a water
+            // sheet at grazing angles - the last of the "flooded" look. A warm neutral sky ambient
+            // keeps far ground reading as sunlit earth, not water.
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.66f, 0.68f, 0.70f);
-            RenderSettings.ambientEquatorColor = new Color(0.55f, 0.53f, 0.47f);
+            RenderSettings.ambientSkyColor = new Color(0.60f, 0.59f, 0.55f);
+            RenderSettings.ambientEquatorColor = new Color(0.54f, 0.51f, 0.44f);
             RenderSettings.ambientGroundColor = new Color(0.32f, 0.29f, 0.24f);
 
             // Very light haze, pushed far out and warmed toward neutral so only the distant
             // mountains soften - no blue wash across the whole valley (the "flood" look).
+            // Atmospheric depth haze pulled IN and warmed: distant water + bare terrain at grazing
+            // angles (200m+, north of the lake) read as a pale flood sheet; warm haze from ~220m
+            // blends that band into atmosphere and adds depth to the mountain range, while the
+            // near play space (lake, city, forest) stays crisp.
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.78f, 0.79f, 0.76f);
-            RenderSettings.fogStartDistance = 700f;
-            RenderSettings.fogEndDistance = 2400f;
+            RenderSettings.fogColor = new Color(0.80f, 0.78f, 0.71f);
+            RenderSettings.fogStartDistance = 220f;
+            RenderSettings.fogEndDistance = 1100f;
         }
 
         private static void CreatePostProcessing()
