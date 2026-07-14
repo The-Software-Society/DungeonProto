@@ -209,7 +209,9 @@ namespace AldenFall.Editor
             for (int r = 0; r < RiverPaths.Length; r++)
             {
                 var path = RiverPaths[r];
-                float reach = RiverHalfWidths[r] + 2.5f;
+                // Clear grass/props well past the water edge (water spans ~halfWidth+0.75): a wider
+                // bare bank stops grass tufts sitting AT the waterline and reading as marsh/flood.
+                float reach = RiverHalfWidths[r] + 5.5f;
                 for (int i = 0; i < path.Length - 1; i++)
                 {
                     if (DistToSegment(pt, new Vector2(path[i].x, path[i].z),
@@ -1391,8 +1393,7 @@ namespace AldenFall.Editor
             var wallMat = WallStone("CityWall", new Color(1.05f, 0.98f, 0.92f), 3.5f);
             var pillarMat = WallStone("CityGatePillar", new Color(1.2f, 1.12f, 1.05f), 2.5f);
             const float h = 7f, thick = 1.5f;
-            float len = CityHalf * 2f + thick * 2f;
-            float seg = (len - CityGate) / 2f;
+            const float canalHalf = 9f;   // half-width of the culvert opening (canal is ~16m wide)
 
             void Wall(string n, Vector3 pos, Vector3 size)
             {
@@ -1400,19 +1401,23 @@ namespace AldenFall.Editor
                 w.isStatic = true;
                 if (groundLayer >= 0) w.layer = groundLayer;
             }
-            void Gate(string side, Vector3 center, bool alongX, string label)
+
+            // Where the manmade canal (R3) crosses a given wall X, or NaN if it doesn't.
+            float CanalCrossZ(float wallX)
             {
-                // Split wall around a CityGate-wide opening at 'center'.
-                if (alongX)
+                var pts = RiverPaths[3];
+                for (int i = 0; i < pts.Length - 1; i++)
                 {
-                    Wall($"Wall_{side}_A", center + new Vector3(-(CityGate + seg) / 2f, h / 2f, 0f), new Vector3(seg, h, thick));
-                    Wall($"Wall_{side}_B", center + new Vector3((CityGate + seg) / 2f, h / 2f, 0f), new Vector3(seg, h, thick));
+                    float x0 = pts[i].x, x1 = pts[i + 1].x;
+                    if ((x0 - wallX) * (x1 - wallX) <= 0f && Mathf.Abs(x1 - x0) > 0.001f)
+                        return Mathf.Lerp(pts[i].z, pts[i + 1].z, (wallX - x0) / (x1 - x0));
                 }
-                else
-                {
-                    Wall($"Wall_{side}_A", center + new Vector3(0f, h / 2f, -(CityGate + seg) / 2f), new Vector3(thick, h, seg));
-                    Wall($"Wall_{side}_B", center + new Vector3(0f, h / 2f, (CityGate + seg) / 2f), new Vector3(thick, h, seg));
-                }
+                return float.NaN;
+            }
+
+            // Gate decoration: flanking pillars, lintel, torches, and (N/S) a name/warn plate.
+            void GateDecor(string side, Vector3 center, bool alongX, string label)
+            {
                 foreach (float s in new[] { -1f, 1f })
                 {
                     Vector3 off = alongX ? new Vector3(s * (CityGate / 2f + 0.9f), 4.5f, 0f)
@@ -1426,8 +1431,6 @@ namespace AldenFall.Editor
                 lintel.isStatic = true;
                 CreateTorch(container, center + (alongX ? new Vector3(-(CityGate / 2f + 0.9f), 0, 0) : new Vector3(0, 0, -(CityGate / 2f + 0.9f))), 1f);
                 CreateTorch(container, center + (alongX ? new Vector3(CityGate / 2f + 0.9f, 0, 0) : new Vector3(0, 0, CityGate / 2f + 0.9f)), 1f);
-
-                // Named "EMBERFALL" plate over the north gate; charred warning at the south gate.
                 if (label != null)
                 {
                     var signMat = label == "EMBERFALL"
@@ -1439,10 +1442,66 @@ namespace AldenFall.Editor
                 }
             }
 
-            Gate("N", new Vector3(0f, 0f, CityHalf + thick / 2f), true, "EMBERFALL");
-            Gate("S", new Vector3(0f, 0f, -CityHalf - thick / 2f), true, "WARN");
-            Gate("E", new Vector3(CityHalf + thick / 2f, 0f, 0f), false, null);
-            Gate("W", new Vector3(-CityHalf - thick / 2f, 0f, 0f), false, null);
+            // Canal water-gate: the wall opening the manmade canal flows through. A low arched
+            // lintel + jamb piers over the water read it as a built culvert (manmade INSIDE ->
+            // natural OUTSIDE), not a random hole. Water level ~WaterSurfaceY; arch clears it.
+            void CanalCulvert(string side, Vector3 center, bool alongX)
+            {
+                foreach (float s in new[] { -1f, 1f })
+                {
+                    Vector3 off = alongX ? new Vector3(s * (canalHalf + 0.8f), 2.5f, 0f)
+                                         : new Vector3(0f, 2.5f, s * (canalHalf + 0.8f));
+                    var pier = Cube($"Culvert_{side}_P{s}", center + off, new Vector3(alongX ? 1.6f : thick + 1.4f, 5f, alongX ? thick + 1.4f : 1.6f), pillarMat, container);
+                    pier.isStatic = true; if (groundLayer >= 0) pier.layer = groundLayer;
+                }
+                // Arch lintel bridging the gap (top of the opening) + the wall above it.
+                var arch = Cube($"Culvert_{side}_Arch", center + Vector3.up * 4.8f,
+                    new Vector3(alongX ? canalHalf * 2f + 2f : thick + 0.4f, 1.4f, alongX ? thick + 0.4f : canalHalf * 2f + 2f), pillarMat, container);
+                arch.isStatic = true; if (groundLayer >= 0) arch.layer = groundLayer;
+                var above = Cube($"Culvert_{side}_Top", center + Vector3.up * 6.3f,
+                    new Vector3(alongX ? canalHalf * 2f + 2f : thick, h - 5.6f, alongX ? thick : canalHalf * 2f + 2f), wallMat, container);
+                above.isStatic = true; if (groundLayer >= 0) above.layer = groundLayer;
+                CreateTorch(container, center + (alongX ? new Vector3(-(canalHalf + 0.8f), 0, 0) : new Vector3(0, 0, -(canalHalf + 0.8f))), 0.9f);
+                CreateTorch(container, center + (alongX ? new Vector3(canalHalf + 0.8f, 0, 0) : new Vector3(0, 0, canalHalf + 0.8f)), 0.9f);
+            }
+
+            // Build one walled side with openings (gate at centre + any canal culvert), leaving
+            // clean gaps so the wall segments never span an opening.
+            void Side(string side, Vector3 center, bool alongX, string label)
+            {
+                float halfSpan = CityHalf + thick;   // wall runs center +/- halfSpan along its axis
+                var openings = new System.Collections.Generic.List<(float pos, float halfW, bool gate)>
+                    { (0f, CityGate / 2f, true) };
+                // Canal culvert where R3 crosses THIS wall (E/W walls only in practice).
+                if (!alongX)
+                {
+                    float cz = CanalCrossZ(center.x);
+                    if (!float.IsNaN(cz)) openings.Add((cz, canalHalf, false));
+                }
+                openings.Sort((a, b) => a.pos.CompareTo(b.pos));
+                int idx = 0;
+                float cursor = -halfSpan;
+                void Seg(float a, float b)
+                {
+                    if (b - a < 0.4f) return;
+                    float mid = (a + b) / 2f, segLen = b - a;
+                    Vector3 pos = center + (alongX ? new Vector3(mid, h / 2f, 0f) : new Vector3(0f, h / 2f, mid));
+                    Vector3 size = alongX ? new Vector3(segLen, h, thick) : new Vector3(thick, h, segLen);
+                    Wall($"Wall_{side}_{idx++}", pos, size);
+                }
+                foreach (var op in openings) { Seg(cursor, op.pos - op.halfW); cursor = op.pos + op.halfW; }
+                Seg(cursor, halfSpan);
+                foreach (var op in openings)
+                {
+                    Vector3 oc = center + (alongX ? new Vector3(op.pos, 0f, 0f) : new Vector3(0f, 0f, op.pos));
+                    if (op.gate) GateDecor(side, oc, alongX, label); else CanalCulvert(side, oc, alongX);
+                }
+            }
+
+            Side("N", new Vector3(0f, 0f, CityHalf + thick / 2f), true, "EMBERFALL");
+            Side("S", new Vector3(0f, 0f, -CityHalf - thick / 2f), true, "WARN");
+            Side("E", new Vector3(CityHalf + thick / 2f, 0f, 0f), false, null);
+            Side("W", new Vector3(-CityHalf - thick / 2f, 0f, 0f), false, null);
 
             // Corner towers.
             float t = CityHalf + thick / 2f;
@@ -1615,8 +1674,14 @@ namespace AldenFall.Editor
             // Deeper, more OPAQUE water (alpha 0.78) so the stepped carved bed + overlapping
             // river-segment quads stop showing through as tiled/banded stripes. Natural blue-green,
             // lower smoothness so it stops throwing harsh white sun-glints.
-            var waterMat = Mat("LakeWater", new Color(0.12f, 0.32f, 0.40f, 0.80f),
-                smoothness: 0.62f, transparent: true, emission: new Color(0.01f, 0.035f, 0.045f));
+            // More opaque + lower smoothness: the high-smoothness surface blew out to a flat
+            // white sky-glint at grazing angles, reading as a broad flood sheet. A deeper, more
+            // opaque blue-green with a matte finish reads as contained water.
+            // Deep + nearly matte + high opacity: any residual smoothness let the far half of the
+            // big lake reflect the bright sky at grazing angles, reading as a pale marsh/flood
+            // sheet. Dark opaque blue holds its colour edge-to-edge so it reads as one lake body.
+            var waterMat = Mat("LakeWater", new Color(0.07f, 0.19f, 0.26f, 0.95f),
+                smoothness: 0.16f, transparent: true, emission: new Color(0.01f, 0.025f, 0.035f));
 
             Vector3 c = LakeCenter;
             float w = LakeHalf * 2f, depth = WaterSurfaceY - LakeBedY;   // depth ~2.7m (>1.8 swim)
@@ -1667,20 +1732,12 @@ namespace AldenFall.Editor
             vbox.size = new Vector3(openHalf * 2f, depth, openHalf * 2f);
             if (waterLayer >= 0) vol.layer = waterLayer;
 
-            // Translucent surface spans the WHOLE lake (deep core + shallow mud shore) so it
-            // reads as a full body of water. Collider stripped so players/props pass in.
-            // LAKE surface: a plane LOCAL to the lake basin (sized to the organic shore). The old
-            // world-spanning sheet bled over the whole valley at grazing angles (huge transparent
-            // quads sort/occlude badly), reading as marsh/puddles everywhere - so water is now a
-            // surface per body: this lake plane + each river reach's own ribbon (below).
-            // Size the plane to the WATERLINE, not past it: a transparent quad overhanging DRY
-            // raised terrain bleeds over it (the "flooded spawn"). The waterline sits at ~0.9x the
-            // shore radius, so keep the plane just inside the shore so it only ever covers carved
-            // (below-water) ground.
-            float lakeSurfW = (LakeHalf - 7f) * 2f;
-            var surf = Cube("Lake_Surface", c + Vector3.up * WaterSurfaceY, new Vector3(lakeSurfW, 0.06f, lakeSurfW), waterMat, container);
-            Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
-            surf.isStatic = true;
+            // LAKE surface: an ORGANIC DISC mesh that follows the shoreline exactly, NOT a square
+            // plane. The square plane's corners jutted ~30m past the round basin onto dry rim,
+            // reading as a broad flood sheet (Jon: "obviously shows flooding"). LakeEdge is purely
+            // angular, so each rim vertex sits at the true waterline (~0.93*(edge+4)) inset a few
+            // metres, leaving a clean sand ring between water and grass.
+            BuildLakeSurfaceMesh(container, waterMat);
 
             // The full river network: four waterfall sources on the mountain ring feeding
             // seven reaches (two splits) that all drain here. The lake still overflows
@@ -1703,23 +1760,81 @@ namespace AldenFall.Editor
             BuildLakeFishingAndCooking(container, groundLayer, interactableLayer);
         }
 
+        /// <summary>The lake water surface as an ORGANIC DISC mesh whose rim follows the true
+        /// waterline (radius per angle from LakeEdge), inset a touch so it never overhangs the
+        /// dry shore. Replaces the square plane whose corners jutted onto land as a flood sheet.
+        /// Double-sided so it renders from above and while swimming under it.</summary>
+        private static void BuildLakeSurfaceMesh(Transform container, Material waterMat)
+        {
+            const int seg = 96;
+            var mesh = new Mesh { name = "LakeSurfaceMesh" };
+            var verts = new Vector3[seg + 2];
+            var uvs = new Vector2[seg + 2];
+            verts[0] = Vector3.zero;
+            uvs[0] = new Vector2(0.5f, 0.5f);
+            for (int i = 0; i <= seg; i++)
+            {
+                float ang = i / (float)seg * Mathf.PI * 2f;
+                Vector2 dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
+                // Terrain waterline solves to lakeR ~= 0.867*(edge+4); inset 2.5m so a thin sand
+                // ring always separates water from grass (no water lapping onto raised rim).
+                float edge = LakeEdge(LakeCenter.x + dir.x * 50f, LakeCenter.z + dir.y * 50f);
+                float rWater = Mathf.Max(4f, 0.867f * (edge + 4f) - 2.5f);
+                verts[i + 1] = new Vector3(dir.x * rWater, 0f, dir.y * rWater);
+                uvs[i + 1] = new Vector2(0.5f + dir.x * 0.5f, 0.5f + dir.y * 0.5f);
+            }
+            var tris = new int[seg * 6];   // double-sided fan
+            for (int i = 0; i < seg; i++)
+            {
+                tris[i * 6] = 0; tris[i * 6 + 1] = i + 1; tris[i * 6 + 2] = i + 2;      // up face
+                tris[i * 6 + 3] = 0; tris[i * 6 + 4] = i + 2; tris[i * 6 + 5] = i + 1;  // down face
+            }
+            mesh.vertices = verts; mesh.uv = uvs; mesh.triangles = tris;
+            var up = new Vector3[verts.Length];
+            for (int i = 0; i < up.Length; i++) up[i] = Vector3.up;
+            mesh.normals = up;
+            mesh.RecalculateBounds();
+            AssetDatabase.CreateAsset(mesh, $"{MaterialDir}/LakeSurfaceMesh.asset");
+
+            var go = new GameObject("Lake_Surface");
+            go.transform.SetParent(container);
+            go.transform.position = LakeCenter + Vector3.up * WaterSurfaceY;
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterial = waterMat;
+            go.isStatic = true;
+        }
+
         /// <summary>A vertical falling water sheet + foam spray + mist glow, poured at the
         /// mountain-ring edge. <paramref name="basePos"/> is the BASE; the sheet rises
         /// <paramref name="height"/> above it.</summary>
         private static void BuildWaterfall(Transform container, Vector3 basePos, float height, float width, float yaw, Material waterMat, int groundLayer)
         {
-            // Bright white spray - NO blue emission (that rendered as glowing cyan card edges).
             var foamMat = Mat("WaterFoam", new Color(0.95f, 0.97f, 0.99f), smoothness: 0.1f,
-                emission: new Color(0.14f, 0.15f, 0.16f));
-            // Brighter, more saturated falling water so the sheet reads as bright cascading
-            // water, not a dark teal card.
-            var fallWaterMat = Mat("FallWater", new Color(0.42f, 0.66f, 0.78f), smoothness: 0.55f,
-                transparent: true, emission: new Color(0.05f, 0.09f, 0.11f));
-            var rockMat = Mat("FallRock", new Color(0.22f, 0.21f, 0.21f), smoothness: 0.04f);
+                emission: new Color(0.10f, 0.11f, 0.12f));
+            // Muted natural blue-green (the bright cyan sheet read as a glowing card / "sore
+            // thumb" at distance). Matte-ish so it doesn't sun-glint white.
+            var fallWaterMat = Mat("FallWater", new Color(0.30f, 0.48f, 0.55f, 0.92f), smoothness: 0.38f,
+                transparent: true, emission: new Color(0.03f, 0.06f, 0.07f));
+            var rockMat = Mat("FallRock", new Color(0.26f, 0.25f, 0.24f), smoothness: 0.04f);
             Quaternion rot = Quaternion.Euler(0f, yaw, 0f);
             Vector3 intoMtn = rot * Vector3.forward;    // toward the source (up the mountain)
             Vector3 toValley = -intoMtn;                // downstream, where the plunge pool sits
             Vector3 right = rot * Vector3.right;
+
+            // Foam blob (a bubble of crashing spray) - a sphere primitive, collider stripped.
+            GameObject Foam(string n, Vector3 pos, float d)
+            {
+                var s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                s.name = n; s.transform.SetParent(container); s.transform.position = pos;
+                s.transform.localScale = Vector3.one * d;
+                s.GetComponent<Renderer>().sharedMaterial = foamMat;
+                Object.DestroyImmediate(s.GetComponent<Collider>());
+                s.isStatic = true; if (groundLayer >= 0) s.layer = groundLayer;
+                return s;
+            }
+            // A tuft of ferns/bush at the wet rocks - foliage volume around the fall.
+            void Foliage(string kind, Vector3 pos, float h)
+                => PlaceMeshyProp(container, kind, pos, (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.None);
 
             // REAL rock: the fall spills through an outcrop of boulder MESHES (no cube cliff wall).
             // BoulderCluster/RockCliff when generated; MossBoulder is the always-present fallback;
@@ -1739,59 +1854,106 @@ namespace AldenFall.Editor
                 }
             }
 
-            // A single CONTINUOUS cascade leaning against a rocky chute (the earlier per-tier
-            // quads read as floating stacked cards with gaps). The mountains are meshes that may
-            // not sit exactly at each source, so the fall carries its OWN boulder chute and never
-            // floats. Water pours from a notch high up (set back into the slope) down one unbroken
-            // sheet into a foam plunge pool where the river begins.
-            const float leanDeg = 20f;                          // lean back from vertical
+            // Continuous cascade leaning against a DENSE rocky chute - stepped boulders with
+            // intention (framing walls + midstream splitters + a wet plunge basin), layered water
+            // sheets that go foamier toward the base to read as falling/crashing water, a cluster
+            // of foam bubbles where it lands, and ferns/moss for volume. The fall carries its own
+            // chute so it never floats regardless of where the border mesh sits.
+            const float leanDeg = 13f;                          // lean back from vertical (gentle)
             float run = height * Mathf.Tan(leanDeg * Mathf.Deg2Rad);   // horizontal setback of the top
             float sheetLen = height / Mathf.Cos(leanDeg * Mathf.Deg2Rad);
             Quaternion sheetRot = Quaternion.AngleAxis(-leanDeg, right) * rot;
             Vector3 sheetCenter = basePos + Vector3.up * (WaterSurfaceY + height * 0.5f) + intoMtn * (run * 0.5f);
 
-            // Rocky chute: boulders framing BOTH sides all the way up + a few midstream steps the
-            // water breaks over, forming the cliff the fall pours down.
-            int rows = Mathf.Max(5, Mathf.RoundToInt(height / 6f));
-            for (int t = 0; t <= rows; t++)
+            // Rock CLIFF FACE: a PACKED wall of boulders directly behind + beside the sheet so the
+            // water always pours over solid rock and never floats in the mountain notch (the fall
+            // carries its own cliff). Rows climb the lean; columns span the width into a wall;
+            // shoulder rocks frame both banks; midstream boulders break the flow into foam.
+            int rows = Mathf.Max(5, Mathf.RoundToInt(height / 4f));
+            int cols = Mathf.Max(3, Mathf.RoundToInt(width / 4.5f));
+            for (int rw = 0; rw <= rows; rw++)
             {
-                float f = t / (float)rows;
-                Vector3 spine = basePos + Vector3.up * (WaterSurfaceY + f * height) + intoMtn * (f * run);
-                float side = width * (0.85f - f * 0.15f);
-                float sz = (height / rows) * (1.5f + (float)rng.NextDouble() * 0.9f);
-                Rock($"Chute_L{t}", spine - right * side + intoMtn * 1f, sz);
-                Rock($"Chute_R{t}", spine + right * side + intoMtn * 1f, sz);
-                if (t % 2 == 0)   // a midstream boulder the water splits around
-                    Rock($"Chute_M{t}", spine + right * ((float)(rng.NextDouble() - 0.5) * width * 0.5f) + intoMtn * 1.5f, sz * 0.7f);
+                float fy = rw / (float)rows;
+                Vector3 lipC = basePos + Vector3.up * (WaterSurfaceY + fy * height) + intoMtn * (fy * run);
+                float bSize = (height / rows) * (2.0f + (float)rng.NextDouble() * 1.0f);
+                for (int cl = 0; cl <= cols; cl++)     // packed backing wall BEHIND the water sheet
+                {
+                    float fx = cl / (float)cols - 0.5f;
+                    Vector3 p = lipC + right * (fx * width * 1.15f)
+                              + intoMtn * (2.2f + (float)rng.NextDouble() * 1.6f)
+                              + Vector3.up * ((float)(rng.NextDouble() - 0.5f) * bSize * 0.4f);
+                    Rock($"Face{rw}_{cl}", p, bSize * (0.9f + (float)rng.NextDouble() * 0.5f));
+                }
+                Rock($"ShL{rw}", lipC - right * (width * 0.72f) + intoMtn * 0.5f, bSize * 1.05f);   // bank shoulders
+                Rock($"ShR{rw}", lipC + right * (width * 0.72f) + intoMtn * 0.5f, bSize * 1.05f);
+                if (rw % 2 == 1 && rw < rows)     // midstream splitter + foam burst
+                {
+                    Vector3 mid = lipC + right * ((float)(rng.NextDouble() - 0.5f) * width * 0.5f) + toValley * 0.3f;
+                    Rock($"Mid{rw}", mid, bSize * 0.6f);
+                    Foam($"Burst{rw}", mid + toValley * 0.6f + Vector3.up * 0.4f, bSize * 0.55f);
+                }
             }
 
-            // The unbroken falling sheet.
-            var sheet = Cube("Fall_Sheet", sheetCenter, new Vector3(width * 0.8f, sheetLen, 0.5f), fallWaterMat, container);
-            sheet.transform.rotation = sheetRot;
-            Object.DestroyImmediate(sheet.GetComponent<BoxCollider>());
-            // A few bright vertical foam streaks over the sheet's face (slightly proud of it).
-            for (int s = 0; s < 3; s++)
+            // Layered falling sheets: a back water sheet + a foamier front sheet that widens the
+            // white toward the base (reads as accelerating, breaking water rather than a flat card).
+            var backSheet = Cube("Fall_Back", sheetCenter, new Vector3(width * 0.82f, sheetLen, 0.4f), fallWaterMat, container);
+            backSheet.transform.rotation = sheetRot;
+            Object.DestroyImmediate(backSheet.GetComponent<BoxCollider>());
+            // Many vertical foam streaks, denser + wider toward the bottom (base churn).
+            int streaks = Mathf.Max(5, Mathf.RoundToInt(width));
+            for (int s = 0; s < streaks; s++)
             {
-                float fx = (s - 1) * width * 0.24f + (float)(rng.NextDouble() - 0.5) * 1.5f;
-                var streak = Cube($"Fall_Streak{s}", sheetCenter + right * fx + toValley * 0.35f,
-                    new Vector3(0.5f + (float)rng.NextDouble() * 0.5f, sheetLen * 0.96f, 0.2f), foamMat, container);
+                float fx = ((s + 0.5f) / streaks - 0.5f) * width * 0.9f + (float)(rng.NextDouble() - 0.5) * 1.2f;
+                float lenFrac = 0.4f + (float)rng.NextDouble() * 0.6f;
+                float yShift = -(1f - lenFrac) * sheetLen * 0.5f;   // shorter streaks hug the base
+                var streak = Cube($"Fall_Streak{s}", sheetCenter + right * fx + toValley * 0.3f + Vector3.up * yShift,
+                    new Vector3(0.4f + (float)rng.NextDouble() * 0.7f, sheetLen * lenFrac, 0.18f), foamMat, container);
                 streak.transform.rotation = sheetRot;
                 Object.DestroyImmediate(streak.GetComponent<BoxCollider>());
             }
-            // Bright foam cap at the top lip where it tips over, and churn at the base.
+            // Foam cap at the top lip where the water tips over.
             var cap = Cube("Fall_Cap", basePos + Vector3.up * (WaterSurfaceY + height) + intoMtn * run,
-                new Vector3(width * 0.85f, 0.8f, 2.2f), foamMat, container);
+                new Vector3(width * 0.85f, 0.9f, 2.2f), foamMat, container);
             cap.transform.rotation = rot;
             Object.DestroyImmediate(cap.GetComponent<BoxCollider>());
+            for (int i = 0; i < 5; i++)   // bubbling foam along the lip
+                Foam($"Lip_Foam{i}", basePos + Vector3.up * (WaterSurfaceY + height + 0.2f) + intoMtn * run
+                    + right * ((i / 4f - 0.5f) * width * 0.8f), 0.8f + (float)rng.NextDouble() * 0.7f);
 
-            // Plunge pool: churned foam where the fall lands + a couple of wet boulders it
-            // breaks around, sitting right at the river's source water surface.
-            var pool = Cube("Fall_Pool", basePos + toValley * 2.4f + Vector3.up * (WaterSurfaceY + 0.06f),
-                new Vector3(width + 3f, 0.12f, width + 6f), foamMat, container);
+            // CRASHING FOAM: a churned cluster of bubbles where the fall lands + spray rising.
+            Vector3 plunge = basePos + toValley * 1.8f + Vector3.up * (WaterSurfaceY + 0.3f);
+            for (int i = 0; i < 16; i++)
+            {
+                float a = (float)rng.NextDouble() * Mathf.PI * 2f;
+                float r = (float)rng.NextDouble() * (width * 0.7f);
+                float rise = (float)rng.NextDouble() < 0.3f ? 1.2f + (float)rng.NextDouble() * 2f : 0f;   // some spray leaps up
+                Foam($"Crash_Foam{i}", plunge + right * (Mathf.Cos(a) * r) + toValley * (Mathf.Sin(a) * r * 0.7f) + Vector3.up * rise,
+                    0.7f + (float)rng.NextDouble() * 1.8f);
+            }
+            // Plunge pool sheen + a ring of wet boulders the pool laps around.
+            var pool = Cube("Fall_Pool", basePos + toValley * 2.6f + Vector3.up * (WaterSurfaceY + 0.05f),
+                new Vector3(width + 4f, 0.1f, width + 7f), foamMat, container);
             pool.transform.rotation = rot;
             Object.DestroyImmediate(pool.GetComponent<BoxCollider>());
-            Rock("Plunge_Rk0", basePos + toValley * 2f + right * (width * 0.55f) + Vector3.up * 0.4f, 3f + (float)rng.NextDouble() * 2f);
-            Rock("Plunge_Rk1", basePos + toValley * 2f - right * (width * 0.55f) + Vector3.up * 0.4f, 3f + (float)rng.NextDouble() * 2f);
+            for (int i = 0; i < 6; i++)
+            {
+                float a = i / 6f * Mathf.PI * 2f;
+                Rock($"Plunge_Rk{i}", basePos + toValley * 2.4f + right * (Mathf.Cos(a) * (width * 0.7f))
+                    + toValley * (Mathf.Sin(a) * (width * 0.5f)) + Vector3.up * 0.3f, 2f + (float)rng.NextDouble() * 2.5f);
+            }
+
+            // FOLIAGE volume: ferns + bushes tucked among the wet rocks, moss boulders, and a pine
+            // flanking each bank so the fall sits in living terrain, not bare geometry.
+            for (int i = 0; i < 8; i++)
+            {
+                float sgn = i % 2 == 0 ? 1f : -1f;
+                Vector3 fp = basePos + toValley * ((float)rng.NextDouble() * 3f) + right * (sgn * (width * 0.7f + (float)rng.NextDouble() * 4f)) + Vector3.up * 0.2f;
+                Foliage(rng.NextDouble() < 0.6 ? "Fern" : "ForestBush", fp, 0.8f + (float)rng.NextDouble() * 0.7f);
+            }
+            Rock("Fall_MossL", basePos + toValley * 3f + right * (width * 0.9f), 2.5f + (float)rng.NextDouble());
+            Rock("Fall_MossR", basePos + toValley * 3f - right * (width * 0.9f), 2.5f + (float)rng.NextDouble());
+            Foliage("PineTree", basePos + toValley * 4f + right * (width * 1.2f), 6f + (float)rng.NextDouble() * 3f);
+            Foliage("PineTree", basePos + toValley * 4f - right * (width * 1.2f), 6f + (float)rng.NextDouble() * 3f);
 
             // Cool mist glow at the base (steady, no flicker - bloom sells the spray).
             var mistObj = new GameObject("Fall_Mist");
@@ -1847,7 +2009,7 @@ namespace AldenFall.Editor
                 float yaw = Mathf.Atan2(dirIn.x, dirIn.z) * Mathf.Rad2Deg + 180f;
                 // Tall sheet pouring down the rocky mountainside from a notch high up, into the
                 // carved gorge (river bed ~-3). Base at the gorge, rising up the cliff.
-                BuildWaterfall(container, source + Vector3.up * (-3f), 38f, RiverHalfWidths[r] * 2f + 2f, yaw, waterMat, groundLayer);
+                BuildWaterfall(container, source + Vector3.up * (-3f), 24f, RiverHalfWidths[r] * 2f + 2f, yaw, waterMat, groundLayer);
             }
 
             // Ambient fish in the two biggest reaches.

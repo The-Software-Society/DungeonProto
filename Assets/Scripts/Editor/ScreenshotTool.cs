@@ -98,13 +98,14 @@ namespace AldenFall.Editor
         /// charred approach cover, and the camp (bush/foothill fixes).</summary>
         public static void CaptureLoop() => Run(new (string, Vector3, Vector3)[]
         {
-            ("loop_fall_front", new Vector3(0f, 42f, 402f),   new Vector3(0f, 30f, 490f)),   // river-0 fall, pulled back + up
-            ("loop_fall_side",  new Vector3(70f, 40f, 410f),  new Vector3(-4f, 26f, 486f)),  // fall 3/4 angle
-            ("loop_fall_east",  new Vector3(200f, 40f, 388f), new Vector3(74f, 22f, 352f)),  // river-1 source fall
-            ("loop_volcano",    new Vector3(0f, 24f, -120f),  new Vector3(0f, 40f, -350f)),  // dormant volcano darkness
-            ("loop_approach",   new Vector3(0f, 10f, -150f),  new Vector3(0f, 3f, -280f)),   // charred ground cover
-            ("loop_approach_lo",new Vector3(-30f, 4f, -180f), new Vector3(20f, 2.5f, -260f)),// low grazing: does ground still read as water?
-            ("loop_camp",       new Vector3(-195f, 6f, 40f),  new Vector3(-190f, 2f, -6f)),   // camp: bushes + foothill behind
+            ("loop_lakevista",  new Vector3(-70f, 22f, 195f), new Vector3(30f, 0f, 320f)),   // FLOODING check (montage shot 2 angle)
+            ("loop_lake_lo",    new Vector3(-40f, 6f, 205f),  new Vector3(20f, 1f, 300f)),   // low grazing lake edge: flood?
+            ("loop_spawn",      new Vector3(0f, 13f, 150f),   new Vector3(0f, 0f, 240f)),    // spawn: waterfall sore-thumb check
+            ("loop_fall_front", new Vector3(0f, 30f, 408f),   new Vector3(0f, 22f, 486f)),   // river-0 fall, pulled back + up
+            ("loop_fall_side",  new Vector3(60f, 26f, 412f),  new Vector3(-4f, 20f, 486f)),  // fall 3/4 angle
+            ("loop_culvert_w",  new Vector3(-92f, 12f, 34f),  new Vector3(-55f, 2f, 34f)),   // west canal culvert from outside
+            ("loop_culvert_e",  new Vector3(92f, 12f, 12f),   new Vector3(55f, 2f, 12f)),    // east canal culvert from outside
+            ("loop_volcano",    new Vector3(0f, 24f, -120f),  new Vector3(0f, 40f, -350f)),  // dormant volcano
         });
 
         public static void CheckMesh()
