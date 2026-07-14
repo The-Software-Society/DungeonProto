@@ -69,11 +69,11 @@ namespace AldenFall.Editor
         /// <summary>Tight close-ups of the exact problem spots for verify-driven fixing.</summary>
         public static void CaptureDiag() => Run(new (string, Vector3, Vector3)[]
         {
-            ("diag_volcano_ground", new Vector3(0f, 3.5f, -210f),  new Vector3(20f, 0f, -260f)),
-            ("diag_volcano_face",   new Vector3(0f, 20f, -240f),   new Vector3(0f, 25f, -340f)),
+            ("diag_canal_eye",      new Vector3(46f, 4.5f, 20f),   new Vector3(-20f, 0.5f, 8f)),   // down the city canal
+            ("diag_canal_top",      new Vector3(0f, 80f, 8f),      new Vector3(0f, 0f, 8f)),       // city top-down: canal thread
+            ("diag_volcano_vista",  new Vector3(0f, 26f, -120f),   new Vector3(0f, 40f, -345f)),   // volcano silhouette from valley
             ("diag_waterfall",      new Vector3(18f, 6f, 458f),    new Vector3(0f, 6f, 486f)),
-            ("diag_road",           new Vector3(6f, 3f, 110f),     new Vector3(-1f, 0.4f, 150f)),
-            ("diag_lake_shore",     new Vector3(40f, 2.5f, 200f),  new Vector3(0f, 1f, 260f)),
+            ("diag_volcano_ground", new Vector3(0f, 3.5f, -210f),  new Vector3(20f, 0f, -260f)),
         });
 
         /// <summary>High aerial of the whole expanded world to judge the macro layout.</summary>

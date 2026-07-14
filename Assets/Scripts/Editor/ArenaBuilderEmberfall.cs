@@ -100,6 +100,18 @@ namespace AldenFall.Editor
         private static bool InApproachFootprint(float x, float z)
             => z <= ApproachNorthZ + 2f && z >= ApproachSouthZ && Mathf.Abs(x) <= ApproachHalfW;
 
+        // Distance from (x,z) to the R3 canal centreline (used to open cobbles + skip props
+        // over the manmade canal where it threads the city).
+        private static float DistToCityCanal(float x, float z)
+        {
+            var pts = RiverPaths[3];
+            float d = float.MaxValue;
+            var p = new Vector2(x, z);
+            for (int i = 0; i < pts.Length - 1; i++)
+                d = Mathf.Min(d, DistToSegment(p, new Vector2(pts[i].x, pts[i].z), new Vector2(pts[i + 1].x, pts[i + 1].z)));
+            return d;
+        }
+
         private static bool InLakeWater(float x, float z)
         {
             // Square basin footprint (matches BuildEmberfallLake). Leave a hole so the
@@ -269,7 +281,7 @@ namespace AldenFall.Editor
                             rd = Mathf.Min(rd, DistToSegment(hpt, new Vector2(rpath[si].x, rpath[si].z),
                                                                    new Vector2(rpath[si + 1].x, rpath[si + 1].z)));
                         float hw = RiverHalfWidths[ri];
-                        float bedDepth = InCityFootprint(wx, wz) ? -1.4f : -3.0f;   // shallow canal in the city
+                        float bedDepth = InCityFootprint(wx, wz) ? -2.6f : -3.0f;   // deep swimmable canal in the city
                         if (rd < hw) h = Mathf.Min(h, bedDepth);
                         else if (rd < hw + 10f) h = Mathf.Min(h, Mathf.Lerp(bedDepth, h, (rd - hw) / 10f));
                     }
@@ -737,6 +749,9 @@ namespace AldenFall.Editor
                 for (float z = -CityHalf; z < CityHalf; z += tile)
                 {
                     float cx = x + tile / 2f, cz = z + tile / 2f;
+                    // Leave the canal channel OPEN (no cobble lid over the water — the "river runs
+                    // under town" bug); the stone canal banks are built separately.
+                    if (DistToCityCanal(cx, cz) < 8f) continue;
                     // Streets: cross axes between the four gates.
                     bool street = Mathf.Abs(cx) < 5f || Mathf.Abs(cz) < 5f;
                     var mat = street ? streetMat : cobble[rng.Next(cobble.Length)];
@@ -747,6 +762,7 @@ namespace AldenFall.Editor
                 }
 
             BuildCityWalls(container, groundLayer);
+            BuildCityCanal(container, groundLayer);
 
             // ---- Ember Fountain (plaza centre) ----
             BuildEmberFountain(container, new Vector3(0f, 0f, 0f), groundLayer);
@@ -1081,6 +1097,61 @@ namespace AldenFall.Editor
             light.shadows = LightShadows.None;
         }
 
+        /// <summary>The manmade stone canal: R3 threads the city, so line its banks with cut-stone
+        /// coping and bridge the streets. This is the ONLY water in the world that should read as
+        /// built (Jon: city canal is the one manmade-water exception). The channel itself is the
+        /// carved terrain + WorldWater sheet + the reach's swim volume; this adds the built edges.</summary>
+        private static void BuildCityCanal(Transform container, int groundLayer)
+        {
+            var stoneMat = Mat("CanalStone", new Color(0.44f, 0.42f, 0.39f), smoothness: 0.16f);
+            var stoneDark = Mat("CanalStoneDark", new Color(0.31f, 0.30f, 0.28f), smoothness: 0.12f);
+            var pts = RiverPaths[3];
+            const float half = 7.2f;   // coping sits just outside the ~8m open channel
+
+            for (int si = 0; si < pts.Length - 1; si++)
+            {
+                Vector3 a = pts[si], b = pts[si + 1];
+                Vector3 seg = b - a; float len = seg.magnitude;
+                if (len < 0.01f) continue;
+                Vector3 dir = seg / len;
+                float yaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
+                var rot = Quaternion.Euler(0f, yaw, 0f);
+                Vector3 rightN = new Vector3(dir.z, 0f, -dir.x);   // horizontal perpendicular
+                int n = Mathf.Max(1, Mathf.CeilToInt(len / 3.2f));
+                for (int k = 0; k <= n; k++)
+                {
+                    Vector3 c = a + dir * (len * k / n);
+                    // Only the reach that actually threads the city gets stone banks.
+                    if (Mathf.Abs(c.x) > CityHalf + 3f || Mathf.Abs(c.z) > CityHalf + 3f) continue;
+                    foreach (float sgn in new[] { 1f, -1f })
+                    {
+                        var wall = Cube($"Canal_{si}_{k}_{(sgn > 0 ? "R" : "L")}",
+                            c + rightN * (sgn * (half + 0.6f)) + Vector3.up * (-0.5f),
+                            new Vector3(1.3f, 2.4f, 3.4f), (k % 2 == 0) ? stoneMat : stoneDark, container);
+                        wall.transform.rotation = rot; wall.isStatic = true;
+                        if (groundLayer >= 0) wall.layer = groundLayer;
+                    }
+                }
+            }
+
+            // Stone footbridges where the two main streets cross the canal (canal is near z~7-9
+            // through the plaza). Decks span the channel; keep them thin so they read as bridges.
+            foreach (var at in new[] { new Vector3(0f, 0.15f, 7f), new Vector3(28f, 0.15f, 10f), new Vector3(-30f, 0.15f, 26f) })
+            {
+                var deck = Cube($"CanalBridge_{(int)at.x}", at, new Vector3(6.5f, 0.5f, half * 2f + 5f), stoneMat, container);
+                deck.isStatic = true;
+                if (groundLayer >= 0) deck.layer = groundLayer;
+                // Low parapets on the deck sides.
+                foreach (float sgn in new[] { 1f, -1f })
+                {
+                    var rail = Cube($"CanalRail_{(int)at.x}_{(sgn > 0 ? "R" : "L")}",
+                        at + new Vector3(sgn * 3.0f, 0.6f, 0f), new Vector3(0.5f, 1.0f, half * 2f + 5f), stoneDark, container);
+                    rail.isStatic = true;
+                    if (groundLayer >= 0) rail.layer = groundLayer;
+                }
+            }
+        }
+
         private static void BuildCityWalls(Transform container, int groundLayer)
         {
             var wallMat = Mat("CityWall", new Color(0.34f, 0.31f, 0.32f), smoothness: 0.1f);
@@ -1406,23 +1477,61 @@ namespace AldenFall.Editor
         /// <paramref name="height"/> above it.</summary>
         private static void BuildWaterfall(Transform container, Vector3 basePos, float height, float width, float yaw, Material waterMat)
         {
-            var foamMat = Mat("WaterFoam", new Color(0.86f, 0.9f, 0.94f), smoothness: 0.15f,
-                emission: new Color(0.22f, 0.26f, 0.30f));
+            var foamMat = Mat("WaterFoam", new Color(0.9f, 0.94f, 0.97f), smoothness: 0.1f,
+                emission: new Color(0.24f, 0.28f, 0.32f));
+            var rockMat = Mat("FallRock", new Color(0.20f, 0.19f, 0.20f), smoothness: 0.04f);
+            var wetRockMat = Mat("FallRockWet", new Color(0.12f, 0.12f, 0.13f), smoothness: 0.30f);
             Quaternion rot = Quaternion.Euler(0f, yaw, 0f);
+            Vector3 intoMtn = rot * Vector3.forward;    // toward the source / cliff (fall's back)
+            Vector3 toValley = -intoMtn;                // downstream, where the plunge pool sits
+            Vector3 right = rot * Vector3.right;
 
-            var sheet = Cube("Fall_Sheet", basePos + Vector3.up * (height / 2f),
-                new Vector3(width, height, 0.6f), waterMat, container);
-            sheet.transform.rotation = rot;
-            Object.DestroyImmediate(sheet.GetComponent<BoxCollider>());
+            // Rocky cliff the water spills from: a back wall + flanking boulders forming a notch,
+            // so the fall emerges from ROCK, not thin air on a green hill (Jon's #1 waterfall gripe).
+            var cliff = Cube("Fall_Cliff", basePos + Vector3.up * (height * 0.5f) + intoMtn * 1.7f,
+                new Vector3(width + 7f, height + 5f, 3.2f), rockMat, container);
+            cliff.transform.rotation = rot; cliff.isStatic = true;
+            for (int b = 0; b < 6; b++)
+            {
+                float side = (b % 2 == 0 ? 1f : -1f) * (width * 0.5f + 0.8f + (b / 2) * 1.1f);
+                float by = height * (0.08f + 0.17f * b);
+                var boulder = Cube($"Fall_Rock{b}", basePos + right * side + Vector3.up * by + intoMtn * 0.4f,
+                    Vector3.one * (2.0f + (float)rng.NextDouble() * 1.8f), b % 2 == 0 ? rockMat : wetRockMat, container);
+                boulder.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 30f,
+                    yaw + (float)rng.NextDouble() * 40f, (float)rng.NextDouble() * 30f);
+                boulder.isStatic = true;
+            }
 
-            for (int i = 0; i < 8; i++)
+            // Falling water: a back-leaning chute broken into a cascade by foam lips, narrower than
+            // the cliff and brightening toward the base. Reads as moving water, not a glass pane.
+            const int steps = 3;
+            for (int s = 0; s < steps; s++)
+            {
+                float y0 = height * s / steps, y1 = height * (s + 1) / steps;
+                float lean = 0.5f * (steps - 1 - s);   // higher steps sit further back in the cliff
+                var chute = Cube($"Fall_Chute{s}", basePos + Vector3.up * ((y0 + y1) * 0.5f) + intoMtn * lean,
+                    new Vector3(width - s * 0.7f, (y1 - y0) + 0.5f, 0.5f), waterMat, container);
+                chute.transform.rotation = rot;
+                Object.DestroyImmediate(chute.GetComponent<BoxCollider>());
+                var lip = Cube($"Fall_Lip{s}", basePos + Vector3.up * y1 + intoMtn * (lean - 0.3f),
+                    new Vector3(width - s * 0.7f + 0.7f, 0.5f, 1.1f), foamMat, container);
+                lip.transform.rotation = rot;
+                Object.DestroyImmediate(lip.GetComponent<BoxCollider>());
+            }
+
+            // Plunge-pool foam: a flat splash slab + a few LOW flecks (flattened, not round balls).
+            var pool = Cube("Fall_Pool", basePos + toValley * 1.3f + Vector3.up * 0.2f,
+                new Vector3(width + 1.6f, 0.35f, 3.6f), foamMat, container);
+            pool.transform.rotation = rot;
+            Object.DestroyImmediate(pool.GetComponent<BoxCollider>());
+            for (int i = 0; i < 5; i++)
             {
                 float fx = (float)(rng.NextDouble() - 0.5) * width;
-                float fz = (float)(rng.NextDouble() - 0.5) * 3f;
-                var foam = Sphere($"Fall_Foam{i}",
-                    basePos + rot * new Vector3(fx, 0.3f + (float)rng.NextDouble() * 0.6f, fz),
-                    Vector3.one * (0.8f + (float)rng.NextDouble() * 1.2f), foamMat, container);
-                Object.DestroyImmediate(foam.GetComponent<SphereCollider>());
+                float fz = (float)rng.NextDouble() * 2.5f;
+                var fleck = Sphere($"Fall_Splash{i}", basePos + toValley * (0.6f + fz) + right * fx + Vector3.up * 0.35f,
+                    new Vector3(1.0f + (float)rng.NextDouble() * 0.8f, 0.35f, 0.8f), foamMat, container);
+                fleck.transform.rotation = rot;
+                Object.DestroyImmediate(fleck.GetComponent<SphereCollider>());
             }
 
             var lightObj = new GameObject("Fall_Light");
@@ -1958,40 +2067,42 @@ namespace AldenFall.Editor
                 r.isStatic = true;
                 if (groundLayer >= 0) r.layer = groundLayer;
             }
-            // Ring of ascending rock forming the cone (leave the north face open for the mouth).
-            for (int i = 0; i < 14; i++)
+            // ---- Cone: stacked tapering rings of INWARD-TILTED rock slabs, from a wide base
+            // up to the crater lip. The tilt turns each slab's outer face into a sloped cone
+            // surface, so the silhouette reads as a mountain instead of a wall of vertical boxes
+            // (Jon: "volcano still is blocks... doesn't look like a volcano at all"). The
+            // north-facing arc is kept low + open for the entrance mouth. ----
+            const int rings = 6;
+            for (int t = 0; t < rings; t++)
             {
-                float a = i / 14f * Mathf.PI * 2f;
-                // Skip the north-facing arc so the entrance mouth stays open.
-                if (Mathf.Sin(a) > 0.55f && Mathf.Abs(Mathf.Cos(a)) < 0.5f) continue;
-                float rad = 58f;
-                Vector3 p = cone + new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad);
-                float hgt = 26f + (float)rng.NextDouble() * 18f;
-                Rock($"Cone{i}", new Vector3(p.x, hgt / 2f, p.z), new Vector3(34f, hgt, 34f), (float)rng.NextDouble() * 40f, i % 2 == 0 ? rockMat : rockDark);
-            }
-            // Inner caldera lip peaks (taller, further out) for the horizon silhouette.
-            Rock("ConePeakW", cone + new Vector3(-46f, 24f, -30f), new Vector3(50f, 60f, 50f), -18f, rockDark);
-            Rock("ConePeakE", cone + new Vector3(48f, 22f, -26f), new Vector3(46f, 52f, 46f), 22f, rockDark);
-            Rock("ConePeakS", cone + new Vector3(0f, 30f, -46f), new Vector3(56f, 72f, 56f), 10f, rockMat);
-
-            // ---- Upper cone: two shrinking ring tiers stacked over the base so the
-            // volcano reads as a MOUNTAIN from the city, not another wall of boxes. ----
-            for (int tier = 0; tier < 2; tier++)
-            {
-                float tierRad = 40f - tier * 16f;
-                float tierBase = 34f + tier * 26f;
-                int n = 10 - tier * 3;
+                float f = t / (float)(rings - 1);                       // 0 base -> 1 crater lip
+                float rad = Mathf.Lerp(62f, 16f, f);
+                float yBase = Mathf.Lerp(0f, 68f, f * f * 0.8f + f * 0.2f);
+                float slabH = Mathf.Lerp(30f, 15f, f);
+                float tilt = Mathf.Lerp(20f, 42f, f);                   // steeper near the top
+                int n = Mathf.RoundToInt(Mathf.Lerp(16f, 7f, f));
                 for (int i = 0; i < n; i++)
                 {
-                    float a = i / (float)n * Mathf.PI * 2f;
-                    if (tier == 0 && Mathf.Sin(a) > 0.75f) continue;   // keep the north face lower
-                    Vector3 p = cone + new Vector3(Mathf.Cos(a) * tierRad, 0f, Mathf.Sin(a) * tierRad);
-                    float hgt = 20f + (float)rng.NextDouble() * 10f;
-                    Rock($"ConeT{tier}_{i}", new Vector3(p.x, tierBase + hgt / 2f, p.z),
-                        new Vector3(26f - tier * 8f, hgt, 26f - tier * 8f),
-                        (float)rng.NextDouble() * 40f, (i + tier) % 2 == 0 ? rockMat : rockDark);
+                    float a = (i + t * 0.5f) / n * Mathf.PI * 2f;       // stagger rings so seams don't stack
+                    float sinA = Mathf.Sin(a);
+                    bool northArc = sinA > 0.42f && Mathf.Abs(Mathf.Cos(a)) < 0.62f;
+                    if (northArc && t >= 1) continue;                   // open mouth on the north face
+                    Vector3 dir = new Vector3(Mathf.Cos(a), 0f, sinA);
+                    float yb = northArc ? yBase - 7f : yBase;
+                    Vector3 p = cone + dir * rad + Vector3.up * (yb + slabH / 2f);
+                    float w = Mathf.Lerp(30f, 12f, f) * (0.82f + (float)rng.NextDouble() * 0.34f);
+                    float outYaw = Mathf.Atan2(dir.x, dir.z) * Mathf.Rad2Deg;
+                    // Yaw the slab to face outward, then pitch its top toward the crater centre.
+                    var q = Quaternion.Euler(0f, outYaw, 0f) * Quaternion.Euler(-tilt, 0f, 0f);
+                    var r = Cube($"Cone{t}_{i}", p, new Vector3(w, slabH, w * 0.7f),
+                        (t + i) % 2 == 0 ? rockMat : rockDark, container);
+                    r.transform.rotation = q; r.isStatic = true;
+                    if (groundLayer >= 0) r.layer = groundLayer;
                 }
             }
+            // A couple of taller jagged spires on the south rim for a broken-caldera silhouette.
+            Rock("ConeSpireW", cone + new Vector3(-30f, 40f, -34f), new Vector3(16f, 46f, 16f), -18f, rockDark);
+            Rock("ConeSpireE", cone + new Vector3(34f, 36f, -30f), new Vector3(14f, 40f, 14f), 22f, rockDark);
 
             // ---- Crater: emissive glow ring + light + smoke/ember plume, visible from
             // the whole valley (the "ember-fall" is always on the horizon). ----

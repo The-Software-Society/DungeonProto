@@ -132,17 +132,23 @@ namespace AldenFall.Editor
         public static Color32[] Soot(int s)
         {
             var px = new Color32[s * s];
-            Color dark = new Color(0.08f, 0.065f, 0.06f);
-            Color mid = new Color(0.14f, 0.11f, 0.10f);
-            Color ember = new Color(0.35f, 0.12f, 0.05f);
+            // Warm volcanic basalt/ash (not neutral black - dark neutral reads cold blue under
+            // the bright sky ambient). Brighter mid + frequent glowing ember cracks so the
+            // approach looks HOT and burnt, per Jon's "full blown dirt, lava, magma" note.
+            Color dark = new Color(0.13f, 0.09f, 0.075f);
+            Color mid = new Color(0.22f, 0.15f, 0.12f);
+            Color ash = new Color(0.30f, 0.22f, 0.18f);
+            Color ember = new Color(0.75f, 0.24f, 0.06f);
             for (int y = 0; y < s; y++)
                 for (int x = 0; x < s; x++)
                 {
                     float u = x / (float)s, v = y / (float)s;
                     float n = Fbm(u, v, 8f);
+                    float ashN = Fbm(u, v, 16f);
                     float cracks = Fbm(u, v, 24f);
                     Color c = Color.Lerp(dark, mid, Mathf.Clamp01(n * 1.5f));
-                    if (cracks > 0.74f) c = Color.Lerp(c, ember, (cracks - 0.74f) * 2.5f);   // glowing embers in cracks
+                    c = Color.Lerp(c, ash, Mathf.Clamp01((ashN - 0.55f) * 2.0f));                 // scattered dry ash
+                    if (cracks > 0.68f) c = Color.Lerp(c, ember, (cracks - 0.68f) * 2.6f);        // glowing ember cracks
                     px[y * s + x] = c;
                 }
             return px;
