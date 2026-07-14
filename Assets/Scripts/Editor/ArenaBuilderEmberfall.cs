@@ -1731,12 +1731,11 @@ namespace AldenFall.Editor
             // More opaque + lower smoothness: the high-smoothness surface blew out to a flat
             // white sky-glint at grazing angles, reading as a broad flood sheet. A deeper, more
             // opaque blue-green with a matte finish reads as contained water.
-            // OPAQUE + near-matte dark teal: a transparent/smooth surface reflected the bright sky
-            // at grazing angles and washed pale (the "flood sheet"), no matter how low the
-            // smoothness. An opaque low-spec body holds its dark colour edge-to-edge at every
-            // viewing angle, so lake + rivers + canal always read as contained water, never flood.
-            var waterMat = Mat("LakeWater", new Color(0.08f, 0.21f, 0.27f),
-                smoothness: 0.10f, emission: new Color(0.008f, 0.022f, 0.03f));
+            // REAL water via the AldenFall/Water shader: depth-based clarity (clear shallows show
+            // the bed, deepening to blue), animated ripples + moving sun sparkle, fresnel, and a
+            // foam line at the shore. Reads as one fluid body, not a flat blue lid. Falls back to a
+            // flat opaque teal only if the shader is missing.
+            var waterMat = BuildWaterMaterial();
 
             Vector3 c = LakeCenter;
             float w = LakeHalf * 2f, depth = WaterSurfaceY - LakeBedY;   // depth ~2.7m (>1.8 swim)
@@ -1813,6 +1812,34 @@ namespace AldenFall.Editor
 
             // Fishing spot on the dry east bank + campfire a few steps back.
             BuildLakeFishingAndCooking(container, groundLayer, interactableLayer);
+        }
+
+        /// <summary>The shared water material — AldenFall/Water shader (depth-clear + ripples +
+        /// foam) when present, else a flat teal fallback.</summary>
+        private static Material BuildWaterMaterial()
+        {
+            var shader = Shader.Find("AldenFall/Water");
+            if (shader == null)
+                return Mat("LakeWater", new Color(0.08f, 0.21f, 0.27f), smoothness: 0.1f);
+            string mp = $"{MaterialDir}/EmberWater.mat";
+            var m = AssetDatabase.LoadAssetAtPath<Material>(mp);
+            if (m == null) { m = new Material(shader); AssetDatabase.CreateAsset(m, mp); }
+            else if (m.shader != shader) m.shader = shader;
+            m.SetColor("_ShallowColor", new Color(0.32f, 0.56f, 0.58f, 0.18f));
+            m.SetColor("_DeepColor", new Color(0.05f, 0.22f, 0.33f, 0.90f));
+            m.SetColor("_FoamColor", new Color(0.92f, 0.97f, 1f, 1f));
+            m.SetColor("_FresnelTint", new Color(0.52f, 0.70f, 0.84f, 1f));
+            m.SetFloat("_DepthFade", 3.5f);
+            m.SetFloat("_FoamDist", 0.9f);
+            m.SetFloat("_RippleScale", 0.5f);
+            m.SetFloat("_RippleSpeed", 0.7f);
+            m.SetFloat("_RippleStrength", 0.35f);
+            m.SetFloat("_WaveHeight", 0.06f);
+            m.SetFloat("_SpecSharp", 220f);
+            m.SetFloat("_SpecGain", 0.7f);
+            m.renderQueue = 3000;
+            EditorUtility.SetDirty(m);
+            return m;
         }
 
         /// <summary>The lake water surface as an ORGANIC DISC mesh whose rim follows the true

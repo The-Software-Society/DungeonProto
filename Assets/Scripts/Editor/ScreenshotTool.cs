@@ -158,6 +158,26 @@ namespace AldenFall.Editor
             }
         }
 
+        /// <summary>Log a prop's submesh/material structure (to see if OakTree has a separable
+        /// trunk vs leaves).</summary>
+        public static void ProbeProp()
+        {
+            foreach (var name in new[] { "OakTree", "PineTree", "BirchTree" })
+            {
+                var asset = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Models/Props/{name}.fbx");
+                if (asset == null) { Debug.Log($"PROP {name}: null"); continue; }
+                var inst = (GameObject)UnityEditor.PrefabUtility.InstantiatePrefab(asset);
+                foreach (var mf in inst.GetComponentsInChildren<MeshFilter>())
+                {
+                    var sm = mf.sharedMesh;
+                    var r = mf.GetComponent<Renderer>();
+                    Debug.Log($"PROP {name}: obj={mf.gameObject.name} subMeshes={sm?.subMeshCount} mats={r?.sharedMaterials?.Length} bounds={sm?.bounds.size}");
+                    if (r != null) foreach (var m in r.sharedMaterials) Debug.Log($"PROP {name}   mat={m?.name}");
+                }
+                Object.DestroyImmediate(inst);
+            }
+        }
+
         public static void CheckMesh()
         {
             foreach (var p in new[] { "BoulderCluster", "MossBoulder", "MossyRock", "Fern", "Wildflowers", "Reeds", "PebblePatch", "ForestBush", "OakTree", "PineTree" })
