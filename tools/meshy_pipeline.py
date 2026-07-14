@@ -637,17 +637,31 @@ def generate_prop(meshy: Meshy, state: State, name: str, prompt: str):
     # game-ready polycount and download that. Falls back to the raw preview if remesh 404s.
     if os.environ.get("MESHY_PREVIEW_ONLY"):
         target = int(os.environ.get("MESHY_REMESH_POLY", "4000"))
-        try:
-            _, remesh = run_step(
-                meshy, state, f"prop:{name}:remesh",
-                "/openapi/v2/remesh", "/openapi/v2/remesh",
-                {"input_task_id": preview_id, "target_polycount": target,
-                 "topology": "triangle", "target_formats": ["glb", "fbx"]},
-                f"{name} remesh",
-            )
+        remesh = None
+        for rp in ("/openapi/v1/remesh", "/openapi/v2/remesh"):
+            try:
+                _, remesh = run_step(
+                    meshy, state, f"prop:{name}:remesh", rp, rp,
+                    {"input_task_id": preview_id, "target_polycount": target,
+                     "topology": "triangle", "target_formats": ["glb", "fbx"]},
+                    f"{name} remesh",
+                )
+                break
+            except Exception as e:
+                state.data.pop(f"prop:{name}:remesh", None)   # clear so the next endpoint retries fresh
+                if "404" in str(e):
+                    continue
+                print(f"    {name}: remesh error ({e})")
+                break
+        if remesh:
+            # Overwrite the huge raw preview with the decimated mesh.
+            for ext in ("fbx", "glb"):
+                f = prop_dir / f"{name}.{ext}"
+                if f.exists():
+                    f.unlink()
             download_model_urls(remesh, prop_dir, name)
-        except Exception as e:
-            print(f"    {name}: remesh failed ({e}); using raw preview")
+        else:
+            print(f"    {name}: remesh unavailable; keeping raw preview")
             download_model_urls(preview, prop_dir, name)
         return
 

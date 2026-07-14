@@ -1231,9 +1231,17 @@ namespace AldenFall.Editor
         private static void BuildBanditCampDressing(Transform container, Vector3 center)
         {
             var stoneMat = Mat("CampStone", new Color(0.32f, 0.3f, 0.3f), smoothness: 0.1f);
-            var tentMat = Mat("TentCloth", new Color(0.35f, 0.28f, 0.2f), smoothness: 0.05f);
+            var tentMat = Mat("TentCloth", new Color(0.4f, 0.31f, 0.21f), smoothness: 0.05f);
+            var dirtMat = Mat("CampDirt", new Color(0.30f, 0.24f, 0.17f), smoothness: 0.02f);
+            var woodMat = Mat("CampWood", new Color(0.28f, 0.2f, 0.12f), smoothness: 0.04f);
 
-            // Fire ring
+            // Worn TRAMPLED-DIRT ground so the camp reads as lived-in, not tents on a lawn.
+            var ground = Cube("CampGround", center + Vector3.up * 0.04f, new Vector3(17f, 0.08f, 15f), dirtMat, container);
+            ground.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0);
+            ground.isStatic = true;
+            Object.DestroyImmediate(ground.GetComponent<BoxCollider>());
+
+            // Fire ring + a real campfire mesh + flickering light.
             for (int i = 0; i < 6; i++)
             {
                 float angle = i * Mathf.PI / 3f;
@@ -1241,6 +1249,7 @@ namespace AldenFall.Editor
                     new Vector3(0.5f, 0.35f, 0.5f), stoneMat, container);
                 stone.isStatic = true;
             }
+            PlaceMeshyProp(container, "Campfire", center, (float)rng.NextDouble() * 360f, 1.2f, -1, PropCollision.None);
             var fire = new GameObject("CampFire");
             fire.transform.SetParent(container);
             fire.transform.position = center + Vector3.up * 0.8f;
@@ -1251,13 +1260,29 @@ namespace AldenFall.Editor
             light.shadows = LightShadows.None;
             fire.AddComponent<World.TorchFlicker>().Configure(2.6f, 0.8f, 7f);
 
-            // Two lean-to tents
-            foreach (var (offset, yaw) in new[] { (new Vector3(-4f, 0, 2f), 40f), (new Vector3(3.5f, 0, 3.5f), -30f) })
+            // Three lean-to tents around the fire.
+            foreach (var (offset, yaw) in new[] { (new Vector3(-4.5f, 0, 2f), 40f), (new Vector3(3.5f, 0, 3.5f), -30f), (new Vector3(-1f, 0, -5f), 165f) })
             {
                 var tent = Cube("Tent", center + offset + Vector3.up * 1.1f, new Vector3(3f, 2.2f, 2.6f), tentMat, container);
                 tent.transform.rotation = Quaternion.Euler(0, yaw, 42f);
                 tent.isStatic = true;
             }
+
+            // Crates + barrels + a couple of stacked-log seats scattered around (real meshes).
+            var props = new[] { "WoodCrate", "MarketBarrel", "WoodCrate", "MarketBarrel" };
+            for (int i = 0; i < props.Length; i++)
+            {
+                float a = i * 1.7f + 0.6f, rr = 4.5f + (float)rng.NextDouble() * 2.5f;
+                Vector3 p = center + new Vector3(Mathf.Cos(a) * rr, 0f, Mathf.Sin(a) * rr);
+                if (PlaceMeshyProp(container, props[i], p, (float)rng.NextDouble() * 360f, 1.1f + (float)rng.NextDouble() * 0.4f, -1, PropCollision.None) == null)
+                {
+                    var box = Cube($"CampCrate{i}", p + Vector3.up * 0.6f, Vector3.one * 1.1f, woodMat, container);
+                    box.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0); box.isStatic = true;
+                }
+            }
+            // A leaning spear/spit by the fire.
+            var spear = Cube("CampSpear", center + new Vector3(1.6f, 1.4f, -1.2f), new Vector3(0.12f, 3.4f, 0.12f), woodMat, container);
+            spear.transform.rotation = Quaternion.Euler(24f, 30f, 8f); spear.isStatic = true;
         }
 
         private static void BuildOrcCampDressing(Transform container, Vector3 center)
