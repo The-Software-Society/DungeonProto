@@ -69,7 +69,14 @@ namespace AldenFall.Editor
         private static void BuildEmberfallWorld(Transform root, int groundLayer)
         {
             if (UseUnityTerrain)
+            {
                 BuildEmberfallTerrain(root, groundLayer);  // real Terrain + splats + wind grass
+                // The forest + ground ecosystem live in BuildEmberfallGround (legacy path); wire
+                // them into the terrain path too or the world has no scattered trees/foliage/rocks.
+                var eco = Child(root, "EmberEcosystem");
+                ScatterForestTrees(eco, groundLayer);
+                ScatterGroundDetail(eco, groundLayer);
+            }
             else
                 BuildEmberfallGround(root, groundLayer);   // legacy cube tiles (rollback path)
             BuildEmberfallCity(root, groundLayer);
@@ -411,11 +418,12 @@ namespace AldenFall.Editor
             {
                 prototype = MakeGrassTuftPrefab(),
                 renderMode = DetailRenderMode.VertexLit,
-                healthyColor = new Color(0.32f, 0.55f, 0.22f),
-                dryColor = new Color(0.42f, 0.44f, 0.16f),
-                minWidth = 0.7f, maxWidth = 1.3f,
-                minHeight = 0.6f, maxHeight = 1.1f,
+                healthyColor = new Color(0.26f, 0.42f, 0.17f),   // deeper, less uniform bright green
+                dryColor = new Color(0.46f, 0.44f, 0.22f),       // wider dry range for variation
+                minWidth = 0.7f, maxWidth = 1.4f,
+                minHeight = 0.4f, maxHeight = 0.85f,             // shorter so scattered foliage reads above it
                 noiseSeed = 42,
+                noiseSpread = 0.3f,
                 useInstancing = true,
                 usePrototypeMesh = true,
             };
@@ -748,8 +756,8 @@ namespace AldenFall.Editor
             Clump(90, 5, 10f, null, (x, z) =>
                 PlaceMeshyProp(container, "PebblePatch", new Vector3(x, 0f, z),
                     (float)rng.NextDouble() * 360f, 1.6f + (float)rng.NextDouble() * 1.8f, groundLayer, PropCollision.None));
-            // Dense fern + bush undergrowth beds in the lush ring - ~320 beds.
-            Clump(320, 7, 12f, lush, (x, z) =>
+            // Dense fern + bush undergrowth beds in the lush ring.
+            Clump(230, 6, 12f, lush, (x, z) =>
             {
                 string f = rng.NextDouble() < 0.6 ? "Fern" : "ForestBush";
                 if (PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
@@ -2295,8 +2303,8 @@ namespace AldenFall.Editor
                     if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", volcanoTex); m.SetTextureScale("_MainTex", new Vector2(9f, 9f)); }
                     return m;
                 }
-                var dormantMat = VolMat("VolcanoMeshRock", new Color(0.32f, 0.27f, 0.24f), null);              // textured volcanic rock
-                var eruptMat = VolMat("VolcanoMeshLava", new Color(0.20f, 0.13f, 0.10f), new Color(0.6f, 0.16f, 0.03f)); // charred + hot glow
+                var dormantMat = VolMat("VolcanoMeshRock", new Color(1.5f, 1.25f, 1.05f), null);                // base >1 lifts the dark soot texture to a medium volcanic grey-brown
+                var eruptMat = VolMat("VolcanoMeshLava", new Color(0.85f, 0.55f, 0.4f), new Color(0.7f, 0.19f, 0.04f)); // charred + hot glow
                 void Skin(GameObject go, Material m) { if (go != null) foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = m; }
                 var dormant = PlaceMeshyProp(vis, "VolcanoDormant", meshCenter, 180f, 230f, groundLayer, PropCollision.FitBox);
                 if (dormant != null) { dormant.name = "VolcanoDormant"; Skin(dormant, dormantMat); }

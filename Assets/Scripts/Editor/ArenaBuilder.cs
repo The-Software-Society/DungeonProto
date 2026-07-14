@@ -1627,7 +1627,10 @@ namespace AldenFall.Editor
             var asset = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Models/Props/{name}.fbx");
             if (asset == null) return null;
 
-            var instance = (GameObject)PrefabUtility.InstantiatePrefab(asset);
+            GameObject instance = null;
+            try
+            {
+            instance = (GameObject)PrefabUtility.InstantiatePrefab(asset);
             instance.name = name;
             instance.transform.SetParent(parent);
 
@@ -1732,10 +1735,14 @@ namespace AldenFall.Editor
             if (groundLayer >= 0) SetLayerRecursive(instance, groundLayer);
             instance.isStatic = true;
 
-            Debug.Log($"MeshyProp {name}: pos={instance.transform.position} " +
-                      $"scale={scale:F3} bounds={Measure().size} renderers=" +
-                      instance.GetComponentsInChildren<Renderer>().Length);
             return instance;
+            }
+            catch (System.Exception e)
+            {
+                Debug.Log($"PROPFAIL {name}: {e.GetType().Name}: {e.Message}");
+                if (instance != null) Object.DestroyImmediate(instance);
+                return null;
+            }
         }
 
         private static void SetLayerRecursive(GameObject obj, int layer)
