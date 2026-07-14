@@ -220,8 +220,8 @@ namespace AldenFall.Editor
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
             RenderSettings.fogColor = new Color(0.80f, 0.78f, 0.71f);
-            RenderSettings.fogStartDistance = 220f;
-            RenderSettings.fogEndDistance = 1100f;
+            RenderSettings.fogStartDistance = 450f;
+            RenderSettings.fogEndDistance = 1900f;
         }
 
         private static void CreatePostProcessing()
