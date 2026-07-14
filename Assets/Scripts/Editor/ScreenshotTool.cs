@@ -62,8 +62,8 @@ namespace AldenFall.Editor
             ("08_city",          new Vector3(90f, 22f, -70f),  new Vector3(0f, 2f, 10f)),
             ("09_dirt_road",     new Vector3(22f, 7f, 95f),    new Vector3(0f, 1f, 175f)),
             ("10_forest",        new Vector3(-150f, 10f, 250f),new Vector3(-150f, 3f, 320f)),
-            ("11_ember_approach",new Vector3(0f, 14f, -150f),  new Vector3(0f, 0f, -260f)),
-            ("12_volcano",       new Vector3(0f, 30f, -230f),  new Vector3(0f, 10f, -330f)),
+            ("11_ember_approach",new Vector3(0f, 12f, -140f),  new Vector3(0f, 4f, -260f)),
+            ("12_volcano",       new Vector3(0f, 26f, -110f),  new Vector3(0f, 42f, -345f)),
         });
 
         /// <summary>Tight close-ups of the exact problem spots for verify-driven fixing.</summary>
@@ -102,6 +102,44 @@ namespace AldenFall.Editor
             Debug.Log($"CHECK volcano alphamap grass={a[0, 0, 0]:F2} sand={a[0, 0, 1]:F2} soot={a[0, 0, 2]:F2} dirt={a[0, 0, 3]:F2} rock={a[0, 0, 4]:F2}");
         }
 
+        public static void CheckPuddles()
+        {
+            EditorSceneManager.OpenScene("Assets/Scenes/EmberfallDemo.unity");
+            var terrain = Object.FindObjectOfType<Terrain>();
+            if (terrain == null) { Debug.Log("PUDDLE: no terrain"); return; }
+            var data = terrain.terrainData;
+            Vector3 tp = terrain.transform.position;
+            const float waterY = -0.35f;
+            int res = data.heightmapResolution;
+            var hm = data.GetHeights(0, 0, res, res);
+            // Lake disc (0,300,r95). Count sub-water texels OUTSIDE it (rivers + stray puddles).
+            int subWater = 0, outsideLake = 0;
+            float minH = 999f;
+            var samples = new System.Collections.Generic.List<string>();
+            for (int iz = 0; iz < res; iz++)
+                for (int ix = 0; ix < res; ix++)
+                {
+                    float wx = tp.x + ix / (float)(res - 1) * data.size.x;
+                    float wz = tp.z + iz / (float)(res - 1) * data.size.z;
+                    float wy = tp.y + hm[iz, ix] * data.size.y;
+                    if (wy < minH) minH = wy;
+                    if (wy < waterY)
+                    {
+                        subWater++;
+                        float lakeR = Mathf.Sqrt(wx * wx + (wz - 300f) * (wz - 300f));
+                        if (lakeR > 108f)
+                        {
+                            outsideLake++;
+                            // Focus on the NW field where shot 10 showed stray puddles.
+                            if (samples.Count < 40 && wz > 240f && wz < 380f && wx < -110f)
+                                samples.Add($"({wx:F0},{wz:F0},y{wy:F2})");
+                        }
+                    }
+                }
+            Debug.Log($"PUDDLE subWater={subWater} outsideLake={outsideLake} minWorldY={minH:F2} res={res}");
+            Debug.Log($"PUDDLE outside-lake samples: {string.Join(" ", samples)}");
+        }
+
         private static void Run((string name, Vector3 pos, Vector3 lookAt)[] shots)
         {
             string outDir = "Screenshots";
@@ -116,7 +154,7 @@ namespace AldenFall.Editor
             var cam = camObj.AddComponent<Camera>();
             cam.fieldOfView = 55f;
             cam.nearClipPlane = 0.1f;
-            cam.farClipPlane = 500f;
+            cam.farClipPlane = 1400f;
 
             var rt = new RenderTexture(1280, 720, 24);
             var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
