@@ -69,6 +69,12 @@ namespace AldenFall.Editor
         /// <summary>Tight close-ups of the exact problem spots for verify-driven fixing.</summary>
         public static void CaptureDiag() => Run(new (string, Vector3, Vector3)[]
         {
+            ("diag_volcano_entrance", new Vector3(0f, 10f, -265f),  new Vector3(0f, 6f, -330f)),   // dungeon mouth from the approach
+            ("diag_volcano_full",     new Vector3(0f, 40f, -180f),  new Vector3(0f, 60f, -420f)),   // whole volcano + entrance
+            ("diag_mtn_close",        new Vector3(-380f, 30f, 120f),new Vector3(-450f, 60f, 130f)), // mountain surface detail
+        });
+        public static void CaptureDiagOld() => Run(new (string, Vector3, Vector3)[]
+        {
             // Natural 3rd-person-ish angles (higher, ~30 deg down) - the old y2-4 grazing angles
             // made smooth bare ground (sand/dirt) mirror the sky and read as fake water.
             ("diag_spawn_lake",     new Vector3(0f, 12f, 168f),     new Vector3(0f, 0f, 250f)),

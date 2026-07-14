@@ -2206,35 +2206,25 @@ namespace AldenFall.Editor
             string[] peaks = { "MountainRidge", "MountainPeak", "MountainRidge" };
             int pk = 0;
 
-            // Rock TEXTURE (untextured preview meshes are flat one-colour otherwise) + colour
-            // variants so the range isn't monotone: weathered grey, brown, dark, and snow-touched.
+            // HEIGHT-BLEND material: every mountain reads as green lower slopes -> dirt/rock ->
+            // snow-capped peak (Jon: not "separate mountains with just one colour"). Triplanar rock
+            // texture for surface detail regardless of the preview-mesh UVs.
             var rockTex = GetGeneratedTexture("MountainRock_Tex", () => GroundTextureGenerator.Rock(256));
-            Material RockMat(string n, Color c, float tile)
+            Material mtnMat = null;
+            var hbShader = Shader.Find("AldenFall/MountainHeightBlend");
+            if (hbShader != null)
             {
-                var m = Mat(n, c, smoothness: 0.03f);
-                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", rockTex); m.SetTextureScale("_BaseMap", new Vector2(tile, tile)); }
-                if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", rockTex); m.SetTextureScale("_MainTex", new Vector2(tile, tile)); }
-                return m;
+                string mp = $"{MaterialDir}/MountainHeightBlend.mat";
+                mtnMat = AssetDatabase.LoadAssetAtPath<Material>(mp);
+                if (mtnMat == null) { mtnMat = new Material(hbShader); AssetDatabase.CreateAsset(mtnMat, mp); }
+                else if (mtnMat.shader != hbShader) mtnMat.shader = hbShader;
+                mtnMat.SetTexture("_RockTex", rockTex);
+                EditorUtility.SetDirty(mtnMat);
             }
-            // Near-white tints so the rock TEXTURE provides the tone at full brightness (a dark
-            // tint multiplied the texture to near-black). Slight hue variation per variant.
-            var mtnMats = new[]
-            {
-                RockMat("MtnRockGrey", new Color(1.35f, 1.32f, 1.26f), 10f),
-                RockMat("MtnRockBrown", new Color(1.35f, 1.15f, 0.9f), 10f),
-                RockMat("MtnRockDark", new Color(1.0f, 0.97f, 0.95f), 12f),
-                RockMat("MtnRockSnow", new Color(1.7f, 1.68f, 1.66f), 8f),
-            };
             void SkinMtn(GameObject go, int idx)
             {
-                if (go == null) return;
-                // If a Meshy PBR texture was downloaded (refine), PlaceMeshyProp already applied it -
-                // don't override. Only skin the untextured preview meshes with our rock material.
-                bool hasMeshyTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/Props/MountainPeak_baseColor.png") != null
-                                || AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/Props/MountainRidge_baseColor.png") != null;
-                if (hasMeshyTex) return;
-                var m = mtnMats[idx % mtnMats.Length];
-                foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = m;
+                if (go == null || mtnMat == null) return;
+                foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = mtnMat;
             }
 
             void Place(float x, float z, bool corridor)
@@ -2294,6 +2284,12 @@ namespace AldenFall.Editor
             // cone below. Both phase meshes are placed under VolcanoVisual - dormant active,
             // erupting hidden - so the eruption world-state can swap them (montage toggles too).
             bool meshVolcano = HasMesh("VolcanoDormant");
+            // The solid mesh cone sits SOUTH of the cube-cone origin so its north base lands at
+            // the dungeon entrance (z-315) - otherwise the cone buries the mouth. Its bulk covers
+            // the interior rooms (the dungeon is literally inside the volcano).
+            Vector3 meshCenter = new Vector3(0f, 0f, -430f);
+            Vector3 craterCenter = meshVolcano ? meshCenter : cone;
+            float craterY = meshVolcano ? 78f : 78f;
             if (meshVolcano)
             {
                 var vis = Child(container, "VolcanoVisual");
@@ -2308,11 +2304,11 @@ namespace AldenFall.Editor
                 var dormantMat = VolMat("VolcanoMeshRock", new Color(0.32f, 0.27f, 0.24f), null);              // textured volcanic rock
                 var eruptMat = VolMat("VolcanoMeshLava", new Color(0.20f, 0.13f, 0.10f), new Color(0.6f, 0.16f, 0.03f)); // charred + hot glow
                 void Skin(GameObject go, Material m) { if (go != null) foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = m; }
-                var dormant = PlaceMeshyProp(vis, "VolcanoDormant", cone, 180f, 210f, groundLayer, PropCollision.FitBox);
+                var dormant = PlaceMeshyProp(vis, "VolcanoDormant", meshCenter, 180f, 230f, groundLayer, PropCollision.FitBox);
                 if (dormant != null) { dormant.name = "VolcanoDormant"; Skin(dormant, dormantMat); }
                 if (HasMesh("VolcanoErupting"))
                 {
-                    var erupt = PlaceMeshyProp(vis, "VolcanoErupting", cone, 180f, 210f, groundLayer, PropCollision.None);
+                    var erupt = PlaceMeshyProp(vis, "VolcanoErupting", meshCenter, 180f, 230f, groundLayer, PropCollision.None);
                     if (erupt != null) { erupt.name = "VolcanoErupting"; Skin(erupt, eruptMat); erupt.SetActive(false); }
                 }
             }
@@ -2354,15 +2350,14 @@ namespace AldenFall.Editor
             Rock("ConeSpireE", cone + new Vector3(34f, 36f, -30f), new Vector3(14f, 40f, 14f), 22f, rockDark);
             }   // end !meshVolcano cube cone
 
-            // ---- Crater: emissive glow ring + light + smoke/ember plume, visible from
-            // the whole valley (the "ember-fall" is always on the horizon). ----
-            float craterY = 78f;
-            var craterGlow = Cube("CraterGlow", cone + new Vector3(0f, craterY, 0f), new Vector3(20f, 1.2f, 20f), emberMat, container);
+            // ---- Crater: emissive glow ring + light + smoke/ember plume at the summit, visible
+            // from the whole valley (the "ember-fall" is always on the horizon). ----
+            var craterGlow = Cube("CraterGlow", craterCenter + new Vector3(0f, craterY, 0f), new Vector3(14f, 1.0f, 14f), emberMat, container);
             craterGlow.isStatic = true;
             Object.DestroyImmediate(craterGlow.GetComponent<BoxCollider>());
             var craterLightObj = new GameObject("CraterLight");
             craterLightObj.transform.SetParent(container);
-            craterLightObj.transform.position = cone + new Vector3(0f, craterY + 8f, 0f);
+            craterLightObj.transform.position = craterCenter + new Vector3(0f, craterY + 8f, 0f);
             var craterLight = craterLightObj.AddComponent<Light>();
             craterLight.type = LightType.Point;
             craterLight.color = new Color(1f, 0.4f, 0.1f);
@@ -2371,13 +2366,33 @@ namespace AldenFall.Editor
             craterLight.shadows = LightShadows.None;
             var plumeObj = new GameObject("VolcanoPlume");
             plumeObj.transform.SetParent(container);
-            plumeObj.transform.position = cone + new Vector3(0f, craterY + 2f, 0f);
+            plumeObj.transform.position = craterCenter + new Vector3(0f, craterY + 2f, 0f);
             plumeObj.AddComponent<World.VolcanoPlume>();
 
-            // ---- Entrance mouth at the cone base ----
-            Rock("MouthLintel", new Vector3(0f, 9f, VolcanoEntranceZ - 3f), new Vector3(16f, 4f, 4f), 0f, rockDark);
-            CreateTorch(container, new Vector3(-7f, 0f, VolcanoEntranceZ), 1.1f);
-            CreateTorch(container, new Vector3(7f, 0f, VolcanoEntranceZ), 1.1f);
+            // ---- Dungeon entrance: a dark recessed CAVE MOUTH at the volcano's north base, so it
+            // reads clearly as the way in with the mesh cone rising behind it. The mouth frames the
+            // EntryTunnel (built below) that leads to the boss chamber. ----
+            var mouthRock = Mat("VolcanoMouthRock", new Color(0.13f, 0.10f, 0.09f), smoothness: 0.03f);
+            var caveDark = Mat("VolcanoCaveDark", new Color(0.02f, 0.02f, 0.03f), smoothness: 0f);
+            float ez = VolcanoEntranceZ;
+            // A rocky PORCH juts NORTH out of the cone base (toward the approach) so the mouth is
+            // always visible even with the huge cone behind it. Dark void recedes south to the
+            // EntryTunnel; jagged jambs + a heavy lintel frame a tall opening; boulders flank it.
+            var caveVoid = Cube("Mouth_Void", new Vector3(0f, 6f, ez - 8f), new Vector3(14f, 12f, 26f), caveDark, container);
+            caveVoid.isStatic = true; Object.DestroyImmediate(caveVoid.GetComponent<BoxCollider>());
+            Rock("Mouth_JambW", new Vector3(-10f, 8f, ez + 6f), new Vector3(8f, 17f, 12f), 14f, mouthRock);
+            Rock("Mouth_JambE", new Vector3(10f, 8f, ez + 6f), new Vector3(8f, 17f, 12f), -14f, mouthRock);
+            Rock("Mouth_Lintel", new Vector3(0f, 15f, ez + 6f), new Vector3(24f, 6f, 10f), 0f, mouthRock);
+            Rock("Mouth_Brow", new Vector3(0f, 18.5f, ez + 8f), new Vector3(18f, 4f, 7f), 4f, mouthRock);
+            // Flanking boulders + torches mark it from a distance.
+            for (int b = 0; b < 4; b++)
+            {
+                float side = (b % 2 == 0 ? -1f : 1f) * (13f + b * 2f);
+                if (PlaceMeshyProp(container, "BoulderCluster", new Vector3(side, 0f, ez + 9f - b), (float)rng.NextDouble() * 360f, 4f + (float)rng.NextDouble() * 3f, groundLayer, PropCollision.FitBox) == null)
+                    Rock($"Mouth_Rock{b}", new Vector3(side, 3f, ez + 9f - b), Vector3.one * 6f, 0f, mouthRock);
+            }
+            CreateTorch(container, new Vector3(-7f, 0f, ez + 10f), 1.3f);
+            CreateTorch(container, new Vector3(7f, 0f, ez + 10f), 1.3f);
 
             // ---- Interior rooms + corridors (all floors walkable, Ground layer) ----
             void Slab(string name, Vector3 pos, Vector3 size, Material mat, bool walkable)
