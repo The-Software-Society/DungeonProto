@@ -173,52 +173,47 @@ namespace AldenFall.Editor
             // 24°-dusk setup left everything outside the city near-black in playtests.
             // Bright clear daylight (v9 environment milestone) - the references are sunlit, and
             // the dusk setup left the expanded world dark + unreadable.
+            // ONE sun only (real-world lighting; the old second "sky fill" directional read as a
+            // second sun with its own highlight on the water). Shade fill comes from ambient.
             var sunObj = new GameObject("Sun");
             var sun = sunObj.AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.97f, 0.9f);
-            sun.intensity = 1.55f;
+            sun.color = new Color(1f, 0.96f, 0.87f);
+            sun.intensity = 1.5f;
             sun.shadows = LightShadows.Soft;
-            sun.shadowStrength = 0.6f;
-            sunObj.transform.rotation = Quaternion.Euler(52f, -120f, 0f);   // high mid-morning sun
+            sun.shadowStrength = 0.75f;
+            sunObj.transform.rotation = Quaternion.Euler(48f, -128f, 0f);   // high mid-morning sun
             RenderSettings.sun = sun;
 
-            // Sky-blue fill so shadows read as cool daylight shade, not black.
-            var fillObj = new GameObject("Sky Fill");
-            var fill = fillObj.AddComponent<Light>();
-            fill.type = LightType.Directional;
-            fill.color = new Color(0.55f, 0.63f, 0.78f);
-            fill.intensity = 0.5f;
-            fill.shadows = LightShadows.None;
-            fillObj.transform.rotation = Quaternion.Euler(50f, 60f, 0f);
-
-            // Clear blue procedural sky.
+            // Clear procedural sky.
             var skyShader = Shader.Find("Skybox/Procedural");
             if (skyShader != null)
             {
                 var sky = new Material(skyShader);
-                sky.SetFloat("_SunSize", 0.045f);
+                sky.SetFloat("_SunSize", 0.04f);
                 sky.SetFloat("_SunSizeConvergence", 5f);
                 sky.SetFloat("_AtmosphereThickness", 1.0f);
-                sky.SetColor("_SkyTint", new Color(0.5f, 0.63f, 0.85f));
-                sky.SetColor("_GroundColor", new Color(0.46f, 0.47f, 0.44f));
-                sky.SetFloat("_Exposure", 1.35f);
+                sky.SetColor("_SkyTint", new Color(0.52f, 0.63f, 0.82f));
+                sky.SetColor("_GroundColor", new Color(0.42f, 0.42f, 0.39f));
+                sky.SetFloat("_Exposure", 1.3f);
                 AssetDatabase.CreateAsset(sky, $"{MaterialDir}/EmberfallSkybox.mat");
                 RenderSettings.skybox = sky;
             }
 
-            // Bright daylight ambient.
+            // Warm, neutral daylight ambient (the old strong blue ambient tinted dark ground a
+            // cold wet blue - part of the "everything looks flooded" read).
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.74f, 0.82f, 0.95f);
-            RenderSettings.ambientEquatorColor = new Color(0.62f, 0.64f, 0.6f);
-            RenderSettings.ambientGroundColor = new Color(0.38f, 0.37f, 0.32f);
+            RenderSettings.ambientSkyColor = new Color(0.66f, 0.68f, 0.70f);
+            RenderSettings.ambientEquatorColor = new Color(0.55f, 0.53f, 0.47f);
+            RenderSettings.ambientGroundColor = new Color(0.32f, 0.29f, 0.24f);
 
-            // Light haze pushed WAY out for the big world - only the far mountains fade.
+            // Very light haze, pushed far out and warmed toward neutral so only the distant
+            // mountains soften - no blue wash across the whole valley (the "flood" look).
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.72f, 0.79f, 0.86f);
-            RenderSettings.fogStartDistance = 400f;
-            RenderSettings.fogEndDistance = 1500f;
+            RenderSettings.fogColor = new Color(0.78f, 0.79f, 0.76f);
+            RenderSettings.fogStartDistance = 700f;
+            RenderSettings.fogEndDistance = 2400f;
         }
 
         private static void CreatePostProcessing()
@@ -1663,6 +1658,11 @@ namespace AldenFall.Editor
 
             bounds = Measure();
             Vector3 bottomCenter = new Vector3(bounds.center.x, bounds.min.y, bounds.center.z);
+            // Snap ground props (caller passes y~0) onto the terrain surface, so raising the
+            // valley into hills never leaves trees/rocks floating or buried.
+            var groundT = Terrain.activeTerrain;
+            if (groundT != null && Mathf.Abs(pos.y) < 0.01f)
+                pos.y = groundT.SampleHeight(new Vector3(pos.x, 0f, pos.z)) + groundT.transform.position.y;
             instance.transform.position += pos - bottomCenter;
 
             // Collider fit depends on the prop type. Trees get a THIN trunk-only

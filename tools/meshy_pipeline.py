@@ -329,6 +329,18 @@ PROPS = {
     "GrassSquare": "simple stylized low poly square grass patch prop, flat clump of green grass blades, game environment asset",
     "DungeonPillar": "stylized ancient stone dungeon pillar with cracks, moss, carved bands, game environment prop",
     "DungeonChest": "stylized ornate dungeon treasure chest, dark wood, iron bands, ember gem lock, closed game prop",
+
+    # === Environment art pass: real rocks / foliage / ground detail so the world stops
+    # reading as cubes (skinned OVER structural cubes where one is needed). ===
+    "RockCliff": "large craggy natural rock cliff face with jagged stone ledges, cracks and outcrops, weathered grey granite, stylized low-poly game environment rock formation",
+    "BoulderCluster": "cluster of natural grey granite boulders of varying sizes piled together, weathered stone, stylized low-poly game environment prop",
+    "MossyRock": "single large mossy grey rock boulder with green moss on top, rounded natural stone, stylized low-poly game environment prop",
+    "Fern": "lush green forest fern plant with spreading feathery fronds, stylized low-poly game foliage",
+    "Reeds": "dense cluster of tall green water reeds and brown cattails, stylized low-poly game plant for pond and river edges",
+    "Wildflowers": "cluster of small colorful wildflowers, red yellow and white blooms among green grass, stylized low-poly game foliage patch",
+    "PebblePatch": "flat scattering of small round pebbles and gravel stones on bare dirt ground, stylized low-poly game ground prop",
+    "ThatchRoofSection": "section of golden thatched straw roof, sloped rectangular panel, stylized low-poly game building roof part",
+    "WoodShingleRoof": "section of weathered wooden shingle roof, sloped rectangular panel, stylized low-poly game building roof part",
 }
 
 # ---------------------------------------------------------------------------

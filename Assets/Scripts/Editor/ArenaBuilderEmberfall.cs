@@ -116,8 +116,20 @@ namespace AldenFall.Editor
         {
             // Square basin footprint (matches BuildEmberfallLake). Leave a hole so the
             // basin bed shows through instead of a grass tile floating over the water.
-            return Mathf.Abs(x - LakeCenter.x) < LakeHalf - 1f
-                && Mathf.Abs(z - LakeCenter.z) < LakeHalf - 1f;
+            return Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) - 2f;
+        }
+
+        /// <summary>Organic lake shoreline radius at (x,z): base radius wobbled by two angular
+        /// noise octaves so the lake is a natural irregular basin, not a perfect disc. Slightly
+        /// negative-biased so the wobble never grows the lake into the mountain ring.</summary>
+        private static float LakeEdge(float x, float z)
+        {
+            float dx = x - LakeCenter.x, dz = z - LakeCenter.z;
+            float ang = Mathf.Atan2(dz, dx);
+            float ca = Mathf.Cos(ang), sa = Mathf.Sin(ang);
+            float wob = (Mathf.PerlinNoise(ca * 1.6f + 4.2f, sa * 1.6f + 9.1f) - 0.55f) * 2f * 16f
+                      + (Mathf.PerlinNoise(ca * 3.5f + 1.1f, sa * 3.5f + 6.3f) - 0.5f) * 2f * 7f;
+            return LakeHalf + wob;
         }
 
         /// <summary>Feeder-river centre X at a given z (winds gently down into the lake).</summary>
@@ -241,11 +253,21 @@ namespace AldenFall.Editor
                                  || InApproachFootprint(wx, wz)
                                  || (Mathf.Abs(wx) < 8f && wz > -322f && wz < 190f);   // city road (city -> glade)
                     if (!flatZone)
-                        // Gentle rolling valley floor, clamped ABOVE the waterline so it never
-                        // dips into an accidental puddle (only the carved lake/rivers hold water).
-                        h = Mathf.Max(0.05f,
-                            (Mathf.PerlinNoise(wx * 0.008f + 12.3f, wz * 0.008f + 5.1f) - 0.5f) * 1.6f
-                          + (Mathf.PerlinNoise(wx * 0.024f + 31.7f, wz * 0.024f + 17.3f) - 0.5f) * 0.7f);
+                        // Rolling valley floor lifted WELL above the waterline. The world-spanning
+                        // water sheet sits at y-0.35; when the floor was ~0.05 (a 0.4m gap) the
+                        // transparent sheet bled through the flat lake approach at grazing angles
+                        // and read as marsh/puddles everywhere. A 0.7m floor (>1m gap) removes that
+                        // and gives real hill/gradient depth (only the carved lake/rivers hold water).
+                        h = Mathf.Max(0.7f,
+                            1.1f
+                          + (Mathf.PerlinNoise(wx * 0.008f + 12.3f, wz * 0.008f + 5.1f) - 0.5f) * 2.0f
+                          + (Mathf.PerlinNoise(wx * 0.024f + 31.7f, wz * 0.024f + 17.3f) - 0.5f) * 0.9f);
+
+                    // Glade (player spawn) + the lake/city road are DRY flatzones - lift them clear
+                    // of the water sheet too, or it bleeds through the flat spawn (Aldric standing
+                    // in a "flood"). North of the ember corridor only; the volcano approach stays low.
+                    if (InGlade(wx, wz) || (Mathf.Abs(wx) < 8f && wz > -55f && wz < 195f))
+                        h = 0.85f;
 
                     if (InCityFootprint(wx, wz))
                         h = -0.15f;   // cobbles (top y=0) sit proud of the pad
@@ -264,10 +286,14 @@ namespace AldenFall.Editor
                     // LAKE: a natural round basin carved into the terrain (deep centre -> shore),
                     // grass/sand meets the waterline. The terrain IS the lakebed (no cube banks).
                     float lakeR = Vector2.Distance(new Vector2(wx, wz), new Vector2(LakeCenter.x, LakeCenter.z));
-                    if (lakeR < LakeHalf + 6f)
+                    float lakeEdge = LakeEdge(wx, wz);
+                    if (lakeR < lakeEdge + 4f)
                     {
-                        float d01 = Mathf.Clamp01(lakeR / (LakeHalf + 6f));
-                        h = Mathf.Min(h, Mathf.Lerp(-4.8f, 0.4f, Mathf.SmoothStep(0f, 1f, d01)));
+                        // STEEP bank: deep interior, quick rise to a rim above the waterline in the
+                        // last ~12% - so the shallow "marsh" band where the bed shows through the
+                        // water is narrow, not a wide green swamp (Jon: forest not swamp).
+                        float d01 = Mathf.Clamp01(lakeR / (lakeEdge + 4f));
+                        h = Mathf.Min(h, Mathf.Lerp(-4.8f, 0.7f, Mathf.SmoothStep(0f, 1f, Mathf.Pow(d01, 2.3f))));
                     }
 
                     // Carve every river channel as a swimmable gorge (source on a mountain ->
@@ -309,7 +335,11 @@ namespace AldenFall.Editor
 
                     float soot = SootAmount(wx, wz);
                     float lakeR = Vector2.Distance(new Vector2(wx, wz), new Vector2(LakeCenter.x, LakeCenter.z));
-                    bool shore = (lakeR > LakeHalf - 12f && lakeR < LakeHalf + 8f) || InAnyRiver(wx, wz);  // thin sand/mud band
+                    float lakeEdgeS = LakeEdge(wx, wz);
+                    // Sand hugs the shoreline RING only (bed under the deep water is covered by the
+                    // tight lake plane, and a wide sand band on dry land read as water at grazing
+                    // angles - the "flooded spawn"). Beyond the ring = grass (dry spawn glade).
+                    bool shore = (lakeR > lakeEdgeS - 14f && lakeR < lakeEdgeS + 2f) || InAnyRiver(wx, wz);
                     bool road = (Mathf.Abs(wx) < 7f && wz > -66f && wz < 214f);   // N-S dirt road (city -> lakeside)
                     float edge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
                                            Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
@@ -377,8 +407,7 @@ namespace AldenFall.Editor
 
                     if (InCityFootprint(wx, wz) || InApproachFootprint(wx, wz)) continue;
                     if (InLakeWater(wx, wz) || InFeederRiver(wx, wz)) continue;
-                    if (Mathf.Abs(wx - LakeCenter.x) < LakeHalf + 10f
-                     && Mathf.Abs(wz - LakeCenter.z) < LakeHalf + 10f) continue;
+                    if (Vector2.Distance(new Vector2(wx, wz), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(wx, wz) + 2f) continue;  // grass grows right up to the narrow sand shore ring
                     if (SootAmount(wx, wz) > 0.25f) continue;
                     if (Mathf.Abs(wx) < 8f && wz > -66f && wz < 214f) continue;  // full dirt-road clear (matches splat road)
                     // Keep the water sources (waterfall gorges) bare so they read as rock, not a
@@ -394,15 +423,18 @@ namespace AldenFall.Editor
                     float dEdge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
                                             Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
                     if (dEdge < 82f) continue;
-                    // Let the worn-dirt splat patches read as bare earth (no grass carpet on top).
+                    // Only the STRONGEST wear spots read as bare dirt; elsewhere keep grass dense.
+                    // (Big bare patches showed the bright flat splat, which at distance read as
+                    // smooth teal "water"/marsh - the whole "puddles everywhere" false alarm.)
                     float wearD = Mathf.PerlinNoise(wx * 0.028f + 40.1f, wz * 0.028f + 22.7f) * 0.65f
                                 + Mathf.PerlinNoise(wx * 0.09f + 3.3f, wz * 0.09f + 8.8f) * 0.35f;
-                    if (wearD > 0.66f) continue;
+                    if (wearD > 0.74f) continue;
 
-                    // Varied carpet with real bare patches (not a uniform lawn): thicker in clumps.
+                    // Dense carpet: near-full coverage so bare ground almost never shows, with only
+                    // small thin speckles for variation.
                     float clump = Mathf.PerlinNoise(wx * 0.055f + 7.7f, wz * 0.055f + 3.1f);
-                    if (clump < 0.33f) continue;   // larger bare/thin patches for depth
-                    density[iz, ix] = clump > 0.62f ? 14 : 6;
+                    if (clump < 0.12f) continue;
+                    density[iz, ix] = clump > 0.5f ? 18 : 11;
                 }
             }
             data.SetDetailLayer(0, 0, 0, density);
@@ -424,7 +456,11 @@ namespace AldenFall.Editor
             var terrain = terrainObj.GetComponent<Terrain>();
             terrain.detailObjectDistance = 220f;
             terrain.detailObjectDensity = 1f;
-            terrain.heightmapPixelError = 6f;
+            // Low pixel error: a high value let the terrain LOD flatten/drop the mesh BELOW the
+            // heightmap at distance, dipping under the world water sheet so it showed through the
+            // flat fields as fake puddles/marsh (worse the farther out you looked). Keep the
+            // rendered mesh faithful so dry land stays above the waterline everywhere.
+            terrain.heightmapPixelError = 1f;
             // Default basemapDistance (~20m) swaps to the washed-out low-res basemap one
             // screen from the player — THE pale-mint wash in both QA rounds. Keep the
             // real splats out to the fog band.
@@ -457,7 +493,8 @@ namespace AldenFall.Editor
                 diffuseTexture = tex,
                 tileSize = new Vector2(6f, 6f),
                 specular = Color.black,
-                smoothness = 0.03f,
+                metallic = 0f,
+                smoothness = 0f,   // fully matte: any smoothness let flat low ground mirror the sky at grazing angles, reading as teal "water"/marsh
             };
             AssetDatabase.CreateAsset(layer, $"{MaterialDir}/{name}.terrainlayer");
             return layer;
@@ -646,7 +683,7 @@ namespace AldenFall.Editor
             var leafMat = Mat("EmberPineLeaf", new Color(0.13f, 0.29f, 0.15f), smoothness: 0.08f);
             var charTrunk = Mat("EmberCharTrunk", new Color(0.15f, 0.11f, 0.09f), smoothness: 0.03f);
             var charLeaf = Mat("EmberCharLeaf", new Color(0.17f, 0.13f, 0.10f), smoothness: 0.03f);
-            string[] kit = { "PineTree", "BirchTree", "PineTree", "DeadTree" };   // OakTree fbx pending — every miss became a cube pine
+            string[] kit = { "PineTree", "OakTree", "BirchTree", "PineTree", "OakTree", "DeadTree" };   // real Meshy trees; cube pine only if a load misses
 
             // Camps + POIs the trees must NOT bury.
             var keepClear = new Vector2[]
@@ -661,7 +698,9 @@ namespace AldenFall.Editor
             };
 
             int planted = 0;
-            for (int attempt = 0; attempt < 1400 && planted < 320; attempt++)
+            // Dense forest (Jon: "way more trees... look like a forest not a swamp"). ~3x the
+            // old count, biased toward the lush ring + the lake->city dark woods.
+            for (int attempt = 0; attempt < 6000 && planted < 780; attempt++)
             {
                 float x = Mathf.Lerp(-246f, 246f, (float)rng.NextDouble());
                 float z = Mathf.Lerp(-52f, 246f, (float)rng.NextDouble());
@@ -669,8 +708,7 @@ namespace AldenFall.Editor
                 if (ring < 62f || ring > 246f) continue;       // clear the city + trim corners
                 if (InCityFootprint(x, z) || InApproachFootprint(x, z)) continue;
                 if (InLakeWater(x, z) || InFeederRiver(x, z)) continue;
-                if (Mathf.Abs(x - LakeCenter.x) < LakeHalf + 8f
-                 && Mathf.Abs(z - LakeCenter.z) < LakeHalf + 8f) continue; // lake shore stays open
+                if (Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) + 10f) continue; // lake shore stays open
 
                 bool blocked = false;
                 foreach (var c in keepClear)
@@ -1434,22 +1472,18 @@ namespace AldenFall.Editor
 
             // Translucent surface spans the WHOLE lake (deep core + shallow mud shore) so it
             // reads as a full body of water. Collider stripped so players/props pass in.
-            if (!UseUnityTerrain)
-            {
-                var surf = Cube("Lake_Surface", c + Vector3.up * WaterSurfaceY, new Vector3(w - 0.4f, 0.06f, w - 0.4f), waterMat, container);
-                Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
-            }
-            else
-            {
-                // ONE world-spanning water sheet at the waterline. Since the valley terrain is
-                // clamped ABOVE the waterline and only the lake + rivers are carved below it,
-                // water shows ONLY in those carved bodies - clean ribbons + lake, zero puddles.
-                // Clipped to z>-30 so it never floods the volcanic south.
-                var world = Cube("WorldWater", new Vector3(0f, WaterSurfaceY, 270f),
-                    new Vector3(900f, 0.05f, 600f), waterMat, container);
-                Object.DestroyImmediate(world.GetComponent<BoxCollider>());
-                world.isStatic = true;
-            }
+            // LAKE surface: a plane LOCAL to the lake basin (sized to the organic shore). The old
+            // world-spanning sheet bled over the whole valley at grazing angles (huge transparent
+            // quads sort/occlude badly), reading as marsh/puddles everywhere - so water is now a
+            // surface per body: this lake plane + each river reach's own ribbon (below).
+            // Size the plane to the WATERLINE, not past it: a transparent quad overhanging DRY
+            // raised terrain bleeds over it (the "flooded spawn"). The waterline sits at ~0.9x the
+            // shore radius, so keep the plane just inside the shore so it only ever covers carved
+            // (below-water) ground.
+            float lakeSurfW = (LakeHalf - 7f) * 2f;
+            var surf = Cube("Lake_Surface", c + Vector3.up * WaterSurfaceY, new Vector3(lakeSurfW, 0.06f, lakeSurfW), waterMat, container);
+            Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
+            surf.isStatic = true;
 
             // The full river network: four waterfall sources on the mountain ring feeding
             // seven reaches (two splits) that all drain here. The lake still overflows
@@ -1475,72 +1509,80 @@ namespace AldenFall.Editor
         /// <summary>A vertical falling water sheet + foam spray + mist glow, poured at the
         /// mountain-ring edge. <paramref name="basePos"/> is the BASE; the sheet rises
         /// <paramref name="height"/> above it.</summary>
-        private static void BuildWaterfall(Transform container, Vector3 basePos, float height, float width, float yaw, Material waterMat)
+        private static void BuildWaterfall(Transform container, Vector3 basePos, float height, float width, float yaw, Material waterMat, int groundLayer)
         {
             var foamMat = Mat("WaterFoam", new Color(0.9f, 0.94f, 0.97f), smoothness: 0.1f,
                 emission: new Color(0.24f, 0.28f, 0.32f));
-            var rockMat = Mat("FallRock", new Color(0.20f, 0.19f, 0.20f), smoothness: 0.04f);
-            var wetRockMat = Mat("FallRockWet", new Color(0.12f, 0.12f, 0.13f), smoothness: 0.30f);
+            var rockMat = Mat("FallRock", new Color(0.22f, 0.21f, 0.21f), smoothness: 0.04f);
             Quaternion rot = Quaternion.Euler(0f, yaw, 0f);
-            Vector3 intoMtn = rot * Vector3.forward;    // toward the source / cliff (fall's back)
+            Vector3 intoMtn = rot * Vector3.forward;    // toward the source (up the mountain)
             Vector3 toValley = -intoMtn;                // downstream, where the plunge pool sits
             Vector3 right = rot * Vector3.right;
 
-            // Rocky cliff the water spills from: a back wall + flanking boulders forming a notch,
-            // so the fall emerges from ROCK, not thin air on a green hill (Jon's #1 waterfall gripe).
-            var cliff = Cube("Fall_Cliff", basePos + Vector3.up * (height * 0.5f) + intoMtn * 1.7f,
-                new Vector3(width + 7f, height + 5f, 3.2f), rockMat, container);
-            cliff.transform.rotation = rot; cliff.isStatic = true;
-            for (int b = 0; b < 6; b++)
+            // REAL rock: the fall spills through an outcrop of boulder MESHES (no cube cliff wall).
+            // BoulderCluster/RockCliff when generated; MossBoulder is the always-present fallback;
+            // a dark rock cube only if every mesh load misses.
+            void Rock(string label, Vector3 pos, float size)
             {
-                float side = (b % 2 == 0 ? 1f : -1f) * (width * 0.5f + 0.8f + (b / 2) * 1.1f);
-                float by = height * (0.08f + 0.17f * b);
-                var boulder = Cube($"Fall_Rock{b}", basePos + right * side + Vector3.up * by + intoMtn * 0.4f,
-                    Vector3.one * (2.0f + (float)rng.NextDouble() * 1.8f), b % 2 == 0 ? rockMat : wetRockMat, container);
-                boulder.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 30f,
-                    yaw + (float)rng.NextDouble() * 40f, (float)rng.NextDouble() * 30f);
-                boulder.isStatic = true;
+                float ry = yaw + (float)rng.NextDouble() * 70f;
+                var r = PlaceMeshyProp(container, "BoulderCluster", pos, ry, size, groundLayer, PropCollision.FitBox)
+                     ?? PlaceMeshyProp(container, "RockCliff", pos, ry, size, groundLayer, PropCollision.FitBox)
+                     ?? PlaceMeshyProp(container, "MossBoulder", pos, ry, size, groundLayer, PropCollision.FitBox);
+                if (r == null)
+                {
+                    var c = Cube(label, pos, Vector3.one * size, rockMat, container);
+                    c.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 25f, ry, (float)rng.NextDouble() * 25f);
+                    c.isStatic = true;
+                    if (groundLayer >= 0) c.layer = groundLayer;
+                }
             }
 
-            // Falling water: a back-leaning chute broken into a cascade by foam lips, narrower than
-            // the cliff and brightening toward the base. Reads as moving water, not a glass pane.
-            const int steps = 3;
-            for (int s = 0; s < steps; s++)
+            // These sources sit on the mountain SLOPE, not a vertical cliff - so the water is a
+            // cascade hugging the slope (a diagonal ramp), not a fall floating in mid-air. Run the
+            // source up-and-back so the ramp lies on the hillside.
+            float runBack = height * 0.85f;                       // horizontal run up the slope
+            Vector3 top = basePos + intoMtn * runBack + Vector3.up * height;
+            Vector3 slopeVec = top - basePos;                     // base -> source, along the hillside
+            float rampLen = slopeVec.magnitude;
+            Vector3 mid = (basePos + top) * 0.5f;
+            // Orientation: flat face toward the valley, long axis up the slope.
+            Quaternion rampRot = Quaternion.LookRotation(toValley + Vector3.up * 0.15f, slopeVec.normalized);
+
+            // Source outcrop HIGH where the water emerges + boulders lining both banks of the ramp.
+            Rock("Fall_Source", top + intoMtn * 1.5f + Vector3.up * 1.0f, width + 7f);
+            const int tiers = 5;
+            for (int t = 0; t < tiers; t++)
             {
-                float y0 = height * s / steps, y1 = height * (s + 1) / steps;
-                float lean = 0.5f * (steps - 1 - s);   // higher steps sit further back in the cliff
-                var chute = Cube($"Fall_Chute{s}", basePos + Vector3.up * ((y0 + y1) * 0.5f) + intoMtn * lean,
-                    new Vector3(width - s * 0.7f, (y1 - y0) + 0.5f, 0.5f), waterMat, container);
-                chute.transform.rotation = rot;
-                Object.DestroyImmediate(chute.GetComponent<BoxCollider>());
-                var lip = Cube($"Fall_Lip{s}", basePos + Vector3.up * y1 + intoMtn * (lean - 0.3f),
-                    new Vector3(width - s * 0.7f + 0.7f, 0.5f, 1.1f), foamMat, container);
-                lip.transform.rotation = rot;
+                float f = t / (float)(tiers - 1);
+                Vector3 on = Vector3.Lerp(basePos, top, f);
+                foreach (float sgn in new[] { 1f, -1f })
+                    Rock($"Fall_Rock_{t}_{(sgn > 0 ? "R" : "L")}",
+                        on + right * (sgn * (width * 0.5f + 1.2f)) + Vector3.up * 0.5f,
+                        3.0f + (float)rng.NextDouble() * 2.2f);
+            }
+            for (int i = 0; i < 3; i++)
+                Rock($"Fall_PoolRock{i}", basePos + toValley * (1.4f + i * 1.2f) + right * ((float)(rng.NextDouble() - 0.5) * width), 2.2f + (float)rng.NextDouble() * 1.6f);
+
+            // Water: one sheet lying ON the slope + a brighter foam sheet just over it for churn,
+            // plus foam lips across the ramp where it breaks over ledges.
+            var sheet = Cube("Fall_Sheet", mid + toValley * 0.15f, new Vector3(width, rampLen, 0.35f), waterMat, container);
+            sheet.transform.rotation = rampRot;
+            Object.DestroyImmediate(sheet.GetComponent<BoxCollider>());
+            var churn = Cube("Fall_Churn", mid + toValley * 0.28f, new Vector3(width * 0.7f, rampLen, 0.2f), foamMat, container);
+            churn.transform.rotation = rampRot;
+            Object.DestroyImmediate(churn.GetComponent<BoxCollider>());
+            for (int s = 1; s < 4; s++)
+            {
+                Vector3 on = Vector3.Lerp(basePos, top, s / 4f);
+                var lip = Cube($"Fall_Lip{s}", on + toValley * 0.3f, new Vector3(width + 0.6f, 0.9f, 0.5f), foamMat, container);
+                lip.transform.rotation = rampRot;
                 Object.DestroyImmediate(lip.GetComponent<BoxCollider>());
             }
-
-            // Plunge-pool foam: a flat splash slab + a few LOW flecks (flattened, not round balls).
+            // Plunge-pool foam where the cascade meets the gorge.
             var pool = Cube("Fall_Pool", basePos + toValley * 1.3f + Vector3.up * 0.2f,
-                new Vector3(width + 1.6f, 0.35f, 3.6f), foamMat, container);
+                new Vector3(width + 1.4f, 0.3f, 3.4f), foamMat, container);
             pool.transform.rotation = rot;
             Object.DestroyImmediate(pool.GetComponent<BoxCollider>());
-            for (int i = 0; i < 5; i++)
-            {
-                float fx = (float)(rng.NextDouble() - 0.5) * width;
-                float fz = (float)rng.NextDouble() * 2.5f;
-                var fleck = Sphere($"Fall_Splash{i}", basePos + toValley * (0.6f + fz) + right * fx + Vector3.up * 0.35f,
-                    new Vector3(1.0f + (float)rng.NextDouble() * 0.8f, 0.35f, 0.8f), foamMat, container);
-                fleck.transform.rotation = rot;
-                Object.DestroyImmediate(fleck.GetComponent<SphereCollider>());
-            }
-
-            var lightObj = new GameObject("Fall_Light");
-            lightObj.transform.SetParent(container);
-            lightObj.transform.position = basePos + Vector3.up * 2f;
-            var l = lightObj.AddComponent<Light>();
-            l.type = LightType.Point;
-            l.color = new Color(0.6f, 0.75f, 0.85f);
-            l.range = 12f; l.intensity = 1.2f; l.shadows = LightShadows.None;
         }
 
         /// <summary>Short outflow channel from the lake's NW corner, spilling off-map as a
@@ -1567,7 +1609,7 @@ namespace AldenFall.Editor
 
             // The drop: a tall sheet falling from lake level down into the unseen lowlands.
             Vector3 fallBase = endEdge + dir * 3f + Vector3.down * 18f;
-            BuildWaterfall(container, fallBase, 18f, 10f, yaw, waterMat);
+            BuildWaterfall(container, fallBase, 18f, 10f, yaw, waterMat, groundLayer);
         }
 
         /// <summary>Build every reach of the river network (v8): shared segment builder
@@ -1585,7 +1627,7 @@ namespace AldenFall.Editor
                 float yaw = Mathf.Atan2(dirIn.x, dirIn.z) * Mathf.Rad2Deg + 180f;
                 // Tall sheet pouring down the rocky mountainside from a notch high up, into the
                 // carved gorge (river bed ~-3). Base at the gorge, rising up the cliff.
-                BuildWaterfall(container, source + Vector3.up * (-3f), 26f, RiverHalfWidths[r] * 2f + 2f, yaw, waterMat);
+                BuildWaterfall(container, source + Vector3.up * (-3f), 26f, RiverHalfWidths[r] * 2f + 2f, yaw, waterMat, groundLayer);
             }
 
             // Ambient fish in the two biggest reaches.
@@ -1658,12 +1700,13 @@ namespace AldenFall.Editor
                 vbox.size = new Vector3(halfW * 2f, colH, len);
                 if (waterLayer >= 0) vol.layer = waterLayer;
 
-                // River surface: legacy flat-ground only. In terrain mode the single WorldWater
-                // sheet fills every carved channel cleanly (no per-segment quads = no puddles).
-                if (!UseUnityTerrain)
+                // River surface: a ribbon quad LOCAL to this carved segment (replaces the old
+                // world-spanning sheet). Narrow + hugging the channel so it can't bleed over the
+                // banks. Slightly wider than the channel so the water meets the sand shore.
                 {
-                    var surf = Cube($"River{riverIndex}_Surface", mid + Vector3.up * WaterSurfaceY, new Vector3(halfW * 2f - 0.4f, 0.06f, len), waterMat, container);
+                    var surf = Cube($"River{riverIndex}_Surface", mid + Vector3.up * WaterSurfaceY, new Vector3(halfW * 2f + 1.5f, 0.06f, len + 0.5f), waterMat, container);
                     surf.transform.rotation = rot;
+                    surf.isStatic = true;
                     Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
                 }
 

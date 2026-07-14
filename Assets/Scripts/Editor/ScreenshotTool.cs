@@ -69,11 +69,13 @@ namespace AldenFall.Editor
         /// <summary>Tight close-ups of the exact problem spots for verify-driven fixing.</summary>
         public static void CaptureDiag() => Run(new (string, Vector3, Vector3)[]
         {
-            ("diag_canal_eye",      new Vector3(46f, 4.5f, 20f),   new Vector3(-20f, 0.5f, 8f)),   // down the city canal
-            ("diag_canal_top",      new Vector3(0f, 80f, 8f),      new Vector3(0f, 0f, 8f)),       // city top-down: canal thread
-            ("diag_volcano_vista",  new Vector3(0f, 26f, -120f),   new Vector3(0f, 40f, -345f)),   // volcano silhouette from valley
-            ("diag_waterfall",      new Vector3(18f, 6f, 458f),    new Vector3(0f, 6f, 486f)),
-            ("diag_volcano_ground", new Vector3(0f, 3.5f, -210f),  new Vector3(20f, 0f, -260f)),
+            // Natural 3rd-person-ish angles (higher, ~30 deg down) - the old y2-4 grazing angles
+            // made smooth bare ground (sand/dirt) mirror the sky and read as fake water.
+            ("diag_spawn_lake",     new Vector3(0f, 12f, 168f),     new Vector3(0f, 0f, 250f)),
+            ("diag_camp_goblin",    new Vector3(-195f, 14f, 42f),   new Vector3(-195f, 0f, -10f)),
+            ("diag_forest",         new Vector3(-120f, 14f, 108f),  new Vector3(-120f, 0f, 175f)),
+            ("diag_nwpatch",        new Vector3(-150f, 16f, 250f),  new Vector3(-135f, 0f, 305f)),
+            ("diag_waterfall",      new Vector3(20f, 12f, 452f),    new Vector3(0f, 4f, 486f)),
         });
 
         /// <summary>High aerial of the whole expanded world to judge the macro layout.</summary>
@@ -130,14 +132,37 @@ namespace AldenFall.Editor
                         if (lakeR > 108f)
                         {
                             outsideLake++;
-                            // Focus on the NW field where shot 10 showed stray puddles.
-                            if (samples.Count < 40 && wz > 240f && wz < 380f && wx < -110f)
+                            // Focus on the exact NW-field box the forest shot frames.
+                            if (samples.Count < 40 && wz > 255f && wz < 340f && wx > -200f && wx < -100f)
                                 samples.Add($"({wx:F0},{wz:F0},y{wy:F2})");
                         }
                     }
                 }
             Debug.Log($"PUDDLE subWater={subWater} outsideLake={outsideLake} minWorldY={minH:F2} res={res}");
             Debug.Log($"PUDDLE outside-lake samples: {string.Join(" ", samples)}");
+            // Fine terrain-height dump over the NW-field water the shot frames, via SampleHeight
+            // (matches the rendered terrain), plus list any water renderers overlapping it.
+            for (float wz = 165f; wz <= 215f; wz += 10f)
+            {
+                var row = new System.Text.StringBuilder($"GRID z{wz:F0}: ");
+                for (float wx = -30f; wx <= 30f; wx += 10f)
+                {
+                    float th = terrain.SampleHeight(new Vector3(wx, 0f, wz)) + terrain.transform.position.y;
+                    row.Append($"x{wx:F0}={th:F2}{(th < -0.35f ? "*W" : "")} ");
+                }
+                Debug.Log(row.ToString());
+            }
+            // Every renderer whose bounds overlap the spawn foreground (x-25..25, z170..200).
+            foreach (var r in Object.FindObjectsOfType<Renderer>())
+            {
+                var b = r.bounds;
+                if (b.min.x < 25f && b.max.x > -25f && b.min.z < 200f && b.max.z > 170f && b.min.y < 0.5f && b.max.y > -1.5f
+                    && (r.name.Contains("Water") || r.name.Contains("Lake") || r.name.Contains("Surface") || r.name.Contains("River") || r.name.Contains("Feeder") || r.name.Contains("Outflow")))
+                    Debug.Log($"SPAWNREND {r.name} mat={r.sharedMaterial?.name} y[{b.min.y:F2},{b.max.y:F2}] x[{b.min.x:F0},{b.max.x:F0}] z[{b.min.z:F0},{b.max.z:F0}]");
+            }
+            var ls = GameObject.Find("Lake_Surface");
+            if (ls != null) { var lb = ls.GetComponent<Renderer>().bounds; Debug.Log($"LAKESURF x[{lb.min.x:F0},{lb.max.x:F0}] z[{lb.min.z:F0},{lb.max.z:F0}] y[{lb.min.y:F2},{lb.max.y:F2}]"); }
+            Debug.Log($"SCENE has {Object.FindObjectsOfType<Terrain>().Length} terrain(s); WorldWater present: {GameObject.Find("WorldWater") != null}; Lake_Surface: {GameObject.Find("Lake_Surface") != null}");
         }
 
         private static void Run((string name, Vector3 pos, Vector3 lookAt)[] shots)
