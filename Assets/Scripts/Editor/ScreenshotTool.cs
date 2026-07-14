@@ -69,9 +69,11 @@ namespace AldenFall.Editor
         /// <summary>Tight close-ups of the exact problem spots for verify-driven fixing.</summary>
         public static void CaptureDiag() => Run(new (string, Vector3, Vector3)[]
         {
-            ("diag_volcano_entrance", new Vector3(0f, 10f, -265f),  new Vector3(0f, 6f, -330f)),   // dungeon mouth from the approach
-            ("diag_volcano_full",     new Vector3(0f, 40f, -180f),  new Vector3(0f, 60f, -420f)),   // whole volcano + entrance
-            ("diag_mtn_close",        new Vector3(-380f, 30f, 120f),new Vector3(-450f, 60f, 130f)), // mountain surface detail
+            ("diag_mob",        new Vector3(-195f, 3.5f, 22f),  new Vector3(-195f, 1.5f, -4f)),   // goblin camp: mobs up close
+            ("diag_lakeshore",  new Vector3(64f, 3f, 188f),     new Vector3(24f, 0.5f, 214f)),    // lake edge: sand/reeds/rocks
+            ("diag_forestfloor",new Vector3(-120f, 3f, 98f),    new Vector3(-118f, 0.5f, 128f)),  // forest ground: ferns/bushes/pebbles
+            ("diag_path",       new Vector3(7f, 3f, 78f),       new Vector3(0f, 0.5f, 140f)),     // dirt road surface
+            ("diag_canalwater", new Vector3(42f, 4f, 20f),      new Vector3(-20f, 0.5f, 10f)),    // canal water colour/edges
         });
         public static void CaptureDiagOld() => Run(new (string, Vector3, Vector3)[]
         {
@@ -91,6 +93,18 @@ namespace AldenFall.Editor
             ("macro_top",new Vector3(0f, 620f, 40f),    new Vector3(0f, 0f, 45f)),    // near top-down
             ("macro_E",  new Vector3(-420f, 300f, 120f),new Vector3(60f, 0f, 160f)),  // from the west
         });
+
+        public static void CheckMesh()
+        {
+            foreach (var p in new[] { "BoulderCluster", "MossBoulder", "MossyRock", "Fern", "Wildflowers", "Reeds", "PebblePatch", "ForestBush", "OakTree", "PineTree" })
+            {
+                var go = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Models/Props/{p}.fbx");
+                if (go == null) { Debug.Log($"MESHCHK {p}: LoadAsset=NULL (import failed)"); continue; }
+                var mfs = go.GetComponentsInChildren<MeshFilter>();
+                int verts = 0; foreach (var m in mfs) if (m.sharedMesh != null) verts += m.sharedMesh.vertexCount;
+                Debug.Log($"MESHCHK {p}: meshFilters={mfs.Length} verts={verts}");
+            }
+        }
 
         public static void CheckTerrain()
         {

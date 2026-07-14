@@ -632,10 +632,23 @@ def generate_prop(meshy: Meshy, state: State, name: str, prompt: str):
     preview_id = state.data[f"prop:{name}:preview"]["task_id"]
 
     # Preview-only mode: Meshy's PBR refine step is currently unreliable (server-side
-    # timeouts that stall the whole queue). Preview meshes generate reliably and are fine
-    # for stylized low-poly env props, so skip refine and use the preview mesh directly.
+    # timeouts that stall the whole queue). Preview meshes generate reliably, but the RAW
+    # preview is millions of verts (unusable + fails to instantiate), so REMESH it down to a
+    # game-ready polycount and download that. Falls back to the raw preview if remesh 404s.
     if os.environ.get("MESHY_PREVIEW_ONLY"):
-        download_model_urls(preview, prop_dir, name)
+        target = int(os.environ.get("MESHY_REMESH_POLY", "4000"))
+        try:
+            _, remesh = run_step(
+                meshy, state, f"prop:{name}:remesh",
+                "/openapi/v2/remesh", "/openapi/v2/remesh",
+                {"input_task_id": preview_id, "target_polycount": target,
+                 "topology": "triangle", "target_formats": ["glb", "fbx"]},
+                f"{name} remesh",
+            )
+            download_model_urls(remesh, prop_dir, name)
+        except Exception as e:
+            print(f"    {name}: remesh failed ({e}); using raw preview")
+            download_model_urls(preview, prop_dir, name)
         return
 
     # Heavy architectural previews can push the PBR refine over Meshy's server-side

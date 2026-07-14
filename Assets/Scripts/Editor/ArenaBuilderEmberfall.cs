@@ -708,60 +708,70 @@ namespace AldenFall.Editor
                 if (InLakeWater(x, z) || InFeederRiver(x, z) || InAnyRiver(x, z)) return true;
                 if (Mathf.Abs(x) < 10f && z > -66f && z < 214f) return true;              // road
                 if (DistToCityCanal(x, z) < 10f) return true;
+                float ring = Mathf.Sqrt(x * x + z * z);
+                if (ring < 60f || ring > 246f) return true;
+                if (Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) + 3f) return true;
                 return false;
             }
 
-            // Boulders / mossy rocks across the valley (rocky ecosystem + replaces stray grey cubes).
-            for (int i = 0; i < 60; i++)
+            // Scatter in natural CLUMPS (a patch of ferns, a rock outcrop, a bed of flowers) rather
+            // than a uniform sprinkle - reads far more like a real ecosystem, and dense enough to
+            // actually see. Each clump picks a valid centre then drops N props around it.
+            void Clump(int clumps, int perClump, float spread, System.Func<float, float, bool> extra, System.Action<float, float> place)
             {
-                float x = Mathf.Lerp(-244f, 244f, (float)rng.NextDouble());
-                float z = Mathf.Lerp(-50f, 244f, (float)rng.NextDouble());
-                float ring = Mathf.Sqrt(x * x + z * z);
-                if (ring < 60f || ring > 246f || Blocked(x, z)) continue;
-                if (Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) + 5f) continue;
+                for (int c = 0; c < clumps; c++)
+                {
+                    float cx = Mathf.Lerp(-244f, 244f, (float)rng.NextDouble());
+                    float cz = Mathf.Lerp(-52f, 246f, (float)rng.NextDouble());
+                    if (Blocked(cx, cz) || (extra != null && !extra(cx, cz))) continue;
+                    int n = perClump / 2 + rng.Next(perClump);
+                    for (int k = 0; k < n; k++)
+                    {
+                        float x = cx + (float)(rng.NextDouble() - 0.5) * spread;
+                        float z = cz + (float)(rng.NextDouble() - 0.5) * spread;
+                        if (Blocked(x, z) || (extra != null && !extra(x, z))) continue;
+                        place(x, z);
+                    }
+                }
+            }
+            System.Func<float, float, bool> lush = (x, z) => SootAmount(x, z) < 0.4f;
+            System.Func<float, float, bool> meadow = (x, z) => SootAmount(x, z) < 0.2f;
+
+            // Rock outcrops (clusters of boulders) - ~110 outcrops.
+            Clump(110, 4, 14f, null, (x, z) =>
+            {
                 string rock = new[] { "BoulderCluster", "MossBoulder", "MossyRock" }[rng.Next(3)];
                 PlaceMeshyProp(container, rock, new Vector3(x, 0f, z),
-                    (float)rng.NextDouble() * 360f, 1.6f + (float)rng.NextDouble() * 3.6f, groundLayer, PropCollision.FitBox);
-            }
-
-            // Ferns + bushes as forest undergrowth (lush ring, away from the volcano soot).
-            for (int i = 0; i < 300; i++)
+                    (float)rng.NextDouble() * 360f, 1.3f + (float)rng.NextDouble() * 3.4f, groundLayer, PropCollision.FitBox);
+            });
+            // Pebble/gravel patches on bare-ish ground (flat, low).
+            Clump(90, 5, 10f, null, (x, z) =>
+                PlaceMeshyProp(container, "PebblePatch", new Vector3(x, 0f, z),
+                    (float)rng.NextDouble() * 360f, 1.6f + (float)rng.NextDouble() * 1.8f, groundLayer, PropCollision.None));
+            // Dense fern + bush undergrowth beds in the lush ring - ~320 beds.
+            Clump(320, 7, 12f, lush, (x, z) =>
             {
-                float x = Mathf.Lerp(-244f, 244f, (float)rng.NextDouble());
-                float z = Mathf.Lerp(-50f, 244f, (float)rng.NextDouble());
-                float ring = Mathf.Sqrt(x * x + z * z);
-                if (ring < 60f || ring > 246f || Blocked(x, z)) continue;
-                if (SootAmount(x, z) > 0.5f) continue;
-                if (Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) + 4f) continue;
                 string f = rng.NextDouble() < 0.6 ? "Fern" : "ForestBush";
                 if (PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
-                        0.55f + (float)rng.NextDouble() * 0.7f, groundLayer, PropCollision.None) == null)
-                    PlaceMeshyProp(container, "ForestBush", new Vector3(x, 0f, z), 0f, 0.8f, groundLayer, PropCollision.None);
-            }
-
-            // Wildflowers in the sunlit meadows / glade / lakeside.
-            for (int i = 0; i < 130; i++)
-            {
-                float x = Mathf.Lerp(-200f, 200f, (float)rng.NextDouble());
-                float z = Mathf.Lerp(-20f, 244f, (float)rng.NextDouble());
-                float ring = Mathf.Sqrt(x * x + z * z);
-                if (ring < 60f || ring > 244f || Blocked(x, z)) continue;
-                if (SootAmount(x, z) > 0.25f) continue;
+                        0.8f + (float)rng.NextDouble() * 0.8f, groundLayer, PropCollision.None) == null)
+                    PlaceMeshyProp(container, "ForestBush", new Vector3(x, 0f, z), 0f, 0.9f, groundLayer, PropCollision.None);
+            });
+            // Wildflower beds in the sunlit meadows.
+            Clump(180, 8, 11f, meadow, (x, z) =>
                 PlaceMeshyProp(container, "Wildflowers", new Vector3(x, 0f, z),
-                    (float)rng.NextDouble() * 360f, 0.45f + (float)rng.NextDouble() * 0.5f, groundLayer, PropCollision.None);
-            }
+                    (float)rng.NextDouble() * 360f, 0.5f + (float)rng.NextDouble() * 0.5f, groundLayer, PropCollision.None));
 
-            // Reeds hugging the organic lake shore (water-edge foliage).
-            for (int i = 0; i < 150; i++)
+            // Reeds ringing the whole organic lake shore + river mouths (dense water-edge foliage).
+            for (int i = 0; i < 420; i++)
             {
                 float ang = (float)rng.NextDouble() * Mathf.PI * 2f;
                 Vector2 dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
                 float le = LakeEdge(LakeCenter.x + dir.x * LakeHalf, LakeCenter.z + dir.y * LakeHalf);
-                float r = le + 0.5f + (float)rng.NextDouble() * 4f;
+                float r = le - 1f + (float)rng.NextDouble() * 6f;
                 float x = LakeCenter.x + dir.x * r, z = LakeCenter.z + dir.y * r;
-                if (Blocked(x, z)) continue;
+                if (InCityFootprint(x, z)) continue;
                 PlaceMeshyProp(container, "Reeds", new Vector3(x, 0f, z),
-                    (float)rng.NextDouble() * 360f, 1.1f + (float)rng.NextDouble() * 1.1f, groundLayer, PropCollision.None);
+                    (float)rng.NextDouble() * 360f, 1.0f + (float)rng.NextDouble() * 1.0f, groundLayer, PropCollision.None);
             }
         }
 
