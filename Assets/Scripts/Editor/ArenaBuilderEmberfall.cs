@@ -355,7 +355,7 @@ namespace AldenFall.Editor
 
             // ---- Splat layers (procedural textures — no external assets needed) ----
             var grassLayer = MakeTerrainLayer("TL_Grass", new Color(0.16f, 0.3f, 0.12f), 0.05f);
-            var sandLayer = MakeTerrainLayer("TL_Sand", new Color(0.52f, 0.46f, 0.34f), 0.03f);
+            var sandLayer = MakeTerrainLayer("TL_Sand", new Color(0.40f, 0.35f, 0.27f), 0.03f);   // muddier: bright sand washed pale at distance
             var sootLayer = MakeTerrainLayer("TL_Soot", new Color(0.115f, 0.09f, 0.08f), 0.04f);
             var dirtLayer = MakeTerrainLayer("TL_Dirt", new Color(0.36f, 0.28f, 0.19f), 0.04f);
             var rockLayer = MakeTerrainLayer("TL_Rock", new Color(0.3f, 0.28f, 0.29f), 0.02f);
@@ -546,7 +546,7 @@ namespace AldenFall.Editor
             if (groundLayer >= 0) terrainObj.layer = groundLayer;
             terrainObj.isStatic = true;
             var terrain = terrainObj.GetComponent<Terrain>();
-            terrain.detailObjectDistance = 220f;
+            terrain.detailObjectDistance = 250f;   // max: grass covers mid-distance ground so bare splat doesn't wash pale
             terrain.detailObjectDensity = 1f;
             // Low pixel error: a high value let the terrain LOD flatten/drop the mesh BELOW the
             // heightmap at distance, dipping under the world water sheet so it showed through the
@@ -1677,11 +1677,12 @@ namespace AldenFall.Editor
             // More opaque + lower smoothness: the high-smoothness surface blew out to a flat
             // white sky-glint at grazing angles, reading as a broad flood sheet. A deeper, more
             // opaque blue-green with a matte finish reads as contained water.
-            // Deep + nearly matte + high opacity: any residual smoothness let the far half of the
-            // big lake reflect the bright sky at grazing angles, reading as a pale marsh/flood
-            // sheet. Dark opaque blue holds its colour edge-to-edge so it reads as one lake body.
-            var waterMat = Mat("LakeWater", new Color(0.07f, 0.19f, 0.26f, 0.95f),
-                smoothness: 0.16f, transparent: true, emission: new Color(0.01f, 0.025f, 0.035f));
+            // OPAQUE + near-matte dark teal: a transparent/smooth surface reflected the bright sky
+            // at grazing angles and washed pale (the "flood sheet"), no matter how low the
+            // smoothness. An opaque low-spec body holds its dark colour edge-to-edge at every
+            // viewing angle, so lake + rivers + canal always read as contained water, never flood.
+            var waterMat = Mat("LakeWater", new Color(0.08f, 0.21f, 0.27f),
+                smoothness: 0.10f, emission: new Color(0.008f, 0.022f, 0.03f));
 
             Vector3 c = LakeCenter;
             float w = LakeHalf * 2f, depth = WaterSurfaceY - LakeBedY;   // depth ~2.7m (>1.8 swim)

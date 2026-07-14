@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &1121362144547250735
+--- !u!1 &6441513360210547335
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,7 +8,40 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 6560646977383012667}
+  - component: {fileID: 4771054338672373836}
+  m_Layer: 0
+  m_Name: Visual
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4771054338672373836
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6441513360210547335}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 4971881740289648601}
+  - {fileID: 4159346659794940264}
+  m_Father: {fileID: 8349398817518035820}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &6837139772538682699
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1013870456978556897}
   m_Layer: 0
   m_Name: FirePoint
   m_TagString: Untagged
@@ -16,22 +49,22 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &6560646977383012667
+--- !u!4 &1013870456978556897
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1121362144547250735}
+  m_GameObject: {fileID: 6837139772538682699}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 1.5, z: 1.5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 3088140336420323167}
+  m_Father: {fileID: 8349398817518035820}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1650979693324013561
+--- !u!1 &7007471201395769029
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -39,45 +72,45 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 3088140336420323167}
-  - component: {fileID: 7313017033445301423}
-  - component: {fileID: 212466062695352900}
-  - component: {fileID: 3227318131213441967}
-  - component: {fileID: 5829649327506516255}
-  - component: {fileID: 5932251803240465555}
-  - component: {fileID: 4775949271865609161}
-  - component: {fileID: 5256857150435060520}
-  - component: {fileID: 1205409577178854338}
-  - component: {fileID: 5825580644099641763}
-  - component: {fileID: 5063917365879822954}
-  - component: {fileID: 2381180657946232058}
-  - component: {fileID: 5579761592136710615}
-  - component: {fileID: 1324965509825078014}
-  - component: {fileID: 5710570818420145753}
-  - component: {fileID: 4829131520122424388}
-  - component: {fileID: 5848589663166736133}
-  - component: {fileID: 6439265154557936329}
-  - component: {fileID: 1493494527803380673}
-  - component: {fileID: 881272520984055732}
-  - component: {fileID: 1178043760692404894}
-  - component: {fileID: 6218262701037497705}
-  - component: {fileID: 5575960130797333074}
-  - component: {fileID: 3931059151909819173}
-  - component: {fileID: 6327957534288589707}
-  - component: {fileID: 6933555504371721191}
-  - component: {fileID: 4059101217900410087}
-  - component: {fileID: 2283161249425144774}
-  - component: {fileID: 6502710697130437441}
-  - component: {fileID: 9188552908156922386}
-  - component: {fileID: 8224211193934980135}
-  - component: {fileID: 680588580601714547}
-  - component: {fileID: 2924406951005709705}
-  - component: {fileID: 3741005677891729814}
-  - component: {fileID: 7043630971802807312}
-  - component: {fileID: 3851943966157864337}
-  - component: {fileID: 1451788889917221557}
-  - component: {fileID: 2588874637582206685}
-  - component: {fileID: 1141334377562868892}
+  - component: {fileID: 8349398817518035820}
+  - component: {fileID: 6005325511417884741}
+  - component: {fileID: 2836248278459647628}
+  - component: {fileID: 6252852736265875370}
+  - component: {fileID: 390297475991222715}
+  - component: {fileID: 8023107288287471213}
+  - component: {fileID: 6370371685418867740}
+  - component: {fileID: 428792218786395421}
+  - component: {fileID: 5988676395549168368}
+  - component: {fileID: 5878915222235022093}
+  - component: {fileID: 2211377733766585185}
+  - component: {fileID: 8969830255944414590}
+  - component: {fileID: 7498903792040439220}
+  - component: {fileID: 4346088033525767995}
+  - component: {fileID: 6609584641828989752}
+  - component: {fileID: 5672016729713134339}
+  - component: {fileID: 7675148203472334115}
+  - component: {fileID: 3232103495324511306}
+  - component: {fileID: 6538494328655663282}
+  - component: {fileID: 7540949007428242313}
+  - component: {fileID: 1782055067477084865}
+  - component: {fileID: 4465745651087889463}
+  - component: {fileID: 1666729166809859967}
+  - component: {fileID: 5031748277469699975}
+  - component: {fileID: 4121947935483606632}
+  - component: {fileID: 754336198779156968}
+  - component: {fileID: 2923043284988513261}
+  - component: {fileID: 5553208757686909378}
+  - component: {fileID: 5249775117253202930}
+  - component: {fileID: 6699671446239865819}
+  - component: {fileID: 514797565114101501}
+  - component: {fileID: 7185281903155886796}
+  - component: {fileID: 8669382954795804527}
+  - component: {fileID: 2917716141631922374}
+  - component: {fileID: 5116990822471247578}
+  - component: {fileID: 185789119997197436}
+  - component: {fileID: 4246181418941806065}
+  - component: {fileID: 8477116983420577135}
+  - component: {fileID: 5023432363526514724}
   m_Layer: 9
   m_Name: AldenNetworkPlayer
   m_TagString: Player
@@ -85,30 +118,30 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &3088140336420323167
+--- !u!4 &8349398817518035820
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0.5, z: -14}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 6560646977383012667}
-  - {fileID: 6332085559211926466}
+  - {fileID: 1013870456978556897}
+  - {fileID: 4771054338672373836}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!143 &7313017033445301423
+--- !u!143 &6005325511417884741
 CharacterController:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Material: {fileID: 0}
   m_IncludeLayers:
     serializedVersion: 2
@@ -127,13 +160,13 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 1, z: 0}
---- !u!114 &212466062695352900
+--- !u!114 &2836248278459647628
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
@@ -144,13 +177,13 @@ MonoBehaviour:
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
---- !u!114 &3227318131213441967
+--- !u!114 &6252852736265875370
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6904c094b193f446c8f48f3d8f3c2179, type: 3}
@@ -176,13 +209,13 @@ MonoBehaviour:
   swimExitDepth: 1
   floatDepth: 1.25
   animator: {fileID: 0}
---- !u!114 &5829649327506516255
+--- !u!114 &390297475991222715
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 312526543f34c4bc68547f925a77bf73, type: 3}
@@ -218,25 +251,25 @@ MonoBehaviour:
   OnAttacked:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &5932251803240465555
+--- !u!114 &8023107288287471213
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 18bc9bd43f31a428f8ceaa77f14b0b9b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.Combat.StatusSystem
---- !u!114 &4775949271865609161
+--- !u!114 &6370371685418867740
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f0a51f8c31d2c4c6eba2a408cd6d1529, type: 3}
@@ -262,66 +295,66 @@ MonoBehaviour:
   OnEngage:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &5256857150435060520
+--- !u!114 &428792218786395421
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3c9b8ee8c44e54dd8a3758fabaa6ab78, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.Abilities.PlayerAbilities
   fireballPrefab: {fileID: 6170478809946927525, guid: fc6a47626152d46e5ab28481f5cda346, type: 3}
-  firePoint: {fileID: 6560646977383012667}
+  firePoint: {fileID: 1013870456978556897}
   fireballSpeed: 18
   animator: {fileID: 0}
---- !u!114 &1205409577178854338
+--- !u!114 &5988676395549168368
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: af00be0b2a2514b76a4d13a7d3a14987, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.Abilities.AbilityMastery
---- !u!114 &5825580644099641763
+--- !u!114 &5878915222235022093
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f2f6946d5971e4e6c8869555f92e6da3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.Abilities.ActionBar
---- !u!114 &5063917365879822954
+--- !u!114 &2211377733766585185
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 9f09c841939964d609a22ea9f1d6e507, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.Items.PlayerConsumables
   animator: {fileID: 0}
---- !u!114 &2381180657946232058
+--- !u!114 &8969830255944414590
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b6a3f0eacb068479cadc0b1d26ac6809, type: 3}
@@ -333,26 +366,26 @@ MonoBehaviour:
   playerController: {fileID: 0}
   playerAbilities: {fileID: 0}
   targetingSystem: {fileID: 0}
---- !u!114 &5579761592136710615
+--- !u!114 &7498903792040439220
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 26a6f2d6284f047e0b3f8b1afd22fbc0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.Stats.StatBlock
   baseStats: []
---- !u!114 &1324965509825078014
+--- !u!114 &4346088033525767995
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 987bdeeb759f74315ac08a81546c28de, type: 3}
@@ -364,13 +397,13 @@ MonoBehaviour:
   OnLevelUp:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &5710570818420145753
+--- !u!114 &6609584641828989752
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 25a7a46566e4b4d7fba5fc6588ef0f84, type: 3}
@@ -380,13 +413,13 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
---- !u!114 &4829131520122424388
+--- !u!114 &5672016729713134339
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 0ed1acaa02712417b815cd5a8bccf3f9, type: 3}
@@ -398,13 +431,13 @@ MonoBehaviour:
   OnItemAdded:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &5848589663166736133
+--- !u!114 &7675148203472334115
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f537ab7da371f46fcaaa2f3bc3539383, type: 3}
@@ -413,13 +446,13 @@ MonoBehaviour:
   OnEquipmentChanged:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &6439265154557936329
+--- !u!114 &3232103495324511306
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 214498b4e8f9b45088c5a649fcbe0292, type: 3}
@@ -429,13 +462,13 @@ MonoBehaviour:
   OnChanged:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &1493494527803380673
+--- !u!114 &6538494328655663282
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5ec5d1db12e464a80ae589cd82633854, type: 3}
@@ -444,13 +477,13 @@ MonoBehaviour:
   OnQuestChanged:
     m_PersistentCalls:
       m_Calls: []
---- !u!114 &881272520984055732
+--- !u!114 &7540949007428242313
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b73f9995434a64aa4a74b1f06c4977aa, type: 3}
@@ -458,13 +491,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: AldenFall::AldenFall.Items.StarterLoadout
   starterWeapon: rusty_sword
   starterTool: fishing_pole
---- !u!114 &1178043760692404894
+--- !u!114 &1782055067477084865
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 90afbae961a694e639e0a0d3a3339b77, type: 3}
@@ -476,13 +509,13 @@ MonoBehaviour:
   magicAutoRange: 14
   boltBaseDamage: 8
   animator: {fileID: 0}
---- !u!114 &6218262701037497705
+--- !u!114 &4465745651087889463
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7063d7b0a81bc4d2aa04fdc21f5ae4b0, type: 3}
@@ -492,13 +525,13 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
---- !u!114 &5575960130797333074
+--- !u!114 &1666729166809859967
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d215e1d9895e409aa142eb7a303b09ea, type: 3}
@@ -508,13 +541,13 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
---- !u!114 &3931059151909819173
+--- !u!114 &5031748277469699975
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ae1b299b1f5a45bf9d9a76eab233f747, type: 3}
@@ -524,150 +557,150 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
---- !u!114 &6327957534288589707
+--- !u!114 &4121947935483606632
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6114726d5bbdc481690503ce68dc86d4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.Combat.PlayerDefence
---- !u!114 &6933555504371721191
+--- !u!114 &754336198779156968
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 092a96124bb1f4f26acd6edd5f60bbe1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.Combat.CombatStyleController
   cycleKey: 118
---- !u!114 &4059101217900410087
+--- !u!114 &2923043284988513261
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b315c72c7d42e484aaa5d33a387041fb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.UI.DebugCheatPanel
   toggleKey: 290
---- !u!114 &2283161249425144774
+--- !u!114 &5553208757686909378
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 87d6c06c80eb54249b1757cc5f0cb266, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.UI.QuestTrackerHUD
---- !u!114 &6502710697130437441
+--- !u!114 &5249775117253202930
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7efd9d2a4e2c9425ebf7c79c012ad710, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.UI.ForgePanel
   toggleKey: 288
---- !u!114 &9188552908156922386
+--- !u!114 &6699671446239865819
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f3424fb5af32c426b8138b15cca99211, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.UI.VendorPanel
---- !u!114 &8224211193934980135
+--- !u!114 &514797565114101501
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: a3a3f5b790844b88b729c412087a4864, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.UI.PartyHUD
---- !u!114 &680588580601714547
+--- !u!114 &7185281903155886796
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8f2c9ec2456654158ba9210910e2206a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.Player.CharacterAppearance
---- !u!114 &2924406951005709705
+--- !u!114 &8669382954795804527
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6908fde8e54434deab32d053a575225c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.UI.CharacterCustomizationUI
   toggleKey: 291
---- !u!114 &3741005677891729814
+--- !u!114 &2917716141631922374
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: efbbde5c5672e48e2a86d0c0fce99e2d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.Cinematics.CutsceneDirector
---- !u!114 &7043630971802807312
+--- !u!114 &5116990822471247578
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d4e249e93f31b4a719e72dcdd20dce88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: AldenFall::AldenFall.Cinematics.IntroCutsceneTrigger
   replayEveryEditorPlay: 1
---- !u!114 &3851943966157864337
+--- !u!114 &185789119997197436
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d07c5645c00294adb8f504963901c565, type: 3}
@@ -675,13 +708,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: AldenFall::AldenFall.Player.PlayerInteractor
   interactKey: 101
   pollInterval: 0.2
---- !u!114 &1451788889917221557
+--- !u!114 &4246181418941806065
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 26f62b3c162e3477e8c73d144aaeac1e, type: 3}
@@ -692,13 +725,13 @@ MonoBehaviour:
   xpPerFish: 30
   requiredTool: fishing_pole
   caughtItem: raw_fish
---- !u!114 &2588874637582206685
+--- !u!114 &8477116983420577135
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bc7682930dc90460eaf3a4b00512754f, type: 3}
@@ -707,13 +740,13 @@ MonoBehaviour:
   cookSeconds: 1.8
   xpPerCook: 40
   xpPerBurn: 10
---- !u!114 &1141334377562868892
+--- !u!114 &5023432363526514724
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1650979693324013561}
+  m_GameObject: {fileID: 7007471201395769029}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 09bce74440a5d439fb9fa91e0c15c5cc, type: 3}
@@ -725,46 +758,13 @@ MonoBehaviour:
   syncInterval: 0
   positionLerp: 14
   rotationLerp: 16
---- !u!1 &8601745178360451892
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 6332085559211926466}
-  m_Layer: 0
-  m_Name: Visual
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &6332085559211926466
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8601745178360451892}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children:
-  - {fileID: 8251384716120794968}
-  - {fileID: 4748518115518826900}
-  m_Father: {fileID: 3088140336420323167}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1001 &1888958512088330952
+--- !u!1001 &7090981852914158132
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 6332085559211926466}
+    m_TransformParent: {fileID: 4771054338672373836}
     m_Modifications:
     - target: {fileID: 5808268578201805286, guid: 8a77d472085eb425ab4a461eb2e20f9a, type: 3}
       propertyPath: m_Name
@@ -819,18 +819,18 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 8a77d472085eb425ab4a461eb2e20f9a, type: 3}
---- !u!4 &4748518115518826900 stripped
+--- !u!4 &4159346659794940264 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 6616014158887943004, guid: 8a77d472085eb425ab4a461eb2e20f9a, type: 3}
-  m_PrefabInstance: {fileID: 1888958512088330952}
+  m_PrefabInstance: {fileID: 7090981852914158132}
   m_PrefabAsset: {fileID: 0}
---- !u!1001 &5126139008891694610
+--- !u!1001 &8169203114738691731
 PrefabInstance:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 6332085559211926466}
+    m_TransformParent: {fileID: 4771054338672373836}
     m_Modifications:
     - target: {fileID: 3864505103305443658, guid: 7af3156316ede4b3aa64ff4b85f2fab4, type: 3}
       propertyPath: m_LocalPosition.x
@@ -881,8 +881,8 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 7af3156316ede4b3aa64ff4b85f2fab4, type: 3}
---- !u!4 &8251384716120794968 stripped
+--- !u!4 &4971881740289648601 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 3864505103305443658, guid: 7af3156316ede4b3aa64ff4b85f2fab4, type: 3}
-  m_PrefabInstance: {fileID: 5126139008891694610}
+  m_PrefabInstance: {fileID: 8169203114738691731}
   m_PrefabAsset: {fileID: 0}
