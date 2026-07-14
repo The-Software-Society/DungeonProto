@@ -384,11 +384,8 @@ namespace AldenFall.Editor
                         g *= Mathf.Clamp01(1f - southT * 1.9f);                            // green fades out going south
                         rk *= 1f - so;
                     }
-                    // Worn dirt + dry patches break the flat lawn in the lush ring (depth/erosion,
-                    // not a golf course). Two noise octaves so patches read at both scales.
-                    float wear = Mathf.PerlinNoise(wx * 0.028f + 40.1f, wz * 0.028f + 22.7f) * 0.65f
-                               + Mathf.PerlinNoise(wx * 0.09f + 3.3f, wz * 0.09f + 8.8f) * 0.35f;
-                    if (wear > 0.62f) { float w = Mathf.Clamp01((wear - 0.62f) * 3.4f) * 0.7f; d = Mathf.Max(d, w); g *= 1f - w; }
+                    // (No random dirt patches in the meadow - they read as stray mud puddles. Dirt
+                    // is intentional only: roads + the volcanic approach.)
                     if (shore) { s = 0.8f; g *= 0.2f; rk *= 0.2f; }                                                 // sand/mud shores
                     if (road || InCityFootprint(wx, wz)) { d = Mathf.Max(d, 0.85f); g *= 0.15f; so *= 0.4f; }       // dirt roads + city
 
@@ -450,15 +447,8 @@ namespace AldenFall.Editor
                     float dEdge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
                                             Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
                     if (dEdge < 82f) continue;
-                    // Only the STRONGEST wear spots read as bare dirt; elsewhere keep grass dense.
-                    // (Big bare patches showed the bright flat splat, which at distance read as
-                    // smooth teal "water"/marsh - the whole "puddles everywhere" false alarm.)
-                    float wearD = Mathf.PerlinNoise(wx * 0.028f + 40.1f, wz * 0.028f + 22.7f) * 0.65f
-                                + Mathf.PerlinNoise(wx * 0.09f + 3.3f, wz * 0.09f + 8.8f) * 0.35f;
-                    if (wearD > 0.74f) continue;
 
-                    // Near-full coverage so the bright bare splat never shows as fake water; only
-                    // the strong-wear dirt spots above stay bare (and those read as brown dirt).
+                    // Near-full grass coverage so bare ground never shows as fake water/mud.
                     float clump = Mathf.PerlinNoise(wx * 0.055f + 7.7f, wz * 0.055f + 3.1f);
                     if (clump < 0.05f) continue;
                     density[iz, ix] = clump > 0.45f ? 18 : 12;
@@ -876,14 +866,22 @@ namespace AldenFall.Editor
         {
             var container = Child(root, "EmberfallCity");
 
-            // ---- Cobbled ground ----
+            // ---- Cobbled ground (stone TEXTURE so it isn't a flat grey Minecraft grid) ----
+            var stoneTex = GetGeneratedTexture("CityStone_Tex", () => GroundTextureGenerator.Rock(256));
+            Material StoneMat(string n, Color c, float tileScale)
+            {
+                var m = Mat(n, c, smoothness: 0.1f);
+                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", stoneTex); m.SetTextureScale("_BaseMap", new Vector2(tileScale, tileScale)); }
+                if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", stoneTex); m.SetTextureScale("_MainTex", new Vector2(tileScale, tileScale)); }
+                return m;
+            }
             var cobble = new Material[4];
             for (int i = 0; i < 4; i++)
             {
-                float v = 0.38f + i * 0.03f;
-                cobble[i] = Mat($"Cobble{i}", new Color(v, v * 0.97f, v * 0.94f), smoothness: 0.12f);
+                float v = 1.15f + i * 0.1f;   // >1 so the dark rock texture reads at cobble brightness
+                cobble[i] = StoneMat($"Cobble{i}", new Color(v, v * 0.97f, v * 0.92f), 2.4f);
             }
-            var streetMat = Mat("CityStreet", new Color(0.34f, 0.31f, 0.29f), smoothness: 0.1f);
+            var streetMat = StoneMat("CityStreet", new Color(1.0f, 0.94f, 0.86f), 1.5f);
             const float tile = 5f;
             for (float x = -CityHalf; x < CityHalf; x += tile)
                 for (float z = -CityHalf; z < CityHalf; z += tile)
@@ -1294,8 +1292,16 @@ namespace AldenFall.Editor
 
         private static void BuildCityWalls(Transform container, int groundLayer)
         {
-            var wallMat = Mat("CityWall", new Color(0.34f, 0.31f, 0.32f), smoothness: 0.1f);
-            var pillarMat = Mat("CityGatePillar", new Color(0.42f, 0.38f, 0.38f), smoothness: 0.15f);
+            var wallStoneTex = GetGeneratedTexture("CityStone_Tex", () => GroundTextureGenerator.Rock(256));
+            Material WallStone(string n, Color c, float tileScale)
+            {
+                var m = Mat(n, c, smoothness: 0.08f);
+                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", wallStoneTex); m.SetTextureScale("_BaseMap", new Vector2(tileScale, tileScale)); }
+                if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", wallStoneTex); m.SetTextureScale("_MainTex", new Vector2(tileScale, tileScale)); }
+                return m;
+            }
+            var wallMat = WallStone("CityWall", new Color(1.05f, 0.98f, 0.92f), 3.5f);
+            var pillarMat = WallStone("CityGatePillar", new Color(1.2f, 1.12f, 1.05f), 2.5f);
             const float h = 7f, thick = 1.5f;
             float len = CityHalf * 2f + thick * 2f;
             float seg = (len - CityGate) / 2f;
@@ -1518,10 +1524,11 @@ namespace AldenFall.Editor
 
             var mudMat = Mat("LakeMud", new Color(0.26f, 0.20f, 0.13f), smoothness: 0.05f);
             var basinMat = Mat("LakeBasin", new Color(0.16f, 0.19f, 0.20f), smoothness: 0.25f);
-            // Readable but TRANSLUCENT water — 0.82 alpha + strong emission rendered as
-            // an opaque cyan slab in QA; this keeps the glint while letting the bed show.
-            var waterMat = Mat("LakeWater", new Color(0.16f, 0.40f, 0.44f, 0.48f),
-                smoothness: 0.9f, transparent: true, emission: new Color(0.015f, 0.05f, 0.06f));
+            // Deeper, more OPAQUE water (alpha 0.78) so the stepped carved bed + overlapping
+            // river-segment quads stop showing through as tiled/banded stripes. Natural blue-green,
+            // lower smoothness so it stops throwing harsh white sun-glints.
+            var waterMat = Mat("LakeWater", new Color(0.12f, 0.32f, 0.40f, 0.80f),
+                smoothness: 0.62f, transparent: true, emission: new Color(0.01f, 0.035f, 0.045f));
 
             Vector3 c = LakeCenter;
             float w = LakeHalf * 2f, depth = WaterSurfaceY - LakeBedY;   // depth ~2.7m (>1.8 swim)
@@ -1639,52 +1646,25 @@ namespace AldenFall.Editor
                 }
             }
 
-            // These sources sit on the mountain SLOPE, not a vertical cliff - so the water is a
-            // cascade hugging the slope (a diagonal ramp), not a fall floating in mid-air. Run the
-            // source up-and-back so the ramp lies on the hillside.
-            float runBack = height * 0.85f;                       // horizontal run up the slope
-            Vector3 top = basePos + intoMtn * runBack + Vector3.up * height;
-            Vector3 slopeVec = top - basePos;                     // base -> source, along the hillside
-            float rampLen = slopeVec.magnitude;
-            Vector3 mid = (basePos + top) * 0.5f;
-            // Orientation: flat face toward the valley, long axis up the slope.
-            Quaternion rampRot = Quaternion.LookRotation(toValley + Vector3.up * 0.15f, slopeVec.normalized);
-
-            // Source outcrop HIGH where the water emerges + boulders lining both banks of the ramp.
-            Rock("Fall_Source", top + intoMtn * 1.5f + Vector3.up * 1.0f, width + 7f);
-            const int tiers = 5;
-            for (int t = 0; t < tiers; t++)
+            // River SOURCE spring: the mountains are now real border MESHES, so a tall sheet here
+            // just floats in the valley. Instead the river wells up from a rocky outcrop at its
+            // source - a horseshoe of boulders + a low foam pool spilling toward the valley. (A
+            // proper cascade down the mountain face is a follow-up.)
+            for (int i = 0; i < 7; i++)
             {
-                float f = t / (float)(tiers - 1);
-                Vector3 on = Vector3.Lerp(basePos, top, f);
-                foreach (float sgn in new[] { 1f, -1f })
-                    Rock($"Fall_Rock_{t}_{(sgn > 0 ? "R" : "L")}",
-                        on + right * (sgn * (width * 0.5f + 1.2f)) + Vector3.up * 0.5f,
-                        3.0f + (float)rng.NextDouble() * 2.2f);
+                float a = (i / 6f) * 210f - 105f;                  // arc opening toward the valley
+                var ar = Quaternion.Euler(0f, yaw + a, 0f);
+                Vector3 p = basePos + (ar * Vector3.forward) * (width * 0.6f + 2.5f) + Vector3.up * 0.4f;
+                Rock($"Src_Rock{i}", p, 2.6f + (float)rng.NextDouble() * 3.2f);
             }
-            for (int i = 0; i < 3; i++)
-                Rock($"Fall_PoolRock{i}", basePos + toValley * (1.4f + i * 1.2f) + right * ((float)(rng.NextDouble() - 0.5) * width), 2.2f + (float)rng.NextDouble() * 1.6f);
-
-            // Water: one sheet lying ON the slope + a brighter foam sheet just over it for churn,
-            // plus foam lips across the ramp where it breaks over ledges.
-            var sheet = Cube("Fall_Sheet", mid + toValley * 0.15f, new Vector3(width, rampLen, 0.35f), waterMat, container);
-            sheet.transform.rotation = rampRot;
-            Object.DestroyImmediate(sheet.GetComponent<BoxCollider>());
-            var churn = Cube("Fall_Churn", mid + toValley * 0.28f, new Vector3(width * 0.7f, rampLen, 0.2f), foamMat, container);
-            churn.transform.rotation = rampRot;
-            Object.DestroyImmediate(churn.GetComponent<BoxCollider>());
-            for (int s = 1; s < 4; s++)
-            {
-                Vector3 on = Vector3.Lerp(basePos, top, s / 4f);
-                var lip = Cube($"Fall_Lip{s}", on + toValley * 0.3f, new Vector3(width + 0.6f, 0.9f, 0.5f), foamMat, container);
-                lip.transform.rotation = rampRot;
-                Object.DestroyImmediate(lip.GetComponent<BoxCollider>());
-            }
-            // Plunge-pool foam where the cascade meets the gorge.
-            var pool = Cube("Fall_Pool", basePos + toValley * 1.3f + Vector3.up * 0.2f,
-                new Vector3(width + 1.4f, 0.3f, 3.4f), foamMat, container);
-            pool.transform.rotation = rot;
-            Object.DestroyImmediate(pool.GetComponent<BoxCollider>());
+            // A couple of bigger boulders behind (toward the mountain) to anchor it.
+            Rock("Src_Back0", basePos + intoMtn * (width * 0.8f) + right * (width * 0.4f) + Vector3.up * 1f, 5f + (float)rng.NextDouble() * 2f);
+            Rock("Src_Back1", basePos + intoMtn * (width * 0.7f) - right * (width * 0.4f) + Vector3.up * 1f, 5f + (float)rng.NextDouble() * 2f);
+            // Low foam where the spring bubbles up (sits at the water surface, no floating sheet).
+            var foam = Cube("Src_Foam", basePos + toValley * 1.6f + Vector3.up * (WaterSurfaceY + 0.06f),
+                new Vector3(width + 1f, 0.1f, width + 4f), foamMat, container);
+            foam.transform.rotation = rot;
+            Object.DestroyImmediate(foam.GetComponent<BoxCollider>());
         }
 
         /// <summary>Short outflow channel from the lake's NW corner, spilling off-map as a
@@ -1762,6 +1742,17 @@ namespace AldenFall.Editor
                     Vector3 pB = Vector3.Lerp(a, b, (s + 1) / (float)steps);
                     BuildRiverSegment(container, riverIndex, pA, pB, halfW, shoreMat, groundLayer, waterLayer, bedMat, waterMat);
                 }
+                // ONE continuous water surface for the whole straight leg (no per-segment banding).
+                if (UseUnityTerrain)
+                {
+                    Vector3 mid = (a + b) / 2f;
+                    float yaw = Mathf.Atan2(b.x - a.x, b.z - a.z) * Mathf.Rad2Deg;
+                    var surf = Cube($"River{riverIndex}_Surf{leg}", new Vector3(mid.x, WaterSurfaceY, mid.z),
+                        new Vector3(halfW * 2f + 1.5f, 0.06f, legLen + 3f), waterMat, container);
+                    surf.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                    surf.isStatic = true;
+                    Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
+                }
             }
         }
 
@@ -1802,15 +1793,8 @@ namespace AldenFall.Editor
                 vbox.size = new Vector3(halfW * 2f, colH, len);
                 if (waterLayer >= 0) vol.layer = waterLayer;
 
-                // River surface: a ribbon quad LOCAL to this carved segment (replaces the old
-                // world-spanning sheet). Narrow + hugging the channel so it can't bleed over the
-                // banks. Slightly wider than the channel so the water meets the sand shore.
-                {
-                    var surf = Cube($"River{riverIndex}_Surface", mid + Vector3.up * WaterSurfaceY, new Vector3(halfW * 2f + 1.5f, 0.06f, len + 0.5f), waterMat, container);
-                    surf.transform.rotation = rot;
-                    surf.isStatic = true;
-                    Object.DestroyImmediate(surf.GetComponent<BoxCollider>());
-                }
+                // (River surface is built ONCE per straight leg in BuildRiverReach - a single quad,
+                // so overlapping per-segment quads stop reading as a tiled/banded ribbon.)
 
                 // Wade-in shore step cubes: legacy flat-ground only (the terrain carve gives
                 // natural gradient banks now, so these fixed-Y brown blocks are retired).
