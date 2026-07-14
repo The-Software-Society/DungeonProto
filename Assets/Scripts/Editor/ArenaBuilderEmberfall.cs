@@ -820,44 +820,89 @@ namespace AldenFall.Editor
                     }
                 }
             }
+            // BIOME classifiers so scatter is APPROPRIATE, not random (Jon: water-plants by the
+            // lake, dense dark-forest undergrowth, meadow flowers + tall grass, burnt scrub south).
             System.Func<float, float, bool> lush = (x, z) => SootAmount(x, z) < 0.4f;
-            System.Func<float, float, bool> meadow = (x, z) => SootAmount(x, z) < 0.2f;
+            System.Func<float, float, bool> meadow = (x, z) => SootAmount(x, z) < 0.15f
+                && Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) > LakeEdge(x, z) + 20f;
+            // Dark forest: the lake->city corridor (Jon: "dark forest, this is where it should be dense").
+            System.Func<float, float, bool> darkForest = (x, z) => Mathf.Abs(x) < 95f && z > 55f && z < 250f
+                && Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) > LakeEdge(x, z) + 8f;
 
-            // Rock outcrops (clusters of boulders) - ~110 outcrops.
-            Clump(110, 4, 14f, null, (x, z) =>
+            // Slight per-instance tint jitter so beds don't read as one flat clone.
+            void Tint(GameObject go, Color baseCol, float amt)
             {
-                string rock = new[] { "BoulderCluster", "MossBoulder", "MossyRock" }[rng.Next(3)];
-                PlaceMeshyProp(container, rock, new Vector3(x, 0f, z),
-                    (float)rng.NextDouble() * 360f, 1.3f + (float)rng.NextDouble() * 3.4f, groundLayer, PropCollision.FitBox);
+                if (go == null) return;
+                float j = (float)(rng.NextDouble() - 0.5) * amt;
+                var c = new Color(Mathf.Clamp01(baseCol.r + j * 0.5f), Mathf.Clamp01(baseCol.g + j), Mathf.Clamp01(baseCol.b + j * 0.4f));
+                var m = Mat($"Fol_{Mathf.RoundToInt(c.r * 12)}_{Mathf.RoundToInt(c.g * 12)}_{Mathf.RoundToInt(c.b * 12)}", c, smoothness: 0.03f);
+                foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = m;
+            }
+
+            // Rock outcrops - VARIED meshes (4 kinds) + full tilt so they're not clones.
+            Clump(120, 4, 14f, null, (x, z) =>
+            {
+                string rock = new[] { "BoulderCluster", "MossBoulder", "MossyRock", "RockCliff" }[rng.Next(4)];
+                var g = PlaceMeshyProp(container, rock, new Vector3(x, 0f, z),
+                    (float)rng.NextDouble() * 360f, 1.2f + (float)rng.NextDouble() * 3.6f, groundLayer, PropCollision.FitBox);
+                if (g != null) g.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 24f, (float)rng.NextDouble() * 360f, (float)(rng.NextDouble() - 0.5) * 24f) * g.transform.rotation;
             });
-            // Pebble/gravel patches on bare-ish ground (flat, low).
+            // Pebble/gravel patches.
             Clump(90, 5, 10f, null, (x, z) =>
                 PlaceMeshyProp(container, "PebblePatch", new Vector3(x, 0f, z),
                     (float)rng.NextDouble() * 360f, 1.6f + (float)rng.NextDouble() * 1.8f, groundLayer, PropCollision.None));
-            // Dense fern + bush undergrowth beds in the lush ring.
-            Clump(230, 6, 12f, lush, (x, z) =>
+            // General lush undergrowth (ferns + bushes), tinted for variation. Skip the open
+            // meadows so they read as flower fields, not a wall of ferns.
+            System.Func<float, float, bool> lushNotMeadow = (x, z) => lush(x, z) && !meadow(x, z);
+            Clump(200, 7, 13f, lushNotMeadow, (x, z) =>
             {
-                string f = rng.NextDouble() < 0.6 ? "Fern" : "ForestBush";
-                if (PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
-                        0.8f + (float)rng.NextDouble() * 0.8f, groundLayer, PropCollision.None) == null)
-                    PlaceMeshyProp(container, "ForestBush", new Vector3(x, 0f, z), 0f, 0.9f, groundLayer, PropCollision.None);
+                string f = rng.NextDouble() < 0.55 ? "Fern" : "ForestBush";
+                var g = PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
+                    0.7f + (float)rng.NextDouble() * 0.9f, groundLayer, PropCollision.None);
+                Tint(g, PropFallbackColor(f), 0.12f);
             });
-            // Wildflower beds in the sunlit meadows.
-            Clump(180, 8, 11f, meadow, (x, z) =>
-                PlaceMeshyProp(container, "Wildflowers", new Vector3(x, 0f, z),
-                    (float)rng.NextDouble() * 360f, 0.5f + (float)rng.NextDouble() * 0.5f, groundLayer, PropCollision.None));
+            // DARK FOREST: extra-dense dark ferns + bushes + mossy boulders in the lake->city woods.
+            Clump(150, 9, 11f, darkForest, (x, z) =>
+            {
+                double roll = rng.NextDouble();
+                string f = roll < 0.5 ? "Fern" : roll < 0.85 ? "ForestBush" : "MossBoulder";
+                var g = PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
+                    0.8f + (float)rng.NextDouble() * 1.0f, groundLayer, f == "MossBoulder" ? PropCollision.FitBox : PropCollision.None);
+                if (f != "MossBoulder") Tint(g, new Color(0.10f, 0.20f, 0.10f), 0.08f);   // deep, shadowed green
+            });
+            // MEADOW: colourful wildflower beds + tall-grass tussocks in the open sunlit fields
+            // (dense enough that open fields read as living meadows, not bare grass).
+            Clump(340, 10, 13f, meadow, (x, z) =>
+            {
+                if (rng.NextDouble() < 0.6)
+                {
+                    var g = PlaceMeshyProp(container, "Wildflowers", new Vector3(x, 0f, z),
+                        (float)rng.NextDouble() * 360f, 0.4f + (float)rng.NextDouble() * 0.5f, groundLayer, PropCollision.None);
+                    // Wildflowers span the palette: lilac / gold / white / rose, not one green.
+                    Color[] palette = { new Color(0.62f, 0.40f, 0.66f), new Color(0.80f, 0.72f, 0.28f), new Color(0.86f, 0.86f, 0.80f), new Color(0.72f, 0.34f, 0.40f) };
+                    Tint(g, palette[rng.Next(palette.Length)], 0.14f);
+                }
+                else   // a taller grass tussock (a fern reads as a grassy tuft when squashed wide)
+                {
+                    var g = PlaceMeshyProp(container, "Fern", new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
+                        1.0f + (float)rng.NextDouble() * 0.8f, groundLayer, PropCollision.None);
+                    Tint(g, new Color(0.24f, 0.40f, 0.16f), 0.10f);
+                }
+            });
 
-            // Reeds ringing the whole organic lake shore + river mouths (dense water-edge foliage).
-            for (int i = 0; i < 420; i++)
+            // Reeds ringing the organic lake shore + river mouths - SUNK slightly so the solid base
+            // disc buries in the bed (Jon: "circle above ground"), tinted for variation, shore-biased.
+            for (int i = 0; i < 460; i++)
             {
                 float ang = (float)rng.NextDouble() * Mathf.PI * 2f;
                 Vector2 dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
                 float le = LakeEdge(LakeCenter.x + dir.x * LakeHalf, LakeCenter.z + dir.y * LakeHalf);
-                float r = le - 1f + (float)rng.NextDouble() * 6f;
+                float r = 0.867f * (le + 4f) - 2f + (float)rng.NextDouble() * 7f;   // clustered right at the waterline out to the shore
                 float x = LakeCenter.x + dir.x * r, z = LakeCenter.z + dir.y * r;
                 if (InCityFootprint(x, z)) continue;
-                PlaceMeshyProp(container, "Reeds", new Vector3(x, 0f, z),
-                    (float)rng.NextDouble() * 360f, 1.0f + (float)rng.NextDouble() * 1.0f, groundLayer, PropCollision.None);
+                var g = PlaceMeshyProp(container, "Reeds", new Vector3(x, 0f, z),
+                    (float)rng.NextDouble() * 360f, 1.1f + (float)rng.NextDouble() * 1.3f, groundLayer, PropCollision.None);
+                if (g != null) { g.transform.position += Vector3.down * 0.35f; Tint(g, new Color(0.34f, 0.42f, 0.16f), 0.12f); }
             }
         }
 
@@ -882,9 +927,9 @@ namespace AldenFall.Editor
             };
 
             int planted = 0;
-            // Dense forest (Jon: "way more trees... look like a forest not a swamp"). ~3x the
-            // old count, biased toward the lush ring + the lake->city dark woods.
-            for (int attempt = 0; attempt < 6000 && planted < 780; attempt++)
+            // Dense forest EVERYWHERE (Jon: "trees spread out everywhere... foresty vibe"). More
+            // trees + wider ring so the whole forest floor is wooded, not a thin band.
+            for (int attempt = 0; attempt < 9000 && planted < 1050; attempt++)
             {
                 float x = Mathf.Lerp(-246f, 246f, (float)rng.NextDouble());
                 float z = Mathf.Lerp(-52f, 246f, (float)rng.NextDouble());
@@ -928,6 +973,9 @@ namespace AldenFall.Editor
                 if (soot < 0.12f || soot > 0.85f) continue;         // only the transition band
                 if ((float)rng.NextDouble() > soot) continue;        // denser toward the volcano
                 if (InCityFootprint(x, z) || InGlade(x, z)) continue;
+                // Not on the roads/approach: dark flat decals read as ugly slabs on bare dirt (they
+                // only blend into grass). The ember corridor has its own ash treatment.
+                if (InApproachFootprint(x, z) || (Mathf.Abs(x) < 11f && z > -66f && z < 214f)) continue;
                 float s = 2.5f + (float)rng.NextDouble() * 4f;
                 var patch = Cube($"Soot_{attempt}", new Vector3(x, 0.02f, z),
                     new Vector3(s, 0.04f, s * (0.7f + (float)rng.NextDouble() * 0.6f)), patchMat, container);
@@ -1843,19 +1891,26 @@ namespace AldenFall.Editor
             void Foliage(string kind, Vector3 pos, float h)
                 => PlaceMeshyProp(container, kind, pos, (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.None);
 
-            // REAL rock: the fall spills through an outcrop of boulder MESHES (no cube cliff wall).
-            // BoulderCluster/RockCliff when generated; MossBoulder is the always-present fallback;
-            // a dark rock cube only if every mesh load misses.
+            // REAL rock with VARIETY (Jon: "not just a massive stack of the same"): rotate through
+            // four different rock meshes, random full-3D tilt, and varied scale so the cliff reads
+            // as a natural jumble of boulders, not one mesh cloned. A dark cube only if all miss.
+            string[] fallRocks = { "BoulderCluster", "MossBoulder", "MossyRock", "RockCliff" };
+            int rockPick = 0;
             void Rock(string label, Vector3 pos, float size)
             {
-                float ry = yaw + (float)rng.NextDouble() * 70f;
-                var r = PlaceMeshyProp(container, "BoulderCluster", pos, ry, size, groundLayer, PropCollision.FitBox)
-                     ?? PlaceMeshyProp(container, "RockCliff", pos, ry, size, groundLayer, PropCollision.FitBox)
-                     ?? PlaceMeshyProp(container, "MossBoulder", pos, ry, size, groundLayer, PropCollision.FitBox);
+                float ry = (float)rng.NextDouble() * 360f;
+                // interleave the meshes deterministically + a random offset so neighbours differ
+                string mesh = fallRocks[(rockPick++ + rng.Next(2)) % fallRocks.Length];
+                float sz = size * (0.7f + (float)rng.NextDouble() * 0.8f);
+                var r = PlaceMeshyProp(container, mesh, pos, ry, sz, groundLayer, PropCollision.FitBox)
+                     ?? PlaceMeshyProp(container, "BoulderCluster", pos, ry, sz, groundLayer, PropCollision.FitBox)
+                     ?? PlaceMeshyProp(container, "MossBoulder", pos, ry, sz, groundLayer, PropCollision.FitBox);
+                if (r != null)
+                    r.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 40f, ry, (float)(rng.NextDouble() - 0.5) * 40f) * r.transform.rotation;
                 if (r == null)
                 {
-                    var c = Cube(label, pos, Vector3.one * size, rockMat, container);
-                    c.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 25f, ry, (float)rng.NextDouble() * 25f);
+                    var c = Cube(label, pos, Vector3.one * sz, rockMat, container);
+                    c.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 35f, ry, (float)rng.NextDouble() * 35f);
                     c.isStatic = true;
                     if (groundLayer >= 0) c.layer = groundLayer;
                 }
@@ -1927,15 +1982,29 @@ namespace AldenFall.Editor
                 Foam($"Lip_Foam{i}", basePos + Vector3.up * (WaterSurfaceY + height + 0.2f) + intoMtn * run
                     + right * ((i / 4f - 0.5f) * width * 0.8f), 0.8f + (float)rng.NextDouble() * 0.7f);
 
-            // CRASHING FOAM: a churned cluster of bubbles where the fall lands + spray rising.
-            Vector3 plunge = basePos + toValley * 1.8f + Vector3.up * (WaterSurfaceY + 0.3f);
-            for (int i = 0; i < 16; i++)
+            // CRASHING FOAM: a dense froth of MANY small, FLATTENED, overlapping blobs (not a few
+            // static balls) so the plunge reads as churning whitewater, + radial foam trails
+            // streaming downstream across the pool surface + a little rising spray.
+            Vector3 plunge = basePos + toValley * 1.8f + Vector3.up * (WaterSurfaceY + 0.15f);
+            for (int i = 0; i < 30; i++)
             {
                 float a = (float)rng.NextDouble() * Mathf.PI * 2f;
-                float r = (float)rng.NextDouble() * (width * 0.7f);
-                float rise = (float)rng.NextDouble() < 0.3f ? 1.2f + (float)rng.NextDouble() * 2f : 0f;   // some spray leaps up
-                Foam($"Crash_Foam{i}", plunge + right * (Mathf.Cos(a) * r) + toValley * (Mathf.Sin(a) * r * 0.7f) + Vector3.up * rise,
-                    0.7f + (float)rng.NextDouble() * 1.8f);
+                float r = (float)rng.NextDouble() * (width * 0.8f);
+                bool spray = (float)rng.NextDouble() < 0.22f;
+                float rise = spray ? 0.8f + (float)rng.NextDouble() * 1.8f : 0f;
+                var f = Foam($"Crash_Foam{i}", plunge + right * (Mathf.Cos(a) * r) + toValley * (Mathf.Sin(a) * r * 0.7f) + Vector3.up * rise,
+                    0.35f + (float)rng.NextDouble() * 0.85f);
+                if (!spray)   // churn hugs the surface: squash flat + a bit of horizontal jitter
+                    f.transform.localScale = Vector3.Scale(f.transform.localScale, new Vector3(1.3f, 0.45f, 1.3f));
+            }
+            // Foam trails streaming out from the plunge across the pool.
+            for (int i = 0; i < 6; i++)
+            {
+                float a = (i / 6f - 0.5f) * 1.3f;   // fan downstream
+                var trail = Cube($"Fall_Trail{i}", plunge + toValley * (2f + i * 0.4f) + right * (a * width),
+                    new Vector3(0.5f + (float)rng.NextDouble() * 0.6f, 0.08f, 3f + (float)rng.NextDouble() * 3f), foamMat, container);
+                trail.transform.rotation = rot;
+                Object.DestroyImmediate(trail.GetComponent<BoxCollider>());
             }
             // Plunge pool sheen + a ring of wet boulders the pool laps around.
             var pool = Cube("Fall_Pool", basePos + toValley * 2.6f + Vector3.up * (WaterSurfaceY + 0.05f),
@@ -2403,6 +2472,43 @@ namespace AldenFall.Editor
                         new Vector3(0.3f + (float)rng.NextDouble() * 0.5f, 0.05f, 2f + (float)rng.NextDouble() * 3f), emberCrack, container);
                     crack.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 180f, 0);
                     Object.DestroyImmediate(crack.GetComponent<BoxCollider>());
+                }
+            }
+
+            // ---- Volcanic scrub: dry burnt bushes + tumbleweeds so the approach has a biome-
+            // appropriate ecosystem (Jon: "volcano = tumbleweed, burnt bush"), thinning to bare
+            // ash near the caldera. ----
+            var burntMat = Mat("BurntBush", new Color(0.16f, 0.11f, 0.07f), smoothness: 0.02f);
+            var tumbleMat = Mat("Tumbleweed", new Color(0.34f, 0.26f, 0.14f), smoothness: 0.03f);
+            for (int i = 0; i < 90; i++)
+            {
+                float z = Mathf.Lerp(ApproachNorthZ - 4f, ApproachSouthZ + 30f, (float)rng.NextDouble());
+                float x = ((float)rng.NextDouble() * 2f - 1f) * (ApproachHalfW - 4f);
+                if (Mathf.Abs(x) < 7f) continue;                        // clear the road
+                float t = Mathf.InverseLerp(ApproachNorthZ, ApproachSouthZ, z);
+                if ((float)rng.NextDouble() < t * 0.7f) continue;       // thin out toward the caldera
+                if (rng.NextDouble() < 0.55)
+                {
+                    // Burnt bush: a low cluster of dark spiky shards.
+                    var bush = Child(container, $"BurntBush{i}");
+                    bush.transform.position = new Vector3(x, 0f, z);
+                    int shards = 4 + rng.Next(4);
+                    for (int s = 0; s < shards; s++)
+                    {
+                        float sh = 0.5f + (float)rng.NextDouble() * 0.9f;
+                        var b = Cube($"Shard{s}", bush.transform.position + new Vector3((float)(rng.NextDouble() - 0.5) * 0.9f, sh * 0.5f, (float)(rng.NextDouble() - 0.5) * 0.9f),
+                            new Vector3(0.09f, sh, 0.09f), burntMat, bush);
+                        b.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 55f, (float)rng.NextDouble() * 360f, (float)(rng.NextDouble() - 0.5) * 55f);
+                        Object.DestroyImmediate(b.GetComponent<BoxCollider>());
+                    }
+                }
+                else
+                {
+                    // Tumbleweed: a dry brown ball resting on the ash.
+                    var tw = Sphere($"Tumbleweed{i}", new Vector3(x, 0.55f + (float)rng.NextDouble() * 0.2f, z),
+                        Vector3.one * (0.9f + (float)rng.NextDouble() * 0.7f), tumbleMat, container);
+                    tw.transform.localScale = Vector3.Scale(tw.transform.localScale, new Vector3(1f, 0.85f, 1f));
+                    Object.DestroyImmediate(tw.GetComponent<SphereCollider>());
                 }
             }
 

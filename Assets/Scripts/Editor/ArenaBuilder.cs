@@ -1607,9 +1607,20 @@ namespace AldenFall.Editor
             string n = name.ToLowerInvariant();
             if (n.Contains("foothill"))
                 return new Color(0.24f, 0.33f, 0.18f);   // forested green foothill
-            if (n.Contains("bush") || n.Contains("grass") || n.Contains("hedge") || n.Contains("shrub") || n.Contains("leaf")
-                || n.Contains("fern") || n.Contains("reed") || n.Contains("flower") || n.Contains("frond"))
-                return new Color(0.17f, 0.33f, 0.15f);   // foliage green
+            // Distinct foliage tints (Jon: "it all being 1 color") - flowers pop, reeds go
+            // yellow-green, ferns bright, bushes darker.
+            if (n.Contains("flower") || n.Contains("bloom") || n.Contains("blossom"))
+                return new Color(0.55f, 0.42f, 0.62f);   // lilac wildflower (leaves+petals read colourful, not green)
+            if (n.Contains("reed") || n.Contains("cattail") || n.Contains("rush") || n.Contains("sedge"))
+                return new Color(0.34f, 0.42f, 0.16f);   // yellow-green reed
+            if (n.Contains("fern") || n.Contains("frond"))
+                return new Color(0.15f, 0.34f, 0.14f);   // bright fern green
+            if (n.Contains("bush") || n.Contains("shrub") || n.Contains("hedge"))
+                return new Color(0.13f, 0.26f, 0.12f);   // darker shrub green
+            if (n.Contains("burnt") || n.Contains("char") || n.Contains("tumble") || n.Contains("thistle"))
+                return new Color(0.22f, 0.16f, 0.10f);   // dry/burnt scrub brown
+            if (n.Contains("grass") || n.Contains("leaf"))
+                return new Color(0.20f, 0.36f, 0.15f);   // grass green
             if (n.Contains("thatch") || n.Contains("straw"))
                 return new Color(0.6f, 0.48f, 0.22f);    // golden thatch
             if (n.Contains("dead") || n.Contains("stump") || n.Contains("log") || n.Contains("trunk") || n.Contains("branch"))
