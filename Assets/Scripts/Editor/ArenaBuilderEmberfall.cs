@@ -107,6 +107,20 @@ namespace AldenFall.Editor
         private static bool HasMesh(string name)
             => AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Models/Props/{name}.fbx") != null;
 
+        /// <summary>Load-or-create a 256px procedural texture asset (for skinning untextured
+        /// preview meshes - mountains, volcano - with real surface detail).</summary>
+        private static Texture2D GetGeneratedTexture(string name, System.Func<Color32[]> gen)
+        {
+            string p = $"{MaterialDir}/{name}.asset";
+            var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(p);
+            if (tex != null) return tex;
+            tex = new Texture2D(256, 256, TextureFormat.RGBA32, true);
+            tex.SetPixels32(gen());
+            tex.Apply(true);
+            AssetDatabase.CreateAsset(tex, p);
+            return tex;
+        }
+
         // Distance from (x,z) to the R3 canal centreline (used to open cobbles + skip props
         // over the manmade canal where it threads the city).
         private static float DistToCityCanal(float x, float z)
@@ -2192,15 +2206,48 @@ namespace AldenFall.Editor
             string[] peaks = { "MountainRidge", "MountainPeak", "MountainRidge" };
             int pk = 0;
 
+            // Rock TEXTURE (untextured preview meshes are flat one-colour otherwise) + colour
+            // variants so the range isn't monotone: weathered grey, brown, dark, and snow-touched.
+            var rockTex = GetGeneratedTexture("MountainRock_Tex", () => GroundTextureGenerator.Rock(256));
+            Material RockMat(string n, Color c, float tile)
+            {
+                var m = Mat(n, c, smoothness: 0.03f);
+                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", rockTex); m.SetTextureScale("_BaseMap", new Vector2(tile, tile)); }
+                if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", rockTex); m.SetTextureScale("_MainTex", new Vector2(tile, tile)); }
+                return m;
+            }
+            // Near-white tints so the rock TEXTURE provides the tone at full brightness (a dark
+            // tint multiplied the texture to near-black). Slight hue variation per variant.
+            var mtnMats = new[]
+            {
+                RockMat("MtnRockGrey", new Color(1.35f, 1.32f, 1.26f), 10f),
+                RockMat("MtnRockBrown", new Color(1.35f, 1.15f, 0.9f), 10f),
+                RockMat("MtnRockDark", new Color(1.0f, 0.97f, 0.95f), 12f),
+                RockMat("MtnRockSnow", new Color(1.7f, 1.68f, 1.66f), 8f),
+            };
+            void SkinMtn(GameObject go, int idx)
+            {
+                if (go == null) return;
+                // If a Meshy PBR texture was downloaded (refine), PlaceMeshyProp already applied it -
+                // don't override. Only skin the untextured preview meshes with our rock material.
+                bool hasMeshyTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/Props/MountainPeak_baseColor.png") != null
+                                || AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Models/Props/MountainRidge_baseColor.png") != null;
+                if (hasMeshyTex) return;
+                var m = mtnMats[idx % mtnMats.Length];
+                foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = m;
+            }
+
             void Place(float x, float z, bool corridor)
             {
                 if (corridor) return;
-                string peak = peaks[pk++ % peaks.Length];
+                string peak = peaks[pk % peaks.Length];
                 if (!HasMesh(peak)) peak = HasMesh("MountainRidge") ? "MountainRidge" : "MountainPeak";
                 float yaw = Mathf.Atan2(center.x - x, center.y - z) * Mathf.Rad2Deg;   // face the valley
                 float scale = 140f + (float)rng.NextDouble() * 80f;
-                PlaceMeshyProp(container, peak, new Vector3(x, -6f, z),
+                var mtn = PlaceMeshyProp(container, peak, new Vector3(x, -6f, z),
                     yaw + (float)(rng.NextDouble() - 0.5) * 26f, scale, groundLayer, PropCollision.FitBox);
+                SkinMtn(mtn, pk + (scale > 190f ? 3 : 0));   // biggest peaks get the snow-touched variant
+                pk++;
                 if (HasMesh("ForestFoothill"))
                 {
                     Vector2 toC = (center - new Vector2(x, z)).normalized;
@@ -2250,12 +2297,23 @@ namespace AldenFall.Editor
             if (meshVolcano)
             {
                 var vis = Child(container, "VolcanoVisual");
-                var dormant = PlaceMeshyProp(vis, "VolcanoDormant", cone, 0f, 210f, groundLayer, PropCollision.FitBox);
-                if (dormant != null) dormant.name = "VolcanoDormant";
+                var volcanoTex = GetGeneratedTexture("VolcanoRock_Tex", () => GroundTextureGenerator.Soot(256));
+                Material VolMat(string n, Color c, Color? em)
+                {
+                    var m = Mat(n, c, smoothness: 0.06f, emission: em);
+                    if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", volcanoTex); m.SetTextureScale("_BaseMap", new Vector2(9f, 9f)); }
+                    if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", volcanoTex); m.SetTextureScale("_MainTex", new Vector2(9f, 9f)); }
+                    return m;
+                }
+                var dormantMat = VolMat("VolcanoMeshRock", new Color(0.32f, 0.27f, 0.24f), null);              // textured volcanic rock
+                var eruptMat = VolMat("VolcanoMeshLava", new Color(0.20f, 0.13f, 0.10f), new Color(0.6f, 0.16f, 0.03f)); // charred + hot glow
+                void Skin(GameObject go, Material m) { if (go != null) foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = m; }
+                var dormant = PlaceMeshyProp(vis, "VolcanoDormant", cone, 180f, 210f, groundLayer, PropCollision.FitBox);
+                if (dormant != null) { dormant.name = "VolcanoDormant"; Skin(dormant, dormantMat); }
                 if (HasMesh("VolcanoErupting"))
                 {
-                    var erupt = PlaceMeshyProp(vis, "VolcanoErupting", cone, 0f, 210f, groundLayer, PropCollision.None);
-                    if (erupt != null) { erupt.name = "VolcanoErupting"; erupt.SetActive(false); }
+                    var erupt = PlaceMeshyProp(vis, "VolcanoErupting", cone, 180f, 210f, groundLayer, PropCollision.None);
+                    if (erupt != null) { erupt.name = "VolcanoErupting"; Skin(erupt, eruptMat); erupt.SetActive(false); }
                 }
             }
 

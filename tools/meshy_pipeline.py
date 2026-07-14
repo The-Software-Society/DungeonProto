@@ -631,6 +631,13 @@ def generate_prop(meshy: Meshy, state: State, name: str, prompt: str):
     )
     preview_id = state.data[f"prop:{name}:preview"]["task_id"]
 
+    # Preview-only mode: Meshy's PBR refine step is currently unreliable (server-side
+    # timeouts that stall the whole queue). Preview meshes generate reliably and are fine
+    # for stylized low-poly env props, so skip refine and use the preview mesh directly.
+    if os.environ.get("MESHY_PREVIEW_ONLY"):
+        download_model_urls(preview, prop_dir, name)
+        return
+
     # Heavy architectural previews can push the PBR refine over Meshy's server-side
     # task timeout; when that happens, fall back to a plain (non-PBR) refine, which
     # is markedly faster and still delivers a textured building.

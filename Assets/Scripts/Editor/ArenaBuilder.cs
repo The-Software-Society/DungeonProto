@@ -1567,12 +1567,19 @@ namespace AldenFall.Editor
         private static Color PropFallbackColor(string name)
         {
             string n = name.ToLowerInvariant();
-            if (n.Contains("bush") || n.Contains("grass") || n.Contains("hedge") || n.Contains("shrub") || n.Contains("leaf"))
+            if (n.Contains("foothill"))
+                return new Color(0.24f, 0.33f, 0.18f);   // forested green foothill
+            if (n.Contains("bush") || n.Contains("grass") || n.Contains("hedge") || n.Contains("shrub") || n.Contains("leaf")
+                || n.Contains("fern") || n.Contains("reed") || n.Contains("flower") || n.Contains("frond"))
                 return new Color(0.17f, 0.33f, 0.15f);   // foliage green
+            if (n.Contains("thatch") || n.Contains("straw"))
+                return new Color(0.6f, 0.48f, 0.22f);    // golden thatch
             if (n.Contains("dead") || n.Contains("stump") || n.Contains("log") || n.Contains("trunk") || n.Contains("branch"))
                 return new Color(0.31f, 0.22f, 0.14f);   // dry wood brown
             if (n.Contains("tree") || n.Contains("pine") || n.Contains("oak") || n.Contains("birch") || n.Contains("fir"))
                 return new Color(0.21f, 0.35f, 0.17f);   // canopy green
+            if (n.Contains("mountain") || n.Contains("peak") || n.Contains("ridge") || n.Contains("crag"))
+                return new Color(0.37f, 0.34f, 0.30f);   // grey-brown mountain rock
             if (n.Contains("boulder") || n.Contains("rock") || n.Contains("moss") || n.Contains("stone") || n.Contains("well") || n.Contains("cliff"))
                 return new Color(0.33f, 0.34f, 0.31f);   // mossy stone
             if (n.Contains("house") || n.Contains("hut") || n.Contains("cottage") || n.Contains("stall") || n.Contains("shop") || n.Contains("home") || n.Contains("hall") || n.Contains("store"))
