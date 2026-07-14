@@ -76,6 +76,7 @@ namespace AldenFall.Editor
                 var eco = Child(root, "EmberEcosystem");
                 ScatterForestTrees(eco, groundLayer);
                 ScatterGroundDetail(eco, groundLayer);
+                ScatterRoadDetail(eco, groundLayer);       // pebbles + rocks + ruts give the dirt roads depth
             }
             else
                 BuildEmberfallGround(root, groundLayer);   // legacy cube tiles (rollback path)
@@ -906,6 +907,42 @@ namespace AldenFall.Editor
             }
         }
 
+        /// <summary>Dress the dirt roads with 3D DEPTH (Jon: roads are "flat minecraft png") - gravel
+        /// pebbles across the bed, worn wheel ruts, and rocks/boulders lining the shoulders, along
+        /// the continuous ember-approach -> city -> lakeside road.</summary>
+        private static void ScatterRoadDetail(Transform container, int groundLayer)
+        {
+            var rutMat = Mat("RoadRut", new Color(0.22f, 0.16f, 0.11f));
+            for (float z = -312f; z <= 212f; z += 2.2f)
+            {
+                if (InCityFootprint(0f, z)) continue;   // city lays cobbles
+                // Faint parallel wheel ruts (thin darker strips worn into the road).
+                if (rng.NextDouble() < 0.5)
+                    foreach (float s in new[] { -1f, 1f })
+                    {
+                        var rut = Cube($"Rut{z:F0}_{s}", new Vector3(s * 2.4f, 0.015f, z),
+                            new Vector3(1.1f, 0.03f, 2.3f), rutMat, container);
+                        Object.DestroyImmediate(rut.GetComponent<BoxCollider>());
+                    }
+                // Gravel / pebble patches scattered across the road bed.
+                if (rng.NextDouble() < 0.75)
+                    PlaceMeshyProp(container, "PebblePatch",
+                        new Vector3((float)(rng.NextDouble() * 2 - 1) * 6f, 0f, z + (float)(rng.NextDouble() - 0.5) * 2f),
+                        (float)rng.NextDouble() * 360f, 1.1f + (float)rng.NextDouble() * 1.5f, groundLayer, PropCollision.None);
+                // Occasional stone lying in the road.
+                if (rng.NextDouble() < 0.12)
+                    PlaceMeshyProp(container, rng.NextDouble() < 0.5 ? "MossyRock" : "BoulderCluster",
+                        new Vector3((float)(rng.NextDouble() * 2 - 1) * 5f, 0f, z), (float)rng.NextDouble() * 360f,
+                        0.5f + (float)rng.NextDouble() * 0.7f, groundLayer, PropCollision.FitBox);
+                // Rocks + boulders lining the shoulders.
+                foreach (float s in new[] { -1f, 1f })
+                    if (rng.NextDouble() < 0.32)
+                        PlaceMeshyProp(container, new[] { "MossyRock", "BoulderCluster", "MossBoulder" }[rng.Next(3)],
+                            new Vector3(s * (7.5f + (float)rng.NextDouble() * 4f), 0f, z), (float)rng.NextDouble() * 360f,
+                            1f + (float)rng.NextDouble() * 2f, groundLayer, PropCollision.FitBox);
+            }
+        }
+
         private static void ScatterForestTrees(Transform container, int groundLayer)
         {
             var trunkMat = Mat("EmberTreeTrunk", new Color(0.30f, 0.21f, 0.13f), smoothness: 0.05f);
@@ -937,11 +974,17 @@ namespace AldenFall.Editor
                 if (ring < 62f || ring > 246f) continue;       // clear the city + trim corners
                 if (InCityFootprint(x, z) || InApproachFootprint(x, z)) continue;
                 if (InLakeWater(x, z) || InFeederRiver(x, z)) continue;
-                if (Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) + 10f) continue; // lake shore stays open
-                // Keep roads + rivers/canal CLEAR (Jon: trees were growing on the road - lost the
-                // intentional placement). Trees line the road but never block it.
-                if (Mathf.Abs(x) < 11f && z > -66f && z < 214f) continue;        // N-S dirt road
-                if (InAnyRiver(x, z) || DistToCityCanal(x, z) < 12f) continue;   // river beds + city canal
+                if (Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) + 15f) continue; // wider lake margin: no trees standing in the shallows
+                // Keep roads + rivers/canal CLEAR (Jon: trees in the road / trees in water). Trees
+                // line the road/bank but never stand in them.
+                if (Mathf.Abs(x) < 13f && z > -66f && z < 214f) continue;        // N-S dirt road + shoulders
+                if (InAnyRiver(x, z) || DistToCityCanal(x, z) < 14f) continue;   // river beds + city canal
+                // Extra margin around every river so no trunk sits in the water.
+                { bool nearWater = false;
+                  for (int ri = 0; ri < RiverPaths.Length; ri++) { var rp = RiverPaths[ri]; float rd = float.MaxValue;
+                      for (int si = 0; si < rp.Length - 1; si++) rd = Mathf.Min(rd, DistToSegment(new Vector2(x, z), new Vector2(rp[si].x, rp[si].z), new Vector2(rp[si+1].x, rp[si+1].z)));
+                      if (rd < RiverHalfWidths[ri] + 9f) { nearWater = true; break; } }
+                  if (nearWater) continue; }
 
                 bool blocked = false;
                 foreach (var c in keepClear)
@@ -1928,12 +1971,12 @@ namespace AldenFall.Editor
                 float ry = (float)rng.NextDouble() * 360f;
                 // interleave the meshes deterministically + a random offset so neighbours differ
                 string mesh = fallRocks[(rockPick++ + rng.Next(2)) % fallRocks.Length];
-                float sz = size * (0.7f + (float)rng.NextDouble() * 0.8f);
+                float sz = size * (0.85f + (float)rng.NextDouble() * 0.4f);
                 var r = PlaceMeshyProp(container, mesh, pos, ry, sz, groundLayer, PropCollision.FitBox)
                      ?? PlaceMeshyProp(container, "BoulderCluster", pos, ry, sz, groundLayer, PropCollision.FitBox)
                      ?? PlaceMeshyProp(container, "MossBoulder", pos, ry, sz, groundLayer, PropCollision.FitBox);
-                if (r != null)
-                    r.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 40f, ry, (float)(rng.NextDouble() - 0.5) * 40f) * r.transform.rotation;
+                if (r != null)   // gentle tilt only - big tilts read as a chaotic pile, not a cliff
+                    r.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 12f, ry, (float)(rng.NextDouble() - 0.5) * 12f) * r.transform.rotation;
                 if (r == null)
                 {
                     var c = Cube(label, pos, Vector3.one * sz, rockMat, container);
@@ -1968,10 +2011,10 @@ namespace AldenFall.Editor
                 for (int cl = 0; cl <= cols; cl++)     // packed backing wall BEHIND the water sheet
                 {
                     float fx = cl / (float)cols - 0.5f;
-                    Vector3 p = lipC + right * (fx * width * 1.15f)
-                              + intoMtn * (2.2f + (float)rng.NextDouble() * 1.6f)
-                              + Vector3.up * ((float)(rng.NextDouble() - 0.5f) * bSize * 0.4f);
-                    Rock($"Face{rw}_{cl}", p, bSize * (0.9f + (float)rng.NextDouble() * 0.5f));
+                    Vector3 p = lipC + right * (fx * width * 1.1f)
+                              + intoMtn * (2.2f + (float)rng.NextDouble() * 0.8f)
+                              + Vector3.up * ((float)(rng.NextDouble() - 0.5f) * bSize * 0.15f);
+                    Rock($"Face{rw}_{cl}", p, bSize * (0.95f + (float)rng.NextDouble() * 0.3f));
                 }
                 Rock($"ShL{rw}", lipC - right * (width * 0.72f) + intoMtn * 0.5f, bSize * 1.05f);   // bank shoulders
                 Rock($"ShR{rw}", lipC + right * (width * 0.72f) + intoMtn * 0.5f, bSize * 1.05f);
@@ -2112,7 +2155,7 @@ namespace AldenFall.Editor
                 float yaw = Mathf.Atan2(dirIn.x, dirIn.z) * Mathf.Rad2Deg + 180f;
                 // Tall sheet pouring down the rocky mountainside from a notch high up, into the
                 // carved gorge (river bed ~-3). Base at the gorge, rising up the cliff.
-                BuildWaterfall(container, source + Vector3.up * (-3f), 24f, RiverHalfWidths[r] * 2f + 2f, yaw, waterMat, groundLayer);
+                BuildWaterfall(container, source + Vector3.up * (-3f), 22f, RiverHalfWidths[r] * 3.0f, yaw, waterMat, groundLayer);
             }
 
             // Ambient fish in the two biggest reaches.
