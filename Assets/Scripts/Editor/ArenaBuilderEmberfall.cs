@@ -735,8 +735,8 @@ namespace AldenFall.Editor
                 if (Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) + 4f) continue;
                 string f = rng.NextDouble() < 0.6 ? "Fern" : "ForestBush";
                 if (PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
-                        0.9f + (float)rng.NextDouble() * 1.3f, groundLayer, PropCollision.None) == null)
-                    PlaceMeshyProp(container, "ForestBush", new Vector3(x, 0f, z), 0f, 1.0f, groundLayer, PropCollision.None);
+                        0.55f + (float)rng.NextDouble() * 0.7f, groundLayer, PropCollision.None) == null)
+                    PlaceMeshyProp(container, "ForestBush", new Vector3(x, 0f, z), 0f, 0.8f, groundLayer, PropCollision.None);
             }
 
             // Wildflowers in the sunlit meadows / glade / lakeside.
@@ -748,7 +748,7 @@ namespace AldenFall.Editor
                 if (ring < 60f || ring > 244f || Blocked(x, z)) continue;
                 if (SootAmount(x, z) > 0.25f) continue;
                 PlaceMeshyProp(container, "Wildflowers", new Vector3(x, 0f, z),
-                    (float)rng.NextDouble() * 360f, 0.7f + (float)rng.NextDouble() * 0.9f, groundLayer, PropCollision.None);
+                    (float)rng.NextDouble() * 360f, 0.45f + (float)rng.NextDouble() * 0.5f, groundLayer, PropCollision.None);
             }
 
             // Reeds hugging the organic lake shore (water-edge foliage).
