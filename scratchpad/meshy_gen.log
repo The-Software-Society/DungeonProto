@@ -332,3 +332,116 @@
     [Reeds preview] IN_PROGRESS 72%
     [Reeds preview] IN_PROGRESS 99%
     [Reeds preview] SUCCEEDED 100%
+  [Reeds refine] creating task...
+    [Reeds refine] IN_PROGRESS 0%
+!! prop Reeds FAILED: Reeds refine FAILED: {"type": "service_unavailable", "message": "The generation service is temporarily unavailable. Please retry."}
+
+=== PROP: Wildflowers ===
+  [Wildflowers preview] creating task...
+    [Wildflowers preview] IN_PROGRESS 18%
+    [Wildflowers preview] IN_PROGRESS 45%
+    [Wildflowers preview] IN_PROGRESS 72%
+    [Wildflowers preview] IN_PROGRESS 99%
+    [Wildflowers preview] SUCCEEDED 100%
+  [Wildflowers refine] creating task...
+    [Wildflowers refine] IN_PROGRESS 0%
+    [Wildflowers refine] IN_PROGRESS 5%
+    [Wildflowers refine] IN_PROGRESS 40%
+    [Wildflowers refine] IN_PROGRESS 45%
+    [Wildflowers refine] IN_PROGRESS 55%
+    [Wildflowers refine] IN_PROGRESS 78%
+    [Wildflowers refine] IN_PROGRESS 90%
+    [Wildflowers refine] IN_PROGRESS 99%
+!! prop Wildflowers FAILED: Wildflowers refine FAILED: {"type": "server_error", "message": "The generated model could not be finalized. Please retry."}
+
+=== PROP: PebblePatch ===
+  [PebblePatch preview] creating task...
+    [PebblePatch preview] IN_PROGRESS 10%
+    [PebblePatch preview] IN_PROGRESS 45%
+    [PebblePatch preview] IN_PROGRESS 72%
+    [PebblePatch preview] IN_PROGRESS 99%
+    [PebblePatch preview] SUCCEEDED 100%
+  [PebblePatch refine] creating task...
+    [PebblePatch refine] IN_PROGRESS 0%
+    [PebblePatch refine] IN_PROGRESS 5%
+    [PebblePatch refine] IN_PROGRESS 40%
+    [PebblePatch refine] IN_PROGRESS 45%
+    [PebblePatch refine] IN_PROGRESS 55%
+    [PebblePatch refine] IN_PROGRESS 78%
+    [PebblePatch refine] IN_PROGRESS 90%
+    [PebblePatch refine] IN_PROGRESS 99%
+    [PebblePatch refine] SUCCEEDED 100%
+    downloading Assets/Models/Props/PebblePatch.fbx
+    downloading Assets/Models/Props/PebblePatch.glb
+    downloading Assets/Models/Props/PebblePatch_thumb.png
+
+=== PROP: ThatchRoofSection ===
+  [ThatchRoofSection preview] creating task...
+    [ThatchRoofSection preview] IN_PROGRESS 10%
+    [ThatchRoofSection preview] IN_PROGRESS 45%
+    [ThatchRoofSection preview] IN_PROGRESS 72%
+    [ThatchRoofSection preview] IN_PROGRESS 99%
+    [ThatchRoofSection preview] SUCCEEDED 100%
+  [ThatchRoofSection refine] creating task...
+    [ThatchRoofSection refine] PENDING 0%
+    [ThatchRoofSection refine] IN_PROGRESS 5%
+    [ThatchRoofSection refine] IN_PROGRESS 40%
+    [ThatchRoofSection refine] IN_PROGRESS 45%
+    [ThatchRoofSection refine] IN_PROGRESS 55%
+    [ThatchRoofSection refine] IN_PROGRESS 78%
+    [ThatchRoofSection refine] IN_PROGRESS 90%
+    [ThatchRoofSection refine] IN_PROGRESS 99%
+!! prop ThatchRoofSection FAILED: ThatchRoofSection refine FAILED: {"type": "server_error", "message": "The generated model could not be finalized. Please retry."}
+
+=== PROP: WoodShingleRoof ===
+  [WoodShingleRoof preview] creating task...
+    [WoodShingleRoof preview] IN_PROGRESS 0%
+    [WoodShingleRoof preview] IN_PROGRESS 45%
+    [WoodShingleRoof preview] IN_PROGRESS 72%
+    [WoodShingleRoof preview] IN_PROGRESS 99%
+    [WoodShingleRoof preview] SUCCEEDED 100%
+  [WoodShingleRoof refine] creating task...
+    [WoodShingleRoof refine] IN_PROGRESS 0%
+    [WoodShingleRoof refine] IN_PROGRESS 5%
+    [WoodShingleRoof refine] IN_PROGRESS 40%
+    [WoodShingleRoof refine] IN_PROGRESS 45%
+    [WoodShingleRoof refine] IN_PROGRESS 55%
+    [WoodShingleRoof refine] IN_PROGRESS 75%
+    [WoodShingleRoof refine] IN_PROGRESS 78%
+    [WoodShingleRoof refine] IN_PROGRESS 90%
+    [WoodShingleRoof refine] IN_PROGRESS 99%
+    [WoodShingleRoof refine] SUCCEEDED 100%
+    downloading Assets/Models/Props/WoodShingleRoof.fbx
+    downloading Assets/Models/Props/WoodShingleRoof.glb
+    downloading Assets/Models/Props/WoodShingleRoof_thumb.png
+
+FAILURES:
+  - prop TownHall: TownHall refine (no PBR) FAILED: {"type": "timeout", "code": "timeout", "message": "Your request took too long to process. Please retry. If this persists, try simplifying your input.", "doc_url": "https://docs.meshy.ai/en/api/errors#timeout"}
+  - prop TreasureChest: GET /openapi/v2/text-to-3d/019f261f-f4fc-73e1-ae33-fdb5040f15e6 -> HTTP 404: {"message":"Task not found"}
+  - prop MarketStall: GET /openapi/v2/text-to-3d/019f2626-2bf8-7f25-9101-daa61364055b -> HTTP 404: {"message":"Task not found"}
+  - prop Statue: GET /openapi/v2/text-to-3d/019f2631-9889-7863-b7c1-8cde9db7e2e0 -> HTTP 404: {"message":"Task not found"}
+  - prop WellFountain: GET /openapi/v2/text-to-3d/019f2637-f759-7710-945b-b1f412d6404d -> HTTP 404: {"message":"Task not found"}
+  - prop KnightSword: GET /openapi/v2/text-to-3d/019f2688-0385-7131-a2c2-e43f46f65138 -> HTTP 404: {"message":"Task not found"}
+  - prop RaiderSaber: GET /openapi/v2/text-to-3d/019f2689-f632-7329-8b0d-90ba7d99ab1b -> HTTP 404: {"message":"Task not found"}
+  - prop IronChestplate: GET /openapi/v2/text-to-3d/019f268b-e943-7381-bade-ea77c03044ad -> HTTP 404: {"message":"Task not found"}
+  - prop Emberfang: GET /openapi/v2/text-to-3d/019f2692-48c9-7cb1-89ce-f6d98c798033 -> HTTP 404: {"message":"Task not found"}
+  - prop RustySword: GET /openapi/v2/text-to-3d/019f26ae-bcfe-74d7-b566-d7214580f6db -> HTTP 404: {"message":"Task not found"}
+  - prop IronHelm: GET /openapi/v2/text-to-3d/019f26b2-266d-7ebd-aa72-85f8b5e4ca72 -> HTTP 404: {"message":"Task not found"}
+  - prop LeatherCap: GET /openapi/v2/text-to-3d/019f26b7-6afd-7f8b-a03f-28932cac972a -> HTTP 404: {"message":"Task not found"}
+  - prop IronLegs: GET /openapi/v2/text-to-3d/019f26bc-5cc5-7754-99b5-473280dbce3f -> HTTP 404: {"message":"Task not found"}
+  - prop BanditCape: GET /openapi/v2/text-to-3d/019f26c3-fc9f-71d1-ad75-cad5820fcfac -> HTTP 404: {"message":"Task not found"}
+  - prop FishingPole: GET /openapi/v2/text-to-3d/019f2e46-09d9-74b5-a835-fc159b80ac9b -> HTTP 404: {"message":"Task not found"}
+  - prop Fish: GET /openapi/v2/text-to-3d/019f2e48-c78d-7642-8973-707744c5580a -> HTTP 404: {"message":"Task not found"}
+  - prop Campfire: GET /openapi/v2/text-to-3d/019f2e4b-ff9c-7718-b3ad-e54d6e8a8ebf -> HTTP 404: {"message":"Task not found"}
+  - prop MagicFocus: GET /openapi/v2/text-to-3d/019f2e50-c9e5-77c3-9bb8-de7ae2579fc6 -> HTTP 404: {"message":"Task not found"}
+  - prop HairShort: GET /openapi/v2/text-to-3d/019f33d9-f17b-74aa-803b-3bec2abeb5b7 -> HTTP 404: {"message":"Task not found"}
+  - prop HairLong: GET /openapi/v2/text-to-3d/019f33e2-e567-7948-84f3-ad1aed58a5e2 -> HTTP 404: {"message":"Task not found"}
+  - prop HairPonytail: GET /openapi/v2/text-to-3d/019f33f0-22f5-7bfe-90f8-8ab36c8c6392 -> HTTP 404: {"message":"Task not found"}
+  - prop PineTree: GET /openapi/v2/text-to-3d/019f39fe-f44d-7114-a883-7ae8d42150eb -> HTTP 404: {"message":"Task not found"}
+  - prop GrassSquare: GET /openapi/v2/text-to-3d/019f3a08-17c7-723e-b7c6-30244ff6a844 -> HTTP 404: {"message":"Task not found"}
+  - prop DungeonPillar: GET /openapi/v2/text-to-3d/019f39ec-1adb-7d90-bffb-d9951fe56e72 -> HTTP 404: {"message":"Task not found"}
+  - prop DungeonChest: GET /openapi/v2/text-to-3d/019f39ef-c4b1-7e8e-98c6-548c1cab9602 -> HTTP 404: {"message":"Task not found"}
+  - prop Fern: Fern refine (no PBR) FAILED: {"type": "timeout", "code": "timeout", "message": "Your request took too long to process. Please retry. If this persists, try simplifying your input.", "doc_url": "https://docs.meshy.ai/en/api/errors#timeout"}
+  - prop Reeds: Reeds refine FAILED: {"type": "service_unavailable", "message": "The generation service is temporarily unavailable. Please retry."}
+  - prop Wildflowers: Wildflowers refine FAILED: {"type": "server_error", "message": "The generated model could not be finalized. Please retry."}
+  - prop ThatchRoofSection: ThatchRoofSection refine FAILED: {"type": "server_error", "message": "The generated model could not be finalized. Please retry."}

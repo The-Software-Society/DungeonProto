@@ -80,6 +80,7 @@ namespace AldenFall.Editor
             BuildEmberOrcWarcamp(root, groundLayer);
             BuildEmberApproach(root, groundLayer);
             BuildEmberfallVolcano(root, groundLayer);
+            BuildMountainRange(root, groundLayer);     // real mountain-mesh border (when assets exist)
             BuildAldricGlade(root, groundLayer);       // player spawn + hermit mentor (N of city)
             BuildEmberfallSystems(root, groundLayer);
             BuildGlobalSafety(root, groundLayer);      // mountain ring + underfill + catch floor
@@ -99,6 +100,12 @@ namespace AldenFall.Editor
 
         private static bool InApproachFootprint(float x, float z)
             => z <= ApproachNorthZ + 2f && z >= ApproachSouthZ && Mathf.Abs(x) <= ApproachHalfW;
+
+        /// <summary>True if a Meshy prop fbx has been generated + imported. Lets new mesh-based
+        /// features (mountain range, volcano) auto-activate the moment their asset lands, while
+        /// falling back to the old geometry until then.</summary>
+        private static bool HasMesh(string name)
+            => AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Models/Props/{name}.fbx") != null;
 
         // Distance from (x,z) to the R3 canal centreline (used to open cobbles + skip props
         // over the manmade canal where it threads the city).
@@ -240,6 +247,12 @@ namespace AldenFall.Editor
 
             // ---- Heights: flat base + gentle low-frequency noise in the wild ring;
             // carved bowls for the lake + feeder river; recessed city pad. ----
+            // When real mountain MESHES exist, the terrain only needs a low steep boundary berm
+            // (the meshes are the visible range); otherwise fall back to the tall rising-terrain
+            // mountains. Computed once (AssetDatabase lookups are not per-texel cheap).
+            bool meshMountains = HasMesh("MountainRidge") || HasMesh("MountainPeak");
+            float mtnReach = meshMountains ? 48f : 160f;
+            float mtnHeight = meshMountains ? 34f : 130f;
             var heights = new float[hmRes, hmRes];
             for (int iz = 0; iz < hmRes; iz++)
             {
@@ -277,10 +290,10 @@ namespace AldenFall.Editor
                     float edge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
                                            Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
                     bool southCorridor = Mathf.Abs(wx) < ApproachHalfW + 24f && wz < -90f;
-                    if (!InCityFootprint(wx, wz) && !southCorridor && edge < 160f)
+                    if (!InCityFootprint(wx, wz) && !southCorridor && edge < mtnReach)
                     {
-                        float m = 1f - edge / 160f;                 // 0 inner -> 1 at the edge
-                        h = Mathf.Max(h, m * m * 130f);             // steep tall mountains up to ~70m
+                        float m = 1f - edge / mtnReach;             // 0 inner -> 1 at the edge
+                        h = Mathf.Max(h, m * m * mtnHeight);        // tall rising terrain, or a low berm under the mesh range
                     }
 
                     // LAKE: a natural round basin carved into the terrain (deep centre -> shore),
@@ -2166,6 +2179,51 @@ namespace AldenFall.Editor
 
         // ==================== VOLCANO (dungeon) ====================
 
+        /// <summary>Real mountain-mesh border enclosing the valley (ref: rocky ranges), replacing
+        /// the old rising-terrain "landfill hills". Ridges/peaks ring the world edge facing inward,
+        /// with forested foothills transitioning down to the valley. The south ember corridor is
+        /// left open for the volcano. No-op until the mountain meshes are generated.</summary>
+        private static void BuildMountainRange(Transform root, int groundLayer)
+        {
+            if (!HasMesh("MountainRidge") && !HasMesh("MountainPeak")) return;
+            var container = Child(root, "MountainRange");
+            const float xMin = -450f, xMax = 450f, zMin = -470f, zMax = 570f;
+            var center = new Vector2(0f, 50f);
+            string[] peaks = { "MountainRidge", "MountainPeak", "MountainRidge" };
+            int pk = 0;
+
+            void Place(float x, float z, bool corridor)
+            {
+                if (corridor) return;
+                string peak = peaks[pk++ % peaks.Length];
+                if (!HasMesh(peak)) peak = HasMesh("MountainRidge") ? "MountainRidge" : "MountainPeak";
+                float yaw = Mathf.Atan2(center.x - x, center.y - z) * Mathf.Rad2Deg;   // face the valley
+                float scale = 140f + (float)rng.NextDouble() * 80f;
+                PlaceMeshyProp(container, peak, new Vector3(x, -6f, z),
+                    yaw + (float)(rng.NextDouble() - 0.5) * 26f, scale, groundLayer, PropCollision.FitBox);
+                if (HasMesh("ForestFoothill"))
+                {
+                    Vector2 toC = (center - new Vector2(x, z)).normalized;
+                    PlaceMeshyProp(container, "ForestFoothill",
+                        new Vector3(x + toC.x * 42f, 0f, z + toC.y * 42f),
+                        yaw + (float)(rng.NextDouble() - 0.5) * 40f, 34f + (float)rng.NextDouble() * 26f,
+                        groundLayer, PropCollision.None);
+                }
+            }
+
+            const float step = 80f;
+            for (float x = xMin + 24f; x <= xMax - 24f; x += step)
+            {
+                Place(x, zMax - 22f, false);                                   // north edge
+                Place(x, zMin + 22f, Mathf.Abs(x) < ApproachHalfW + 55f);      // south edge (open the volcano corridor)
+            }
+            for (float z = zMin + 24f + step * 0.5f; z <= zMax - 24f; z += step)
+            {
+                Place(xMax - 22f, z, false);                                   // east edge
+                Place(xMin + 22f, z, false);                                   // west edge
+            }
+        }
+
         private static void BuildEmberfallVolcano(Transform root, int groundLayer)
         {
             var container = Child(root, "EmberfallVolcano");
@@ -2185,12 +2243,27 @@ namespace AldenFall.Editor
                 r.isStatic = true;
                 if (groundLayer >= 0) r.layer = groundLayer;
             }
+            // Real volcano MESH (dormant + erupting phases) when generated; otherwise the cube
+            // cone below. Both phase meshes are placed under VolcanoVisual - dormant active,
+            // erupting hidden - so the eruption world-state can swap them (montage toggles too).
+            bool meshVolcano = HasMesh("VolcanoDormant");
+            if (meshVolcano)
+            {
+                var vis = Child(container, "VolcanoVisual");
+                var dormant = PlaceMeshyProp(vis, "VolcanoDormant", cone, 0f, 210f, groundLayer, PropCollision.FitBox);
+                if (dormant != null) dormant.name = "VolcanoDormant";
+                if (HasMesh("VolcanoErupting"))
+                {
+                    var erupt = PlaceMeshyProp(vis, "VolcanoErupting", cone, 0f, 210f, groundLayer, PropCollision.None);
+                    if (erupt != null) { erupt.name = "VolcanoErupting"; erupt.SetActive(false); }
+                }
+            }
+
             // ---- Cone: stacked tapering rings of INWARD-TILTED rock slabs, from a wide base
-            // up to the crater lip. The tilt turns each slab's outer face into a sloped cone
-            // surface, so the silhouette reads as a mountain instead of a wall of vertical boxes
-            // (Jon: "volcano still is blocks... doesn't look like a volcano at all"). The
-            // north-facing arc is kept low + open for the entrance mouth. ----
+            // up to the crater lip (fallback when no volcano mesh exists yet). ----
             const int rings = 6;
+            if (!meshVolcano)
+            {
             for (int t = 0; t < rings; t++)
             {
                 float f = t / (float)(rings - 1);                       // 0 base -> 1 crater lip
@@ -2221,6 +2294,7 @@ namespace AldenFall.Editor
             // A couple of taller jagged spires on the south rim for a broken-caldera silhouette.
             Rock("ConeSpireW", cone + new Vector3(-30f, 40f, -34f), new Vector3(16f, 46f, 16f), -18f, rockDark);
             Rock("ConeSpireE", cone + new Vector3(34f, 36f, -30f), new Vector3(14f, 40f, 14f), 22f, rockDark);
+            }   // end !meshVolcano cube cone
 
             // ---- Crater: emissive glow ring + light + smoke/ember plume, visible from
             // the whole valley (the "ember-fall" is always on the horizon). ----
