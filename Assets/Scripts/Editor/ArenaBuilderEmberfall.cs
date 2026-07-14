@@ -675,6 +675,77 @@ namespace AldenFall.Editor
 
             // Scattered trees fill the lush ring (dense forest, not a lawn).
             ScatterForestTrees(container, groundLayer);
+            // Ground ecosystem so open fields aren't barren: rocks, ferns/bushes, wildflowers,
+            // lakeside reeds (real Meshy meshes; each populates once its fbx lands).
+            ScatterGroundDetail(container, groundLayer);
+        }
+
+        /// <summary>Ground-level ecosystem detail: scattered boulders, forest undergrowth (ferns +
+        /// bushes), meadow wildflowers, and reeds hugging the lake shore. All real Meshy meshes,
+        /// snapped to terrain; a missing fbx just means fewer of that kind (no cube fallback).</summary>
+        private static void ScatterGroundDetail(Transform container, int groundLayer)
+        {
+            bool Blocked(float x, float z)
+            {
+                if (InCityFootprint(x, z) || InApproachFootprint(x, z)) return true;
+                if (InLakeWater(x, z) || InFeederRiver(x, z) || InAnyRiver(x, z)) return true;
+                if (Mathf.Abs(x) < 10f && z > -66f && z < 214f) return true;              // road
+                if (DistToCityCanal(x, z) < 10f) return true;
+                return false;
+            }
+
+            // Boulders / mossy rocks across the valley (rocky ecosystem + replaces stray grey cubes).
+            for (int i = 0; i < 60; i++)
+            {
+                float x = Mathf.Lerp(-244f, 244f, (float)rng.NextDouble());
+                float z = Mathf.Lerp(-50f, 244f, (float)rng.NextDouble());
+                float ring = Mathf.Sqrt(x * x + z * z);
+                if (ring < 60f || ring > 246f || Blocked(x, z)) continue;
+                if (Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) + 5f) continue;
+                string rock = new[] { "BoulderCluster", "MossBoulder", "MossyRock" }[rng.Next(3)];
+                PlaceMeshyProp(container, rock, new Vector3(x, 0f, z),
+                    (float)rng.NextDouble() * 360f, 1.6f + (float)rng.NextDouble() * 3.6f, groundLayer, PropCollision.FitBox);
+            }
+
+            // Ferns + bushes as forest undergrowth (lush ring, away from the volcano soot).
+            for (int i = 0; i < 300; i++)
+            {
+                float x = Mathf.Lerp(-244f, 244f, (float)rng.NextDouble());
+                float z = Mathf.Lerp(-50f, 244f, (float)rng.NextDouble());
+                float ring = Mathf.Sqrt(x * x + z * z);
+                if (ring < 60f || ring > 246f || Blocked(x, z)) continue;
+                if (SootAmount(x, z) > 0.5f) continue;
+                if (Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) + 4f) continue;
+                string f = rng.NextDouble() < 0.6 ? "Fern" : "ForestBush";
+                if (PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
+                        0.9f + (float)rng.NextDouble() * 1.3f, groundLayer, PropCollision.None) == null)
+                    PlaceMeshyProp(container, "ForestBush", new Vector3(x, 0f, z), 0f, 1.0f, groundLayer, PropCollision.None);
+            }
+
+            // Wildflowers in the sunlit meadows / glade / lakeside.
+            for (int i = 0; i < 130; i++)
+            {
+                float x = Mathf.Lerp(-200f, 200f, (float)rng.NextDouble());
+                float z = Mathf.Lerp(-20f, 244f, (float)rng.NextDouble());
+                float ring = Mathf.Sqrt(x * x + z * z);
+                if (ring < 60f || ring > 244f || Blocked(x, z)) continue;
+                if (SootAmount(x, z) > 0.25f) continue;
+                PlaceMeshyProp(container, "Wildflowers", new Vector3(x, 0f, z),
+                    (float)rng.NextDouble() * 360f, 0.7f + (float)rng.NextDouble() * 0.9f, groundLayer, PropCollision.None);
+            }
+
+            // Reeds hugging the organic lake shore (water-edge foliage).
+            for (int i = 0; i < 150; i++)
+            {
+                float ang = (float)rng.NextDouble() * Mathf.PI * 2f;
+                Vector2 dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
+                float le = LakeEdge(LakeCenter.x + dir.x * LakeHalf, LakeCenter.z + dir.y * LakeHalf);
+                float r = le + 0.5f + (float)rng.NextDouble() * 4f;
+                float x = LakeCenter.x + dir.x * r, z = LakeCenter.z + dir.y * r;
+                if (Blocked(x, z)) continue;
+                PlaceMeshyProp(container, "Reeds", new Vector3(x, 0f, z),
+                    (float)rng.NextDouble() * 360f, 1.1f + (float)rng.NextDouble() * 1.1f, groundLayer, PropCollision.None);
+            }
         }
 
         private static void ScatterForestTrees(Transform container, int groundLayer)
@@ -709,6 +780,10 @@ namespace AldenFall.Editor
                 if (InCityFootprint(x, z) || InApproachFootprint(x, z)) continue;
                 if (InLakeWater(x, z) || InFeederRiver(x, z)) continue;
                 if (Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) + 10f) continue; // lake shore stays open
+                // Keep roads + rivers/canal CLEAR (Jon: trees were growing on the road - lost the
+                // intentional placement). Trees line the road but never block it.
+                if (Mathf.Abs(x) < 11f && z > -66f && z < 214f) continue;        // N-S dirt road
+                if (InAnyRiver(x, z) || DistToCityCanal(x, z) < 12f) continue;   // river beds + city canal
 
                 bool blocked = false;
                 foreach (var c in keepClear)

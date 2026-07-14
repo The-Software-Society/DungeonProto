@@ -341,6 +341,15 @@ PROPS = {
     "PebblePatch": "flat scattering of small round pebbles and gravel stones on bare dirt ground, stylized low-poly game ground prop",
     "ThatchRoofSection": "section of golden thatched straw roof, sloped rectangular panel, stylized low-poly game building roof part",
     "WoodShingleRoof": "section of weathered wooden shingle roof, sloped rectangular panel, stylized low-poly game building roof part",
+
+    # === Real mountain range + 2-phase volcano (replace the 'landfill hill' rising terrain
+    # with actual mesh assets forming the world border; ref: rocky ranges + Iceland volcanoes). ===
+    "MountainPeak": "single large rugged rocky mountain peak, tall and steep with jagged grey and brown stone cliffs, sheer rock faces, a few white snow patches near the summit, stylized low-poly game environment mountain, single standalone asset",
+    "MountainRidge": "wide rocky mountain ridge with several jagged stone peaks in a row, grey and brown weathered rock, sparse snow, steep faces, stylized low-poly game environment mountain range backdrop section",
+    "ForestFoothill": "green forested foothill, a gentle hill covered in pine trees and grass with grey rocky outcrops near the top, transition from valley to mountains, stylized low-poly game environment, single asset",
+    "VolcanoDormant": "large dormant stratovolcano mountain, tall steep symmetrical cone of dark grey and brown volcanic rock with a wide crater at the summit, patches of green vegetation and pine on the lower slopes, bare rocky upper slopes, stylized low-poly game environment, single standalone asset",
+    "VolcanoErupting": "large erupting stratovolcano mountain, tall steep cone of black volcanic rock with bright glowing orange lava flows streaming down the sides, a fiery glowing crater with rising smoke, charred slopes, stylized low-poly game environment, single standalone asset",
+    "LavaRockGround": "chunk of cracked black volcanic basalt ground with bright glowing orange molten lava seams running through it, rugged rocky surface, stylized low-poly game environment ground piece",
 }
 
 # ---------------------------------------------------------------------------

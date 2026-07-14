@@ -165,6 +165,37 @@ namespace AldenFall.Editor
             Debug.Log($"SCENE has {Object.FindObjectsOfType<Terrain>().Length} terrain(s); WorldWater present: {GameObject.Find("WorldWater") != null}; Lake_Surface: {GameObject.Find("Lake_Surface") != null}");
         }
 
+        /// <summary>Drop mob VISUAL prefabs at the camps + wander spots so the montage shows a
+        /// living world (real mobs are server-spawned at runtime and absent from the static scene).
+        /// Scene is never saved, so these are montage-only.</summary>
+        private static void PopulateMobVisuals()
+        {
+            var terrain = Object.FindObjectOfType<Terrain>();
+            float GroundY(float x, float z) => terrain != null ? terrain.SampleHeight(new Vector3(x, 0f, z)) + terrain.transform.position.y : 0f;
+            void Drop(string prefab, float x, float z, int n, float spread)
+            {
+                var asset = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Prefabs/Generated/{prefab}.prefab");
+                if (asset == null) return;
+                for (int i = 0; i < n; i++)
+                {
+                    // Deterministic scatter (no Random in batch QA): golden-angle ring.
+                    float a = i * 2.399963f, rr = spread * (0.3f + 0.7f * (i / (float)Mathf.Max(1, n)));
+                    float px = x + Mathf.Cos(a) * rr, pz = z + Mathf.Sin(a) * rr;
+                    var go = (GameObject)PrefabUtility.InstantiatePrefab(asset);
+                    go.transform.position = new Vector3(px, GroundY(px, pz), pz);
+                    go.transform.rotation = Quaternion.Euler(0f, a * 57.29578f, 0f);
+                }
+            }
+            Drop("GoblinVisual", -195f, 0f, 5, 14f);      // goblin camp W
+            Drop("BanditVisual", 195f, 0f, 5, 14f);       // bandit camp E
+            Drop("OrcBruteVisual", -110f, -120f, 3, 12f); // orc warcamp SW
+            Drop("GoblinVisual", -110f, -120f, 2, 16f);
+            Drop("EmberAcolyteVisual", 0f, -210f, 4, 20f);// ember approach toward the volcano
+            Drop("GoblinVisual", -150f, 120f, 3, 30f);    // wandering the west woods
+            Drop("BanditVisual", 120f, 150f, 2, 24f);     // wandering NE
+            Drop("GoblinVisual", 60f, -30f, 2, 18f);      // near the south gate
+        }
+
         private static void Run((string name, Vector3 pos, Vector3 lookAt)[] shots)
         {
             string outDir = "Screenshots";
@@ -174,6 +205,7 @@ namespace AldenFall.Editor
             Directory.CreateDirectory(outDir);
 
             EditorSceneManager.OpenScene("Assets/Scenes/EmberfallDemo.unity");
+            PopulateMobVisuals();   // mobs spawn at runtime, so drop visuals for the montage (scene not saved)
 
             var camObj = new GameObject("QA_Camera");
             var cam = camObj.AddComponent<Camera>();
