@@ -430,11 +430,11 @@ namespace AldenFall.Editor
                                 + Mathf.PerlinNoise(wx * 0.09f + 3.3f, wz * 0.09f + 8.8f) * 0.35f;
                     if (wearD > 0.74f) continue;
 
-                    // Dense carpet: near-full coverage so bare ground almost never shows, with only
-                    // small thin speckles for variation.
+                    // Near-full coverage so the bright bare splat never shows as fake water; only
+                    // the strong-wear dirt spots above stay bare (and those read as brown dirt).
                     float clump = Mathf.PerlinNoise(wx * 0.055f + 7.7f, wz * 0.055f + 3.1f);
-                    if (clump < 0.12f) continue;
-                    density[iz, ix] = clump > 0.5f ? 18 : 11;
+                    if (clump < 0.05f) continue;
+                    density[iz, ix] = clump > 0.45f ? 18 : 12;
                 }
             }
             data.SetDetailLayer(0, 0, 0, density);

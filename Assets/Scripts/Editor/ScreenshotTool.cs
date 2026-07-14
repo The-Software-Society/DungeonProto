@@ -52,17 +52,17 @@ namespace AldenFall.Editor
         /// Ordered as a walk from spawn -> lake -> mountains -> rivers -> city -> volcano.</summary>
         public static void CaptureTour() => Run(new (string, Vector3, Vector3)[]
         {
-            ("01_spawn_shore",   new Vector3(0f, 4f, 182f),    new Vector3(0f, 5f, 300f)),
-            ("02_lake_vista",    new Vector3(-70f, 12f, 210f), new Vector3(30f, 3f, 320f)),
+            ("01_spawn_shore",   new Vector3(0f, 13f, 150f),   new Vector3(0f, 0f, 240f)),
+            ("02_lake_vista",    new Vector3(-70f, 22f, 195f), new Vector3(30f, 0f, 320f)),
             ("03_mountain_range",new Vector3(0f, 30f, 330f),   new Vector3(0f, 60f, 520f)),
-            ("04_north_waterfall",new Vector3(40f, 18f, 430f), new Vector3(0f, 12f, 486f)),
-            ("05_connecting_river",new Vector3(190f, 16f, 350f),new Vector3(90f, 2f, 360f)),
-            ("06_river_to_city", new Vector3(60f, 10f, 70f),   new Vector3(-70f, 2f, 90f)),
-            ("07_city_river",    new Vector3(40f, 9f, 30f),    new Vector3(-60f, 1f, 55f)),
-            ("08_city",          new Vector3(90f, 22f, -70f),  new Vector3(0f, 2f, 10f)),
-            ("09_dirt_road",     new Vector3(22f, 7f, 95f),    new Vector3(0f, 1f, 175f)),
-            ("10_forest",        new Vector3(-150f, 10f, 250f),new Vector3(-150f, 3f, 320f)),
-            ("11_ember_approach",new Vector3(0f, 12f, -140f),  new Vector3(0f, 4f, -260f)),
+            ("04_north_waterfall",new Vector3(40f, 20f, 425f), new Vector3(0f, 6f, 486f)),
+            ("05_connecting_river",new Vector3(190f, 24f, 345f),new Vector3(90f, 0f, 360f)),
+            ("06_river_to_city", new Vector3(60f, 20f, 60f),   new Vector3(-70f, 0f, 90f)),
+            ("07_city_river",    new Vector3(40f, 16f, 22f),   new Vector3(-60f, 0f, 55f)),
+            ("08_city",          new Vector3(90f, 34f, -75f),  new Vector3(0f, 0f, 10f)),
+            ("09_dirt_road",     new Vector3(24f, 16f, 88f),   new Vector3(0f, 0f, 172f)),
+            ("10_forest",        new Vector3(-150f, 20f, 235f),new Vector3(-150f, 0f, 320f)),
+            ("11_ember_approach",new Vector3(0f, 16f, -135f),  new Vector3(0f, 2f, -260f)),
             ("12_volcano",       new Vector3(0f, 26f, -110f),  new Vector3(0f, 42f, -345f)),
         });
 
