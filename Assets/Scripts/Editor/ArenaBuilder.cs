@@ -1589,6 +1589,11 @@ namespace AldenFall.Editor
         // download — keyed by what the name reads as, so a bush is green, a stump
         // is wood-brown, a boulder is stone, a house is timber. Order matters:
         // "dead"/"stump" are checked before the generic "tree" so bare props stay brown.
+        // Props whose baked base-color texture is unusable (bad Meshy bake) and must
+        // be replaced with the flat fallback colour even though the texture exists.
+        private static readonly System.Collections.Generic.HashSet<string> BadBakedTexture =
+            new System.Collections.Generic.HashSet<string> { "ForestBush" };
+
         private static Color PropFallbackColor(string name)
         {
             string n = name.ToLowerInvariant();
@@ -1641,7 +1646,10 @@ namespace AldenFall.Editor
             // world looking right regardless of which Meshy textures actually landed.
             var propMat = MeshyCharacterImporter.BuildTexturedMaterial(
                 name, $"Assets/Models/Props/{name}_baseColor");
-            if (propMat == null)
+            // Some baked textures came back unusable (ForestBush's is a flat chroma-
+            // neon green that blooms into a glowing blob). For those, discard the
+            // texture and fall back to the plausible flat colour instead.
+            if (propMat == null || BadBakedTexture.Contains(name))
                 propMat = Mat($"PropFallback_{name}", PropFallbackColor(name), smoothness: 0.06f);
             foreach (var r in instance.GetComponentsInChildren<Renderer>())
                 r.sharedMaterial = propMat;

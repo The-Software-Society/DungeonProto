@@ -94,6 +94,19 @@ namespace AldenFall.Editor
             ("macro_E",  new Vector3(-420f, 300f, 120f),new Vector3(60f, 0f, 160f)),  // from the west
         });
 
+        /// <summary>This loop's targeted verify shots: waterfall straight-on, dark volcano,
+        /// charred approach cover, and the camp (bush/foothill fixes).</summary>
+        public static void CaptureLoop() => Run(new (string, Vector3, Vector3)[]
+        {
+            ("loop_fall_front", new Vector3(0f, 42f, 402f),   new Vector3(0f, 30f, 490f)),   // river-0 fall, pulled back + up
+            ("loop_fall_side",  new Vector3(70f, 40f, 410f),  new Vector3(-4f, 26f, 486f)),  // fall 3/4 angle
+            ("loop_fall_east",  new Vector3(200f, 40f, 388f), new Vector3(74f, 22f, 352f)),  // river-1 source fall
+            ("loop_volcano",    new Vector3(0f, 24f, -120f),  new Vector3(0f, 40f, -350f)),  // dormant volcano darkness
+            ("loop_approach",   new Vector3(0f, 10f, -150f),  new Vector3(0f, 3f, -280f)),   // charred ground cover
+            ("loop_approach_lo",new Vector3(-30f, 4f, -180f), new Vector3(20f, 2.5f, -260f)),// low grazing: does ground still read as water?
+            ("loop_camp",       new Vector3(-195f, 6f, 40f),  new Vector3(-190f, 2f, -6f)),   // camp: bushes + foothill behind
+        });
+
         public static void CheckMesh()
         {
             foreach (var p in new[] { "BoulderCluster", "MossBoulder", "MossyRock", "Fern", "Wildflowers", "Reeds", "PebblePatch", "ForestBush", "OakTree", "PineTree" })

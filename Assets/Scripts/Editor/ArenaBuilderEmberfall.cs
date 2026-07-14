@@ -391,6 +391,15 @@ namespace AldenFall.Editor
                         g *= Mathf.Clamp01(1f - southT * 1.9f);                            // green fades out going south
                         rk *= 1f - so;
                     }
+                    // The ember CORRIDOR itself is charred end-to-end: dark soot from the
+                    // south gate ramping to full at the volcano. Pale dirt here read as a
+                    // watery sheet at grazing angles (bare-bright-ground = fake water).
+                    if (Mathf.Abs(wx) < ApproachHalfW + 8f && wz < ApproachNorthZ)
+                    {
+                        float ct = Mathf.InverseLerp(ApproachNorthZ, ApproachSouthZ, wz);
+                        so = Mathf.Max(so, Mathf.Lerp(0.6f, 1f, ct));
+                        g = 0f; d *= 0.25f; rk = 0f;
+                    }
                     // (No random dirt patches in the meadow - they read as stray mud puddles. Dirt
                     // is intentional only: roads + the volcanic approach.)
                     if (shore) { s = 0.8f; g *= 0.2f; rk *= 0.2f; }                                                 // sand/mud shores
@@ -414,9 +423,13 @@ namespace AldenFall.Editor
             // Unity 6 defaults to COVERAGE scatter mode, where our 1-3 density values
             // (out of 255) render as effectively nothing — we author instance counts.
             data.SetDetailScatterMode(DetailScatterMode.InstanceCountMode);
+            // ONE shared tuft prefab for both detail layers - MakeGrassTuftPrefab rebuilds the
+            // same asset path each call, so calling it twice would invalidate the first
+            // prototype's reference. The layers differ only by their healthy/dry tint colours.
+            var tuftPrefab = MakeGrassTuftPrefab();
             var detail = new DetailPrototype
             {
-                prototype = MakeGrassTuftPrefab(),
+                prototype = tuftPrefab,
                 renderMode = DetailRenderMode.VertexLit,
                 healthyColor = new Color(0.26f, 0.42f, 0.17f),   // deeper, less uniform bright green
                 dryColor = new Color(0.46f, 0.44f, 0.22f),       // wider dry range for variation
@@ -427,7 +440,30 @@ namespace AldenFall.Editor
                 useInstancing = true,
                 usePrototypeMesh = true,
             };
-            data.detailPrototypes = new[] { detail };
+            // A SECOND detail layer of charred stubble for the sooty south. The ember approach
+            // is excluded from the green grass above, so its bare terrain washed pale (fake
+            // water) at grazing angles - dark vertical cover breaks that exactly as the meadow
+            // grass does elsewhere, and reads as scorched, ash-choked ground.
+            // Distinct dark-ash prefab: baked charred vertex colours + a warm ash material tint
+            // (mesh details ignore the prototype colours, so the look must live in the prefab).
+            var ashPrefab = MakeGrassTuftPrefab("AshTuft",
+                tuftDark: new Color(0.10f, 0.08f, 0.075f),
+                tuftLight: new Color(0.28f, 0.20f, 0.15f),
+                matTint: new Color(0.5f, 0.4f, 0.34f));
+            var charDetail = new DetailPrototype
+            {
+                prototype = ashPrefab,
+                renderMode = DetailRenderMode.VertexLit,
+                healthyColor = new Color(0.11f, 0.085f, 0.075f),  // charred black-brown stubble
+                dryColor = new Color(0.19f, 0.13f, 0.09f),        // ash-grey dry blades
+                minWidth = 0.6f, maxWidth = 1.3f,
+                minHeight = 0.3f, maxHeight = 0.7f,
+                noiseSeed = 91,
+                noiseSpread = 0.4f,
+                useInstancing = true,
+                usePrototypeMesh = true,
+            };
+            data.detailPrototypes = new[] { detail, charDetail };
 
             var density = new int[detailRes, detailRes];
             for (int iz = 0; iz < detailRes; iz++)
@@ -463,6 +499,35 @@ namespace AldenFall.Editor
                 }
             }
             data.SetDetailLayer(0, 0, 0, density);
+
+            // Charred stubble across the sooty south (approach + soot gradient), skipping water,
+            // the central road, and the very deepest lava-choked ground at the volcano rim.
+            var charDensity = new int[detailRes, detailRes];
+            for (int iz = 0; iz < detailRes; iz++)
+            {
+                for (int ix = 0; ix < detailRes; ix++)
+                {
+                    float wx = origin.x + ix / (float)(detailRes - 1) * sizeX;
+                    float wz = origin.z + iz / (float)(detailRes - 1) * sizeZ;
+
+                    if (InCityFootprint(wx, wz)) continue;
+                    if (InLakeWater(wx, wz) || InFeederRiver(wx, wz)) continue;
+                    if (Mathf.Abs(wx) < 8f && wz < ApproachNorthZ + 4f) continue;   // keep the ember road clear
+                    float dEdge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
+                                            Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
+                    if (dEdge < 82f) continue;                                       // no cover on the rock mountains
+
+                    float soot = SootAmount(wx, wz);
+                    bool corridor = InApproachFootprint(wx, wz);
+                    if (soot < 0.28f && !corridor) continue;                         // only the charred south
+                    if (soot > 0.94f) continue;                                      // bare molten rock at the rim
+
+                    float clump = Mathf.PerlinNoise(wx * 0.06f + 21.3f, wz * 0.06f + 9.4f);
+                    if (clump < 0.08f) continue;
+                    charDensity[iz, ix] = clump > 0.5f ? 14 : 9;
+                }
+            }
+            data.SetDetailLayer(0, 0, 1, charDensity);
 
             AssetDatabase.CreateAsset(data, $"{MaterialDir}/EmberfallTerrain.asset");
             // Re-apply the splat on the now asset-backed TerrainData: assigning terrainLayers
@@ -530,12 +595,18 @@ namespace AldenFall.Editor
         /// Two intersecting vertical quads, vertex-colored dark→light so the terrain
         /// detail tinting reads as depth. Saved under MaterialDir like the layers.
         /// </summary>
-        private static GameObject MakeGrassTuftPrefab()
+        private static GameObject MakeGrassTuftPrefab(string id = "GrassTuft",
+            Color? tuftDark = null, Color? tuftLight = null, Color? matTint = null)
         {
-            string prefabPath = $"{MaterialDir}/GrassTuft.prefab";
+            // Baked vertex colours + material tint define the look. Terrain MESH details ignore
+            // the DetailPrototype healthy/dry colours, so a charred variant needs its OWN prefab
+            // with dark vertex colours (not just a dark tint on the shared green one).
+            Color dark = tuftDark ?? new Color(0.16f, 0.3f, 0.12f);
+            Color light = tuftLight ?? new Color(0.4f, 0.62f, 0.24f);
+            string prefabPath = $"{MaterialDir}/{id}.prefab";
             // Always rebuild so the up-normal + alpha-grass-texture fixes take effect on regen.
             AssetDatabase.DeleteAsset(prefabPath);
-            AssetDatabase.DeleteAsset($"{MaterialDir}/GrassTuftMesh.asset");
+            AssetDatabase.DeleteAsset($"{MaterialDir}/{id}Mesh.asset");
 
             var mesh = new Mesh { name = "GrassTuftMesh" };
             var verts = new List<Vector3>();
@@ -551,8 +622,6 @@ namespace AldenFall.Editor
                 verts.Add(rot * new Vector3(-0.35f, 1f, 0f));
                 uvs.Add(new Vector2(0, 0)); uvs.Add(new Vector2(1, 0));
                 uvs.Add(new Vector2(1, 1)); uvs.Add(new Vector2(0, 1));
-                var dark = new Color(0.16f, 0.3f, 0.12f);
-                var light = new Color(0.4f, 0.62f, 0.24f);
                 cols.Add(dark); cols.Add(dark); cols.Add(light); cols.Add(light);
                 tris.AddRange(new[] { b, b + 2, b + 1, b, b + 3, b + 2,
                                       b, b + 1, b + 2, b, b + 2, b + 3 });   // double-sided
@@ -570,27 +639,28 @@ namespace AldenFall.Editor
             for (int i = 0; i < verts.Count; i++) upN.Add(Vector3.up);
             mesh.SetNormals(upN);
             mesh.RecalculateBounds();
-            AssetDatabase.CreateAsset(mesh, $"{MaterialDir}/GrassTuftMesh.asset");
+            AssetDatabase.CreateAsset(mesh, $"{MaterialDir}/{id}Mesh.asset");
 
             // Alpha-cut grass-blade texture (double-sided) so each quad reads as a fuzzy tuft,
             // not a solid green card. Falls back to a solid material if the texture is missing.
             var grassTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Ground/grass_tuft_alpha.png");
+            Color tint = matTint ?? Color.white;
             Material mat;
             if (grassTex != null)
             {
-                string mp = $"{MaterialDir}/GrassTuftDetail.mat";
+                string mp = $"{MaterialDir}/{id}Detail.mat";
                 AssetDatabase.DeleteAsset(mp);
                 mat = new Material(LitShader());
                 mat.SetTexture("_BaseMap", grassTex);
-                mat.SetColor("_BaseColor", Color.white);
+                mat.SetColor("_BaseColor", tint);
                 if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", 0.05f);
                 mat.SetFloat("_AlphaClip", 1f); mat.EnableKeyword("_ALPHATEST_ON"); mat.SetFloat("_Cutoff", 0.3f);
                 if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
                 AssetDatabase.CreateAsset(mat, mp);
             }
-            else mat = Mat("GrassTuft", new Color(0.3f, 0.5f, 0.2f), smoothness: 0.05f);
+            else mat = Mat($"{id}Mat", new Color(0.3f, 0.5f, 0.2f) * tint, smoothness: 0.05f);
 
-            var go = new GameObject("GrassTuft");
+            var go = new GameObject(id);
             var mf = go.AddComponent<MeshFilter>();
             mf.sharedMesh = mesh;
             var mr = go.AddComponent<MeshRenderer>();
@@ -1638,8 +1708,13 @@ namespace AldenFall.Editor
         /// <paramref name="height"/> above it.</summary>
         private static void BuildWaterfall(Transform container, Vector3 basePos, float height, float width, float yaw, Material waterMat, int groundLayer)
         {
-            var foamMat = Mat("WaterFoam", new Color(0.9f, 0.94f, 0.97f), smoothness: 0.1f,
-                emission: new Color(0.24f, 0.28f, 0.32f));
+            // Bright white spray - NO blue emission (that rendered as glowing cyan card edges).
+            var foamMat = Mat("WaterFoam", new Color(0.95f, 0.97f, 0.99f), smoothness: 0.1f,
+                emission: new Color(0.14f, 0.15f, 0.16f));
+            // Brighter, more saturated falling water so the sheet reads as bright cascading
+            // water, not a dark teal card.
+            var fallWaterMat = Mat("FallWater", new Color(0.42f, 0.66f, 0.78f), smoothness: 0.55f,
+                transparent: true, emission: new Color(0.05f, 0.09f, 0.11f));
             var rockMat = Mat("FallRock", new Color(0.22f, 0.21f, 0.21f), smoothness: 0.04f);
             Quaternion rot = Quaternion.Euler(0f, yaw, 0f);
             Vector3 intoMtn = rot * Vector3.forward;    // toward the source (up the mountain)
@@ -1664,25 +1739,70 @@ namespace AldenFall.Editor
                 }
             }
 
-            // River SOURCE spring: the mountains are now real border MESHES, so a tall sheet here
-            // just floats in the valley. Instead the river wells up from a rocky outcrop at its
-            // source - a horseshoe of boulders + a low foam pool spilling toward the valley. (A
-            // proper cascade down the mountain face is a follow-up.)
-            for (int i = 0; i < 7; i++)
+            // A single CONTINUOUS cascade leaning against a rocky chute (the earlier per-tier
+            // quads read as floating stacked cards with gaps). The mountains are meshes that may
+            // not sit exactly at each source, so the fall carries its OWN boulder chute and never
+            // floats. Water pours from a notch high up (set back into the slope) down one unbroken
+            // sheet into a foam plunge pool where the river begins.
+            const float leanDeg = 20f;                          // lean back from vertical
+            float run = height * Mathf.Tan(leanDeg * Mathf.Deg2Rad);   // horizontal setback of the top
+            float sheetLen = height / Mathf.Cos(leanDeg * Mathf.Deg2Rad);
+            Quaternion sheetRot = Quaternion.AngleAxis(-leanDeg, right) * rot;
+            Vector3 sheetCenter = basePos + Vector3.up * (WaterSurfaceY + height * 0.5f) + intoMtn * (run * 0.5f);
+
+            // Rocky chute: boulders framing BOTH sides all the way up + a few midstream steps the
+            // water breaks over, forming the cliff the fall pours down.
+            int rows = Mathf.Max(5, Mathf.RoundToInt(height / 6f));
+            for (int t = 0; t <= rows; t++)
             {
-                float a = (i / 6f) * 210f - 105f;                  // arc opening toward the valley
-                var ar = Quaternion.Euler(0f, yaw + a, 0f);
-                Vector3 p = basePos + (ar * Vector3.forward) * (width * 0.6f + 2.5f) + Vector3.up * 0.4f;
-                Rock($"Src_Rock{i}", p, 2.6f + (float)rng.NextDouble() * 3.2f);
+                float f = t / (float)rows;
+                Vector3 spine = basePos + Vector3.up * (WaterSurfaceY + f * height) + intoMtn * (f * run);
+                float side = width * (0.85f - f * 0.15f);
+                float sz = (height / rows) * (1.5f + (float)rng.NextDouble() * 0.9f);
+                Rock($"Chute_L{t}", spine - right * side + intoMtn * 1f, sz);
+                Rock($"Chute_R{t}", spine + right * side + intoMtn * 1f, sz);
+                if (t % 2 == 0)   // a midstream boulder the water splits around
+                    Rock($"Chute_M{t}", spine + right * ((float)(rng.NextDouble() - 0.5) * width * 0.5f) + intoMtn * 1.5f, sz * 0.7f);
             }
-            // A couple of bigger boulders behind (toward the mountain) to anchor it.
-            Rock("Src_Back0", basePos + intoMtn * (width * 0.8f) + right * (width * 0.4f) + Vector3.up * 1f, 5f + (float)rng.NextDouble() * 2f);
-            Rock("Src_Back1", basePos + intoMtn * (width * 0.7f) - right * (width * 0.4f) + Vector3.up * 1f, 5f + (float)rng.NextDouble() * 2f);
-            // Low foam where the spring bubbles up (sits at the water surface, no floating sheet).
-            var foam = Cube("Src_Foam", basePos + toValley * 1.6f + Vector3.up * (WaterSurfaceY + 0.06f),
-                new Vector3(width + 1f, 0.1f, width + 4f), foamMat, container);
-            foam.transform.rotation = rot;
-            Object.DestroyImmediate(foam.GetComponent<BoxCollider>());
+
+            // The unbroken falling sheet.
+            var sheet = Cube("Fall_Sheet", sheetCenter, new Vector3(width * 0.8f, sheetLen, 0.5f), fallWaterMat, container);
+            sheet.transform.rotation = sheetRot;
+            Object.DestroyImmediate(sheet.GetComponent<BoxCollider>());
+            // A few bright vertical foam streaks over the sheet's face (slightly proud of it).
+            for (int s = 0; s < 3; s++)
+            {
+                float fx = (s - 1) * width * 0.24f + (float)(rng.NextDouble() - 0.5) * 1.5f;
+                var streak = Cube($"Fall_Streak{s}", sheetCenter + right * fx + toValley * 0.35f,
+                    new Vector3(0.5f + (float)rng.NextDouble() * 0.5f, sheetLen * 0.96f, 0.2f), foamMat, container);
+                streak.transform.rotation = sheetRot;
+                Object.DestroyImmediate(streak.GetComponent<BoxCollider>());
+            }
+            // Bright foam cap at the top lip where it tips over, and churn at the base.
+            var cap = Cube("Fall_Cap", basePos + Vector3.up * (WaterSurfaceY + height) + intoMtn * run,
+                new Vector3(width * 0.85f, 0.8f, 2.2f), foamMat, container);
+            cap.transform.rotation = rot;
+            Object.DestroyImmediate(cap.GetComponent<BoxCollider>());
+
+            // Plunge pool: churned foam where the fall lands + a couple of wet boulders it
+            // breaks around, sitting right at the river's source water surface.
+            var pool = Cube("Fall_Pool", basePos + toValley * 2.4f + Vector3.up * (WaterSurfaceY + 0.06f),
+                new Vector3(width + 3f, 0.12f, width + 6f), foamMat, container);
+            pool.transform.rotation = rot;
+            Object.DestroyImmediate(pool.GetComponent<BoxCollider>());
+            Rock("Plunge_Rk0", basePos + toValley * 2f + right * (width * 0.55f) + Vector3.up * 0.4f, 3f + (float)rng.NextDouble() * 2f);
+            Rock("Plunge_Rk1", basePos + toValley * 2f - right * (width * 0.55f) + Vector3.up * 0.4f, 3f + (float)rng.NextDouble() * 2f);
+
+            // Cool mist glow at the base (steady, no flicker - bloom sells the spray).
+            var mistObj = new GameObject("Fall_Mist");
+            mistObj.transform.SetParent(container);
+            mistObj.transform.position = basePos + toValley * 2f + Vector3.up * 2f;
+            var ml = mistObj.AddComponent<Light>();
+            ml.type = LightType.Point;
+            ml.color = new Color(0.7f, 0.85f, 0.95f);
+            ml.range = width * 2.5f;
+            ml.intensity = 1.4f;
+            ml.shadows = LightShadows.None;
         }
 
         /// <summary>Short outflow channel from the lake's NW corner, spilling off-map as a
@@ -1727,7 +1847,7 @@ namespace AldenFall.Editor
                 float yaw = Mathf.Atan2(dirIn.x, dirIn.z) * Mathf.Rad2Deg + 180f;
                 // Tall sheet pouring down the rocky mountainside from a notch high up, into the
                 // carved gorge (river bed ~-3). Base at the gorge, rising up the cliff.
-                BuildWaterfall(container, source + Vector3.up * (-3f), 26f, RiverHalfWidths[r] * 2f + 2f, yaw, waterMat, groundLayer);
+                BuildWaterfall(container, source + Vector3.up * (-3f), 38f, RiverHalfWidths[r] * 2f + 2f, yaw, waterMat, groundLayer);
             }
 
             // Ambient fish in the two biggest reaches.
@@ -2086,6 +2206,37 @@ namespace AldenFall.Editor
                 }
             }
 
+            // ---- Scorched ground debris: dark ash rock + charred rubble scattered down the
+            // corridor (denser toward the volcano) so the floor reads as broken volcanic earth
+            // rather than a bare pale sheet, plus glowing ground cracks near the caldera. ----
+            var ashRock = Mat("EmberAshRock", new Color(0.13f, 0.105f, 0.10f), smoothness: 0.03f);
+            var ashRockDk = Mat("EmberAshRockDk", new Color(0.09f, 0.07f, 0.07f), smoothness: 0.03f);
+            var emberCrack = Mat("EmberGroundCrack", new Color(1f, 0.45f, 0.12f), smoothness: 0.5f,
+                emission: new Color(1f, 0.35f, 0.08f) * 3.5f);
+            for (int i = 0; i < 220; i++)
+            {
+                float z = Mathf.Lerp(ApproachNorthZ - 6f, ApproachSouthZ + 4f, (float)rng.NextDouble());
+                float x = ((float)rng.NextDouble() * 2f - 1f) * (ApproachHalfW - 3f);
+                if (Mathf.Abs(x) < 6f) continue;   // keep the central road clear
+                float t = Mathf.InverseLerp(ApproachNorthZ, ApproachSouthZ, z);   // 0 gate -> 1 volcano
+                if ((float)rng.NextDouble() > 0.35f + t * 0.55f) continue;        // denser toward the volcano
+                float s = 0.5f + (float)rng.NextDouble() * (1.4f + t * 1.6f);
+                var r = Cube($"AshRock{i}", new Vector3(x, s * 0.28f, z),
+                    new Vector3(s, s * (0.5f + (float)rng.NextDouble() * 0.5f), s * (0.7f + (float)rng.NextDouble() * 0.6f)),
+                    rng.NextDouble() < 0.5 ? ashRock : ashRockDk, container);
+                r.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 18f, (float)rng.NextDouble() * 360f, (float)rng.NextDouble() * 18f);
+                r.isStatic = true;
+                if (groundLayer >= 0) r.layer = groundLayer;
+                // Glowing fissures crack open on the hot ground closer to the volcano.
+                if (t > 0.45f && rng.NextDouble() < 0.28)
+                {
+                    var crack = Cube($"AshCrack{i}", new Vector3(x + (float)(rng.NextDouble() - 0.5) * 4f, 0.06f, z + (float)(rng.NextDouble() - 0.5) * 4f),
+                        new Vector3(0.3f + (float)rng.NextDouble() * 0.5f, 0.05f, 2f + (float)rng.NextDouble() * 3f), emberCrack, container);
+                    crack.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 180f, 0);
+                    Object.DestroyImmediate(crack.GetComponent<BoxCollider>());
+                }
+            }
+
             // ---- EmberZones: positional darkening gradient toward the volcano ----
             void Zone(float z, float intensity)
             {
@@ -2228,6 +2379,16 @@ namespace AldenFall.Editor
                 if (go == null || mtnMat == null) return;
                 foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = mtnMat;
             }
+            // Foothills are small STEEP cones: the height-blend shader reads their slope as
+            // bare dirt/rock and paints them a brown "landfill" lump. They're meant to be
+            // FORESTED transition hills, so skin them a dark forest green (the sculpted pine
+            // bumps catch light and read as tree cover) with the rock texture for faint detail.
+            var foothillMat = Mat("FoothillForest", new Color(0.22f, 0.34f, 0.17f), smoothness: 0.03f);
+            void SkinFoothill(GameObject go)
+            {
+                if (go == null) return;
+                foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = foothillMat;
+            }
 
             void Place(float x, float z, bool corridor)
             {
@@ -2243,10 +2404,21 @@ namespace AldenFall.Editor
                 if (HasMesh("ForestFoothill"))
                 {
                     Vector2 toC = (center - new Vector2(x, z)).normalized;
-                    PlaceMeshyProp(container, "ForestFoothill",
-                        new Vector3(x + toC.x * 42f, 0f, z + toC.y * 42f),
+                    Vector3 footPos = new Vector3(x + toC.x * 42f, 0f, z + toC.y * 42f);
+                    // Don't bury a waterfall: foothills plant toward the valley and can land right
+                    // on a river source, occluding the whole cascade. Skip when too close.
+                    bool nearFall = false;
+                    foreach (int rsi in RiverSourceFalls)
+                    {
+                        Vector3 sp = RiverPaths[rsi][0];
+                        if ((footPos.x - sp.x) * (footPos.x - sp.x) + (footPos.z - sp.z) * (footPos.z - sp.z) < 60f * 60f)
+                        { nearFall = true; break; }
+                    }
+                    if (nearFall) return;
+                    var foot = PlaceMeshyProp(container, "ForestFoothill", footPos,
                         yaw + (float)(rng.NextDouble() - 0.5) * 40f, 34f + (float)rng.NextDouble() * 26f,
                         groundLayer, PropCollision.None);
+                    SkinFoothill(foot);
                 }
             }
 
@@ -2303,7 +2475,10 @@ namespace AldenFall.Editor
                     if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", volcanoTex); m.SetTextureScale("_MainTex", new Vector2(9f, 9f)); }
                     return m;
                 }
-                var dormantMat = VolMat("VolcanoMeshRock", new Color(1.5f, 1.25f, 1.05f), null);                // base >1 lifts the dark soot texture to a medium volcanic grey-brown
+                // Dark basalt: keep the soot texture DARK and near-neutral (a warm/bright base
+                // read as a brown dirt dome, "not a volcano"). Slight cool bias + low magnitude
+                // = charcoal volcanic rock the sculpted gullies read against under the sun.
+                var dormantMat = VolMat("VolcanoMeshRock", new Color(0.5f, 0.5f, 0.55f), null);
                 var eruptMat = VolMat("VolcanoMeshLava", new Color(0.85f, 0.55f, 0.4f), new Color(0.7f, 0.19f, 0.04f)); // charred + hot glow
                 void Skin(GameObject go, Material m) { if (go != null) foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = m; }
                 var dormant = PlaceMeshyProp(vis, "VolcanoDormant", meshCenter, 180f, 230f, groundLayer, PropCollision.FitBox);
