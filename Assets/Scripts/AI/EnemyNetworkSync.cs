@@ -36,5 +36,22 @@ namespace AldenFall.AI
             var component = GetComponent<T>();
             if (component != null) component.enabled = value;
         }
+
+        /// <summary>Server (BossRageMode) → all clients: play the boss rage cinematic locally
+        /// on each machine. Runs on the boss's networked component so a pure client gets the
+        /// letterbox/camera framing + local combat-pause too, not just the host/server.</summary>
+        [Server]
+        public void ServerPlayRageCinematic()
+        {
+            RpcPlayRageCinematic();
+        }
+
+        [ClientRpc]
+        private void RpcPlayRageCinematic()
+        {
+            // BossRageMode is disabled on pure clients, but a disabled MonoBehaviour's methods
+            // still execute — call its local cinematic builder directly on every client.
+            GetComponent<BossRageMode>()?.PlayRageCinematicLocal();
+        }
     }
 }

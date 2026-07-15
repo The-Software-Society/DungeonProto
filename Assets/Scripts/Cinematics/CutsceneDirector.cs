@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using Mirror;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -57,9 +58,21 @@ namespace AldenFall.Cinematics
         private RectTransform barTop, barBottom;
         private Coroutine playRoutine;
 
-        private void Awake()
+        private IEnumerator Start()
         {
-            Instance = this;
+            // Every player object (local AND remote proxies) carries a director, so the
+            // static Instance must be claimed only by the LOCAL player's director — else on
+            // a host or a client with proxies it points at the wrong player and boss/quest
+            // cutscenes drive the wrong camera. Offline/editor has no networking: claim it.
+            var ni = GetComponent<NetworkIdentity>();
+            if (ni == null || (!NetworkClient.active && !NetworkServer.active))
+            {
+                Instance = this;
+                yield break;
+            }
+            // Networked: wait for Mirror to resolve ownership, then only the owner claims.
+            for (int i = 0; i < 300 && !ni.isLocalPlayer; i++) yield return null;
+            if (ni.isLocalPlayer) Instance = this;
         }
 
         public bool Play(string cutsceneId)

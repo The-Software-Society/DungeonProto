@@ -71,8 +71,12 @@ namespace AldenFall.AI
 
             // A real cinematic moment: ALL combat pauses (player locked +
             // invulnerable, every mob frozen), the camera pushes in on the
-            // boss, letterbox on, then the fight resumes at full rage.
-            PlayRageCinematic();
+            // boss, letterbox on, then the fight resumes at full rage. Fan it out to
+            // EVERY client via the boss's networked component so pure clients get the
+            // letterbox/framing + local combat-pause too, not just the host.
+            var sync = GetComponent<EnemyNetworkSync>();
+            if (sync != null) sync.ServerPlayRageCinematic();
+            else PlayRageCinematicLocal();
 
             Vector3 startScale = transform.localScale;
             Vector3 endScale = startScale * growScale;
@@ -112,7 +116,11 @@ namespace AldenFall.AI
             });
         }
 
-        private void PlayRageCinematic()
+        /// <summary>Builds + plays the rage cinematic on THIS client (framed from this
+        /// client's own local player). Invoked on every client by EnemyNetworkSync's RPC, and
+        /// directly as an offline fallback. Safe to call even though this component is disabled
+        /// on pure clients (a disabled MonoBehaviour's methods still run).</summary>
+        public void PlayRageCinematicLocal()
         {
             var director = Cinematics.CutsceneDirector.Instance;
             if (director == null || director.IsPlaying)

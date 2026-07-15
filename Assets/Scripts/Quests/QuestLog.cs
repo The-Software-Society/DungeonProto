@@ -29,6 +29,7 @@ namespace AldenFall.Quests
 
         private Inventory inventory;
         private Wallet wallet;
+        private PlayerCombat combat;   // party fan-out relay (server-authoritative)
 
         public IReadOnlyDictionary<string, QuestState> States => states;
 
@@ -36,6 +37,7 @@ namespace AldenFall.Quests
         {
             inventory = GetComponent<Inventory>();
             wallet = GetComponent<Wallet>();
+            combat = GetComponent<PlayerCombat>();
         }
 
         private void Start()
@@ -143,8 +145,13 @@ namespace AldenFall.Quests
         }
 
         /// <summary>Increment every active objective matching (kind, targetId). An empty
-        /// objective TargetId matches any target of that kind.</summary>
-        public void Advance(ObjectiveKind kind, string targetId, int amount = 1)
+        /// objective TargetId matches any target of that kind.
+        ///
+        /// <paramref name="fromParty"/> is true when this advance ARRIVED from a partymate's
+        /// fan-out (so we don't echo it back). When a LOCAL action advances a shared quest, we
+        /// fan the same advance out to every other party member, so a party with the same active
+        /// quest progresses together and fires the same objective/complete cutscenes at once.</summary>
+        public void Advance(ObjectiveKind kind, string targetId, int amount = 1, bool fromParty = false)
         {
             if (amount <= 0) return;
             bool changed = false;
@@ -174,6 +181,12 @@ namespace AldenFall.Quests
             }
 
             if (!changed) return;
+
+            // Share this progress with the party (KillMob is already fanned out by MobIdentity,
+            // so its relayed advances arrive as fromParty and don't double-count).
+            if (!fromParty && combat != null)
+                combat.ShareQuestObjective((int)kind, targetId, amount);
+
             OnQuestChanged?.Invoke();
             CheckAllCompletion();
         }

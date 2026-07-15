@@ -107,7 +107,7 @@ namespace AldenFall.Combat
         {
             if (!isServer || string.IsNullOrEmpty(mobId)) return;
             if (isLocalPlayer)
-                GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, mobId);
+                GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, mobId, 1, fromParty: true);
             else
                 TargetAdvanceKillQuest(mobId);
         }
@@ -115,7 +115,47 @@ namespace AldenFall.Combat
         [TargetRpc]
         private void TargetAdvanceKillQuest(string mobId)
         {
-            GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, mobId);
+            GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, mobId, 1, fromParty: true);
+        }
+
+        // ---- party quest fan-out: when a LOCAL objective advances (collect/reach/talk/inspect/
+        // fish/cook/ability/defend), share it with every OTHER party member so a shared quest
+        // progresses together and fires the same objective/complete cutscenes at once. Kill
+        // objectives are already fanned out by MobIdentity, so they never enter here. Members
+        // receive the advance as fromParty so it never echoes back. ----
+
+        public void ShareQuestObjective(int kind, string targetId, int amount)
+        {
+            if (isServer) ServerFanOutQuestObjective(kind, targetId, amount);
+            else if (isLocalPlayer) CmdShareQuestObjective(kind, targetId, amount);
+        }
+
+        [Command]
+        private void CmdShareQuestObjective(int kind, string targetId, int amount)
+        {
+            ServerFanOutQuestObjective(kind, targetId, amount);
+        }
+
+        private void ServerFanOutQuestObjective(int kind, string targetId, int amount)
+        {
+            if (!isServer) return;
+            Multiplayer.PartySystem.ForEachOtherMember(gameObject, member =>
+                member.GetComponent<PlayerCombat>()?.ServerReceiveQuestObjective(kind, targetId, amount));
+        }
+
+        public void ServerReceiveQuestObjective(int kind, string targetId, int amount)
+        {
+            if (!isServer) return;
+            if (isLocalPlayer)
+                GetComponent<Quests.QuestLog>()?.Advance((Quests.ObjectiveKind)kind, targetId, amount, fromParty: true);
+            else
+                TargetReceiveQuestObjective(kind, targetId, amount);
+        }
+
+        [TargetRpc]
+        private void TargetReceiveQuestObjective(int kind, string targetId, int amount)
+        {
+            GetComponent<Quests.QuestLog>()?.Advance((Quests.ObjectiveKind)kind, targetId, amount, fromParty: true);
         }
 
         // Healing (food, etc.) is server-authoritative like damage, a client calling Health.Heal
@@ -133,6 +173,72 @@ namespace AldenFall.Combat
         private void CmdHeal(float amount)
         {
             GetComponent<Health>()?.Heal(amount);
+        }
+
+        // ---- status relay: a client-applied status (stun/bleed/slow/hex, or a self-buff)
+        // must also land on the SERVER's copy of the target, or a pure client's effects are
+        // cosmetic-only — the server resolves DoT ticks, incoming-damage mitigation, and the
+        // stun-on-AI. We apply LOCALLY too (instant HUD/visual + client-side offensive buffs,
+        // since player damage is client-computed), then relay; on the host the local apply IS
+        // the authoritative one so no Command is sent. ----
+
+        public struct NetStatusEffect
+        {
+            public string id;
+            public string displayName;
+            public float duration;
+            public int flags;
+            public float tickInterval;
+            public float tickDamage;
+            public float moveSpeedMultiplier;
+            public int[] statTypes;
+            public float[] statAmounts;
+        }
+
+        public void ApplyStatus(Health target, StatusEffect effect)
+        {
+            if (target == null || effect == null || string.IsNullOrEmpty(effect.Id)) return;
+            target.GetComponent<StatusSystem>()?.Apply(effect);            // local: visuals + client-side offense
+            if (!isServer && isLocalPlayer)
+                CmdApplyStatus(target.netIdentity, ToNet(effect));         // authoritative on the server
+        }
+
+        [Command]
+        private void CmdApplyStatus(NetworkIdentity target, NetStatusEffect net)
+        {
+            if (target == null) return;
+            target.GetComponent<StatusSystem>()?.Apply(FromNet(net, gameObject));
+        }
+
+        private static NetStatusEffect ToNet(StatusEffect e)
+        {
+            int n = e.StatMods != null ? e.StatMods.Count : 0;
+            var types = new int[n];
+            var amts = new float[n];
+            for (int i = 0; i < n; i++) { types[i] = (int)e.StatMods[i].stat; amts[i] = e.StatMods[i].amount; }
+            return new NetStatusEffect
+            {
+                id = e.Id, displayName = e.DisplayName, duration = e.Duration, flags = (int)e.Flags,
+                tickInterval = e.TickInterval, tickDamage = e.TickDamage,
+                moveSpeedMultiplier = e.MoveSpeedMultiplier, statTypes = types, statAmounts = amts,
+            };
+        }
+
+        private static StatusEffect FromNet(NetStatusEffect n, GameObject source)
+        {
+            System.Collections.Generic.List<(Stats.StatType, float)> mods = null;
+            if (n.statTypes != null && n.statTypes.Length > 0)
+            {
+                mods = new System.Collections.Generic.List<(Stats.StatType, float)>(n.statTypes.Length);
+                for (int i = 0; i < n.statTypes.Length; i++)
+                    mods.Add(((Stats.StatType)n.statTypes[i], n.statAmounts[i]));
+            }
+            return new StatusEffect
+            {
+                Id = n.id, DisplayName = n.displayName, Duration = n.duration, Flags = (StatusFlags)n.flags,
+                TickInterval = n.tickInterval, TickDamage = n.tickDamage,
+                MoveSpeedMultiplier = n.moveSpeedMultiplier, StatMods = mods, Source = source,
+            };
         }
 
         public void ApplyKnockbackTo(Health target, Vector3 direction, float force)

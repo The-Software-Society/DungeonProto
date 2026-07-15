@@ -596,7 +596,7 @@ namespace AldenFall.Abilities
             combat?.DealDamage(targetHealth, damage, canMiss: false, (int)TreeSkill(def), 1.2f);
             HitEffect.CreateMeleeImpact(target.position + Vector3.up);
 
-            targetHealth.GetComponent<StatusSystem>()?.Apply(new StatusEffect
+            combat?.ApplyStatus(targetHealth, new StatusEffect
             {
                 Id = "stun",
                 DisplayName = "Stunned",
@@ -631,7 +631,7 @@ namespace AldenFall.Abilities
         {
             // AppliesStatusId lets a buff register under a well-known status id
             // ("invisible" for Veil) that other systems check by name.
-            statuses?.Apply(new StatusEffect
+            combat?.ApplyStatus(GetComponent<Health>(), new StatusEffect
             {
                 Id = string.IsNullOrEmpty(def.AppliesStatusId) ? def.Id : def.AppliesStatusId,
                 DisplayName = def.Name,
@@ -786,7 +786,9 @@ namespace AldenFall.Abilities
         private void ApplyDefStatus(AbilityDef def, Component target)
         {
             if (string.IsNullOrEmpty(def.AppliesStatusId) || target == null) return;
-            target.GetComponentInParent<StatusSystem>()?.Apply(new StatusEffect
+            var targetHealth = target.GetComponentInParent<Health>();
+            if (targetHealth == null) return;
+            combat?.ApplyStatus(targetHealth, new StatusEffect
             {
                 Id = def.AppliesStatusId,
                 DisplayName = def.AppliesStatusId,
