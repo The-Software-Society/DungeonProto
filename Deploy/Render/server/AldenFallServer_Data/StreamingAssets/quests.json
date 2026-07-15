@@ -26,41 +26,15 @@
     },
     {
       "Id": "q_choose_edge",
-      "Name": "Choose Your Edge",
-      "Description": "Aldric says power comes from use, not birthright. Pick the weapon you will set out with. You can change your mind and your playstyle at any time.",
+      "Name": "Find Your Fighting Hand",
+      "Description": "Aldric gave you all three of his old arms, a blade, a wand and focus, and a bow with a hundred arrows. Power comes from use, not birthright. Draw whichever suits you: your action bar swaps to match the weapon in your hand. Change your mind and your playstyle anytime.",
       "Objectives": [
         {
           "kind": "TalkToNpc",
           "TargetId": "aldric",
           "Count": 1,
-          "Description": "Tell Aldric how you will fight",
+          "Description": "Ask Aldric how the three weapons differ",
           "LocationHint": "Speak with Aldric in the glade"
-        }
-      ],
-      "RewardChoices": [
-        {
-          "label": "A Worn Blade",
-          "description": "Step in close and cut them down. Swinging trains Attack, Strength, and Defence.",
-          "style": "melee",
-          "equip": true,
-          "items": [
-            {
-              "itemId": "rusty_sword",
-              "count": 1
-            }
-          ]
-        },
-        {
-          "label": "An Apprentice Wand",
-          "description": "Strike from range. Casting levels the Magic skill.",
-          "style": "magic",
-          "equip": true,
-          "items": [
-            {
-              "itemId": "apprentice_wand",
-              "count": 1
-            }
-          ]
         }
       ],
       "GoldReward": 10,
