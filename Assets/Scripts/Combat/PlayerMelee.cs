@@ -208,11 +208,22 @@ namespace AldenFall.Combat
                 return;
             }
             if (animator != null) animator.SetTrigger(SpecialAttackHash);
-            var prefab = abilities != null ? abilities.FireballPrefab : null;
-            if (prefab == null || aimDir.sqrMagnitude < 0.0001f) return;
-            var proj = Object.Instantiate(prefab, origin, Quaternion.LookRotation(aimDir.normalized));
-            proj.transform.localScale *= kind == 2 ? 0.45f : 0.6f;
-            var p = proj.GetComponent<Projectile>();
+            if (aimDir.sqrMagnitude < 0.0001f) return;
+
+            Projectile p;
+            if (kind == 2)
+            {
+                // Arrow: a real procedural arrow, not a shrunken fireball.
+                p = Projectile.SpawnArrow(origin, aimDir.normalized, 42f);
+            }
+            else
+            {
+                var prefab = abilities != null ? abilities.FireballPrefab : null;
+                if (prefab == null) return;
+                var proj = Object.Instantiate(prefab, origin, Quaternion.LookRotation(aimDir.normalized));
+                proj.transform.localScale *= 0.6f;
+                p = proj.GetComponent<Projectile>();
+            }
             if (p != null)
             {
                 p.SetVisualOnly(true);
@@ -300,10 +311,6 @@ namespace AldenFall.Combat
 
         private void CastArrow(Transform target)
         {
-            // Reuse the bolt projectile as an arrow (a dedicated arrow model is art-blocked).
-            var prefab = abilities != null ? abilities.FireballPrefab : null;
-            if (prefab == null) return;
-
             // Consume one arrow; without ammo the bow cannot loose.
             if (inventory == null || !inventory.Remove("arrow")) return;
 
@@ -327,9 +334,7 @@ namespace AldenFall.Combat
             if (targetCollider != null) aimPoint = targetCollider.bounds.center;
             Vector3 aimDirection = (aimPoint - spawnPos).normalized;
 
-            var arrow = Object.Instantiate(prefab, spawnPos, Quaternion.LookRotation(aimDirection));
-            arrow.transform.localScale *= 0.45f;   // slim, not a fireball
-            var projectile = arrow.GetComponent<Projectile>();
+            var projectile = Projectile.SpawnArrow(spawnPos, aimDirection, 42f);
             if (projectile != null)
             {
                 // Defensive stance trades offence for guard (half). Damage recomputed server-side.

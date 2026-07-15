@@ -30,10 +30,15 @@ namespace AldenFall.Items
             EquipSlot.Ring1, EquipSlot.Ring2,
         };
 
+        private GameObject quiverVisual;
+
         private void Awake()
         {
             inventory = GetComponent<Inventory>();
             stats = GetComponent<StatBlock>();
+            // Show/hide the back quiver whenever equipment changes (covers equip, unequip, load).
+            if (OnEquipmentChanged == null) OnEquipmentChanged = new UnityEvent();
+            OnEquipmentChanged.AddListener(RefreshQuiver);
         }
 
         public string GetEquipped(EquipSlot slot) =>
@@ -67,7 +72,10 @@ namespace AldenFall.Items
         {
             get
             {
-                if (GetEquippedDef(EquipSlot.Focus) != null) return true;
+                // Only a real FOCUS in the off hand enables magic, not any off-hand item: a quiver,
+                // shield or off-hand sword must NOT grant spellcasting. The off hand is generic now.
+                var off = GetEquippedDef(EquipSlot.Focus);
+                if (off != null && off.WeaponKind == WeaponKind.Focus) return true;
                 var main = GetEquippedDef(EquipSlot.Weapon);
                 return main != null && main.WeaponKind == WeaponKind.Wand;
             }
@@ -157,12 +165,21 @@ namespace AldenFall.Items
                 ? Instantiate(modelPrefab)
                 : CreateFallbackShape(slot, def);
 
-            AttachToSlot(visual, slot);
+            // A bow held upright in the hand needs its own attach (the blade-alignment maths would
+            // lay it flat like a sword); everything else uses the generic slot attach.
+            if (slot == EquipSlot.Weapon && def.WeaponKind == WeaponKind.Bow)
+                AttachBow(visual);
+            else
+                AttachToSlot(visual, slot);
             visuals[slot] = visual;
         }
 
         private GameObject CreateFallbackShape(EquipSlot slot, ItemDef def)
         {
+            // A real (procedural) bow instead of the white cube fallback.
+            if (slot == EquipSlot.Weapon && def.WeaponKind == WeaponKind.Bow)
+                return AldenFall.World.ArcheryArt.BuildBow();
+
             PrimitiveType shape = slot switch
             {
                 EquipSlot.Weapon => PrimitiveType.Cube,
@@ -276,6 +293,50 @@ namespace AldenFall.Items
             float length = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
             Vector3 centerToHand = hand.position - bounds.center;
             visual.transform.position += centerToHand + desired * (length * 0.25f);
+        }
+
+        /// <summary>Bow attach: held upright in the hand (long axis = character up), belly toward
+        /// the front, grip at the hand. No blade alignment.</summary>
+        private void AttachBow(GameObject visual)
+        {
+            Transform hand = FindBone("hand_r", "righthand", "hand.r", "hand");
+            if (hand == null)
+            {
+                visual.transform.SetParent(transform, false);
+                NormalizeSize(visual.transform, 1.5f);
+                CenterOnParent(visual.transform, transform.right * 0.45f + transform.up * 1.0f);
+                return;
+            }
+
+            visual.transform.SetParent(hand, false);
+            visual.transform.localPosition = Vector3.zero;
+            // Upright now (follows the hand afterwards); flip so the stave belly faces forward.
+            visual.transform.rotation = transform.rotation * Quaternion.Euler(0f, 180f, 0f);
+            NormalizeSize(visual.transform, 1.5f);
+            CenterOnParent(visual.transform, transform.forward * 0.05f);
+        }
+
+        /// <summary>Show a back quiver whenever a bow is drawn (the off-hand "arrows"); hide it
+        /// otherwise. Driven off OnEquipmentChanged so it tracks equip/unequip/load uniformly.</summary>
+        private void RefreshQuiver()
+        {
+            bool wantQuiver = HasBow;
+            if (wantQuiver && quiverVisual == null)
+            {
+                quiverVisual = AldenFall.World.ArcheryArt.BuildQuiver();
+                Transform back = FindBone("chest", "spine2", "spine", "neck");
+                if (back == null) back = transform;
+                quiverVisual.transform.SetParent(back, false);
+                quiverVisual.transform.rotation = transform.rotation * Quaternion.Euler(18f, 0f, 20f);
+                NormalizeSize(quiverVisual.transform, 0.72f);
+                CenterOnParent(quiverVisual.transform,
+                    -transform.forward * 0.14f + transform.up * 0.16f + transform.right * 0.12f);
+            }
+            else if (!wantQuiver && quiverVisual != null)
+            {
+                Destroy(quiverVisual);
+                quiverVisual = null;
+            }
         }
 
         // ---------- helpers ----------

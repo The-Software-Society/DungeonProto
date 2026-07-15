@@ -153,6 +153,14 @@ namespace AldenFall.Items
                     visual.transform.localScale *= 0.7f / longest;
                 }
             }
+            else if (def.Id == "arrow")
+            {
+                // A real arrow on the ground instead of a tiny grey sphere.
+                visual = new GameObject("ArrowVisual");
+                visual.transform.SetParent(transform, false);
+                AldenFall.World.ArcheryArt.AttachArrow(visual.transform, 0.7f);
+                visual.transform.localRotation = Quaternion.Euler(-18f, 0f, 0f);
+            }
             else
             {
                 visual = GameObject.CreatePrimitive(PrimitiveType.Sphere);

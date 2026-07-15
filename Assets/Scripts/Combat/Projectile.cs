@@ -107,6 +107,23 @@ namespace AldenFall.Combat
             ballisticVelocity = direction * speed;
         }
 
+        /// <summary>
+        /// Spawns a real ARROW projectile (procedural shaft + steel head, not the orange fireball
+        /// orb). The arrow mesh is attached BEFORE the Projectile awakes, so EnsureVisibleProjectile
+        /// finds an existing renderer and skips the default fireball look. Caller sets damage/XP/
+        /// on-hit + Initialize. Shared by the bow auto-attack and the archery abilities.
+        /// </summary>
+        public static Projectile SpawnArrow(Vector3 pos, Vector3 dir, float speed)
+        {
+            Vector3 facing = dir.sqrMagnitude > 0.0001f ? dir.normalized : Vector3.forward;
+            var go = new GameObject("Arrow");
+            go.transform.SetPositionAndRotation(pos, Quaternion.LookRotation(facing));
+            AldenFall.World.ArcheryArt.AttachArrow(go.transform, 1.1f);
+            var p = go.AddComponent<Projectile>();
+            p.SetSpeed(speed);
+            return p;
+        }
+
         private void EnsureVisibleProjectile()
         {
             // The Fireball prefab (magic bolt) already carries its own mesh + trail + light, so

@@ -382,8 +382,8 @@ namespace AldenFall.World
             starMat = new Material(SkyOverlayShader())
             {
                 name = "StarDomeMat",
-                mainTexture = MakeStarTexture(512),
-                mainTextureScale = new Vector2(2f, 1f),   // modest tiling: stars stay visible, not tiny
+                mainTexture = MakeStarTexture(2048),
+                mainTextureScale = new Vector2(4f, 2f),   // tile hard so each texel is tiny -> small crisp stars, not blobs
             };
             starMat.color = new Color(1f, 1f, 1f, 0f);
             var r = go.GetComponent<MeshRenderer>();
@@ -417,37 +417,52 @@ namespace AldenFall.World
             moonDisc = go.transform;
         }
 
-        // Scattered white stars of varying brightness on transparent black; tiles seamlessly.
+        // A real-looking starfield: thousands of mostly single-pixel points on transparent black,
+        // brightness weighted heavily toward faint stars (a real sky is mostly dim pinpricks with a
+        // handful of bright ones), subtle warm/cool colour scatter, a faint Milky-Way style band, and
+        // only the very brightest stars given a 1px halo. High resolution + hard tiling on the dome
+        // keeps every star small and crisp instead of a magnified blob.
         private static Texture2D MakeStarTexture(int size)
         {
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { wrapMode = TextureWrapMode.Repeat };
             var px = new Color32[size * size];
             for (int i = 0; i < px.Length; i++) px[i] = new Color32(0, 0, 0, 0);
 
-            int stars = size * size / 380;   // denser field
+            // Faint diffuse "galaxy band" — a soft, wide diagonal wash of very dim micro-stars so the
+            // sky has structure rather than a uniform scatter. Kept dim + wide so it never clumps into
+            // a bright blocky patch when it happens to sit overhead.
+            float bandCenter = size * 0.5f, bandWidth = size * 0.24f;
+            int band = size * size / 170;
+            for (int i = 0; i < band; i++)
+            {
+                int x = Random.Range(0, size);
+                // cluster y around a diagonal line through the tile
+                float lineY = (bandCenter + (x - size * 0.5f) * 0.55f + Random.Range(-bandWidth, bandWidth));
+                int y = Mathf.Clamp(Mathf.RoundToInt(lineY), 0, size - 1);
+                byte a = (byte)Random.Range(10, 34);
+                Blend(px, size, x, y, 232, 238, 255, a);
+            }
+
+            int stars = size * size / 140;   // dense field of pinpricks
             for (int i = 0; i < stars; i++)
             {
                 int x = Random.Range(0, size), y = Random.Range(0, size);
-                float b = Random.value;
-                byte g = 255;
-                byte rr = (byte)Mathf.Clamp(255 * (0.82f + b * 0.18f), 0, 255);   // slight warm/cool scatter
-                byte bb = (byte)Mathf.Clamp(255 * (0.88f + (1f - b) * 0.12f), 0, 255);
-                byte coreA = (byte)Mathf.Clamp(150 + b * 105f, 0, 255);
-                byte haloA = (byte)Mathf.Clamp(coreA * 0.45f, 0, 255);
+                // brightness heavily weighted to faint: b^3 keeps most stars dim, few bright
+                float b = Random.value; b = b * b * b;
+                float warm = Random.value;   // colour temperature scatter
+                byte rr = (byte)Mathf.Clamp(255 * (0.80f + warm * 0.20f), 0, 255);
+                byte gg = (byte)Mathf.Clamp(255 * (0.86f + 0.10f), 0, 255);
+                byte bb = (byte)Mathf.Clamp(255 * (0.82f + (1f - warm) * 0.18f), 0, 255);
+                byte coreA = (byte)Mathf.Clamp(60 + b * 195f, 0, 255);
 
-                // bright core + soft halo so each star survives being mapped across the sky
-                Blend(px, size, x, y, rr, g, bb, coreA);
-                Blend(px, size, x + 1, y, rr, g, bb, haloA);
-                Blend(px, size, x - 1, y, rr, g, bb, haloA);
-                Blend(px, size, x, y + 1, rr, g, bb, haloA);
-                Blend(px, size, x, y - 1, rr, g, bb, haloA);
-                if (b > 0.8f)   // brighter stars get a wider twinkle
+                Blend(px, size, x, y, rr, gg, bb, coreA);   // the star is a single sharp pixel
+                if (b > 0.55f)   // only the brightest get a faint 4-neighbour halo
                 {
-                    byte tipA = (byte)(haloA / 2);
-                    Blend(px, size, x + 2, y, rr, g, bb, tipA);
-                    Blend(px, size, x - 2, y, rr, g, bb, tipA);
-                    Blend(px, size, x, y + 2, rr, g, bb, tipA);
-                    Blend(px, size, x, y - 2, rr, g, bb, tipA);
+                    byte haloA = (byte)Mathf.Clamp(coreA * 0.28f, 0, 255);
+                    Blend(px, size, x + 1, y, rr, gg, bb, haloA);
+                    Blend(px, size, x - 1, y, rr, gg, bb, haloA);
+                    Blend(px, size, x, y + 1, rr, gg, bb, haloA);
+                    Blend(px, size, x, y - 1, rr, gg, bb, haloA);
                 }
             }
             tex.SetPixels32(px);

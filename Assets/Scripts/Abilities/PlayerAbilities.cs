@@ -297,13 +297,34 @@ namespace AldenFall.Abilities
             if (animator != null)
                 animator.SetTrigger(SpecialAttackHash);
 
-            var bolt = new GameObject(def.Id == "fireball" ? "RuntimeFireball" : "RuntimeBolt");
+            // Multi Shot (and any Projectile ability with HitCount>1) fires a fan of arrows; each
+            // homes the target so all of them land, so the "three arrows" deals ~3x a single shot.
+            int count = def.HitCount > 1 ? def.HitCount : 1;
+            for (int i = 0; i < count; i++)
+            {
+                Vector3 dir = aimDirection;
+                if (count > 1)
+                {
+                    float spreadDeg = (i - (count - 1) * 0.5f) * 9f;   // brief fan before homing
+                    dir = Quaternion.AngleAxis(spreadDeg, Vector3.up) * aimDirection;
+                }
+                SpawnOneProjectile(def, target, spawnPos, dir, visualOnly);
+            }
+        }
+
+        private void SpawnOneProjectile(AbilityDef def, Transform target, Vector3 spawnPos, Vector3 aimDirection, bool visualOnly)
+        {
+            // Ranged-tree abilities are ARROWS: real arrow mesh + Ranged damage/scaling. Magic
+            // projectiles keep the glowing bolt (tinted per-ability). The visual is built BEFORE
+            // Projectile awakes so EnsureVisibleProjectile skips the default fireball orb.
+            bool ranged = def.Tree == SkillType.Ranged;
+
+            var bolt = new GameObject(def.Id == "fireball" ? "RuntimeFireball" : ranged ? "RuntimeArrow" : "RuntimeBolt");
             bolt.transform.SetPositionAndRotation(spawnPos, Quaternion.LookRotation(aimDirection));
 
-            // A tint builds a coloured glow BEFORE the Projectile awakes, so its
-            // EnsureVisibleProjectile sees an existing renderer and skips the default
-            // orange look, Frost Bolt reads icy-blue, Hex reads sickly-purple.
-            if (def.ProjectileTint.HasValue)
+            if (ranged)
+                AldenFall.World.ArcheryArt.AttachArrow(bolt.transform, 1.1f);
+            else if (def.ProjectileTint.HasValue)
                 BuildBoltVisual(bolt, def.ProjectileTint.Value);
 
             var projectile = bolt.AddComponent<Projectile>();
@@ -316,10 +337,14 @@ namespace AldenFall.Abilities
             }
             else
             {
-                // Server recomputes the bolt's damage from the caster's synced stats + this ability
-                // (anti-cheat); only the bounded mastery multiplier rides along the descriptor.
+                // Server recomputes damage from the caster's synced stats + this ability (anti-cheat);
+                // Ranged arrows scale off Ranged (RangedDamage), magic bolts off spell power. Only the
+                // bounded mastery multiplier rides along the descriptor.
                 float mm = mastery != null ? mastery.DamageMultiplier(def.Id) : 1f;
-                projectile.SetServerAttack((byte)Combat.PlayerCombat.DamageKind.Spell, def.Id, mm, def.BaseDamage);
+                byte kind = ranged
+                    ? (byte)Combat.PlayerCombat.DamageKind.Ranged
+                    : (byte)Combat.PlayerCombat.DamageKind.Spell;
+                projectile.SetServerAttack(kind, def.Id, mm, def.BaseDamage);
                 // XP is minted server-side when the bolt lands on an enemy (scaled by real
                 // damage), routed to this ability's tree. The client hook only applies status.
                 projectile.SetXpReward(TreeSkill(def), 1.2f);
@@ -665,8 +690,16 @@ namespace AldenFall.Abilities
             var mods = mastery != null ? mastery.Modifiers(def.Id) : new AbilityRankMod();
             float radius = def.Radius + mods.bonusRadius;   // mastery widens the blast
 
+            // Ranged GroundAoe (Rain of Arrows) scales off Ranged + reads as a grey arrow volley;
+            // magic GroundAoe (Meteor) stays a fiery orb scaling off spell power.
+            bool ranged = def.Tree == SkillType.Ranged;
+            byte aoeKind = ranged
+                ? (byte)Combat.PlayerCombat.DamageKind.Ranged
+                : (byte)Combat.PlayerCombat.DamageKind.Spell;
+            Color orbColor = ranged ? new Color(0.72f, 0.74f, 0.78f) : MeteorColor;
+
             Vector3 point = ResolveGroundPoint(def, target, transform.position, transform.forward);
-            FallingOrbEffect.Create(point, radius, def.ImpactDelay, MeteorColor);
+            FallingOrbEffect.Create(point, radius, def.ImpactDelay, orbColor);
 
             yield return new WaitForSeconds(def.ImpactDelay);
 
@@ -682,7 +715,7 @@ namespace AldenFall.Abilities
                 if (!damaged.Add(enemyHealth)) continue;
 
                 // Damage recomputed server-side from the descriptor (anti-cheat); XP per enemy hit.
-                combat?.DealAttack(enemyHealth, (byte)Combat.PlayerCombat.DamageKind.Spell, def.Id, multiplier,
+                combat?.DealAttack(enemyHealth, aoeKind, def.Id, multiplier,
                     def.BaseDamage, canMiss: false, (int)TreeSkill(def), 1.2f);
                 ApplyDefStatus(def, enemyHealth);
                 HitEffect.CreateNovaImpact(enemyHealth.transform.position + Vector3.up);

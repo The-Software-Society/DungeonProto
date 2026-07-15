@@ -195,7 +195,7 @@ namespace AldenFall.Items
             EquipSlot.Chest => "Chest",
             EquipSlot.Legs => "Legs",
             EquipSlot.Cape => "Cape",
-            EquipSlot.Focus => "Off Hand (Focus)",
+            EquipSlot.Focus => "Off Hand",
             EquipSlot.Gloves => "Gloves",
             EquipSlot.Boots => "Boots",
             EquipSlot.Necklace => "Necklace",

@@ -2344,7 +2344,10 @@ namespace AldenFall.Editor
             camObj.AddComponent<AudioListener>();
 
             cam.nearClipPlane = 0.2f;
-            cam.farClipPlane = 300f;
+            // 300 culled the mountain range + volcano to a pop-in shell right around the play space
+            // (Jon: "constantly seeing it load in and out"). Push it out past the fog band (end
+            // 1900) so the distant silhouettes read from the city and just haze into atmosphere.
+            cam.farClipPlane = 2200f;
 
             var tpc = camObj.AddComponent<Player.ThirdPersonCamera>();
             var tpcSO = new SerializedObject(tpc);

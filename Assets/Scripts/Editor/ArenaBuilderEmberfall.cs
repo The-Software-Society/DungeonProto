@@ -1734,7 +1734,10 @@ namespace AldenFall.Editor
                                                  : new Vector3(Mathf.Sign(wc.x == 0 ? 1 : wc.x) * woff2, 0, 0));
                         wp.y = y0 + 2.1f;
                         Vector3 winSize = spanX ? new Vector3(1.6f, 1.3f, 0.1f) : new Vector3(0.1f, 1.3f, 1.6f);
-                        Solid($"Win{s}_{side}", wp - c, winSize, windowMat, collide: false);
+                        // wp is already a LOCAL coord (built from wc around 0); Solid adds c. Passing
+                        // wp-c placed every non-door window at its local coord near the plaza -> the
+                        // "gray tiles floating in the air over the city" (Jon). Pass wp local.
+                        Solid($"Win{s}_{side}", wp, winSize, windowMat, collide: false);
                     }
                 }
             }

@@ -60,7 +60,7 @@ namespace AldenFall.UI
         private void EnsureHandLabels()
         {
             RelabelDollSlot("DollLabel_Weapon", "MAIN HAND");
-            RelabelDollSlot("DollLabel_Focus", "OFF HAND (FOCUS)");
+            RelabelDollSlot("DollLabel_Focus", "OFF HAND");
         }
 
         private void RelabelDollSlot(string objectName, string label)
