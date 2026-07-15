@@ -1,4 +1,6 @@
+using Mirror;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace AldenFall.World
 {
@@ -15,15 +17,17 @@ namespace AldenFall.World
     /// palette, so "erupting at midnight" still goes red. While a cycle is Active,
     /// EmberAtmosphere stops writing RenderSettings itself (it keeps its particles).
     ///
-    /// Cosmetic + client-side (like EmberAtmosphere): every client runs its own
-    /// clock. In co-op the times can drift; syncing off a server epoch is a later
-    /// refinement. F9 (DebugCheatPanel) jumps the clock to dawn/day/dusk/night for QA.
+    /// SERVER-AUTHORITATIVE clock: the server holds an ANCHOR (a time-of-day + speed captured
+    /// at one NetworkTime moment) as SyncVars, and every client EXTRAPOLATES from Mirror's
+    /// synchronized NetworkTime.time. So all clients agree on the time of day with no per-frame
+    /// syncing, and re-anchoring (F9 jump / pause) replicates once. Presentation (the actual
+    /// lighting) is still per-client; only the CLOCK is networked. A dedicated (headless) server
+    /// runs only the clock, not the visuals.
     ///
-    /// timeOfDay is normalised [0,1): 0 = midnight, 0.25 = sunrise, 0.5 = noon,
-    /// 0.75 = sunset.
+    /// timeOfDay is normalised [0,1): 0 = midnight, 0.25 = sunrise, 0.5 = noon, 0.75 = sunset.
     /// </summary>
     [DefaultExecutionOrder(-100)]   // Awake before EmberAtmosphere so it can defer the skybox to us
-    public class DayNightCycle : MonoBehaviour
+    public class DayNightCycle : NetworkBehaviour
     {
         public static DayNightCycle Instance { get; private set; }
         /// <summary>True when a cycle exists and is driving the scene (EmberAtmosphere defers).</summary>
@@ -32,9 +36,19 @@ namespace AldenFall.World
         [Header("Clock")]
         [Tooltip("Real seconds for one full day->night->day. 600 = 10 min, several cycles per session.")]
         [SerializeField] private float cycleSeconds = 600f;
-        [Range(0f, 1f)]
-        [SerializeField] private float timeOfDay = 0.32f;   // spawn just after sunrise, full morning
-        [SerializeField] private bool paused;
+
+        // Server-owned anchor: timeOfDay == anchorTod at NetworkTime.time == anchorTime, advancing
+        // at todSpeed units/second (0 = paused). Re-anchored on start, jump, and pause.
+        [SyncVar] private double anchorTime;
+        [SyncVar] private float anchorTod = 0.32f;   // spawn just after sunrise, full morning
+        [SyncVar] private float todSpeed;
+
+        // Offline fallback (editor play with no network session): a plain local clock.
+        private float offlineTod = 0.32f;
+        private bool offlinePaused;
+
+        private bool renders;                        // false on a headless dedicated server
+        private float timeOfDay = 0.32f;             // derived each frame, used by the visuals
 
         [Header("Sun")]
         [SerializeField] private Light sunLight;
@@ -73,15 +87,21 @@ namespace AldenFall.World
         private Material moonMat;
         private Transform trackedCamera;
 
-        public float TimeOfDay => timeOfDay;
-        public bool Paused => paused;
+        private bool Networked => NetworkServer.active || NetworkClient.active;
+
+        /// <summary>The current time of day [0,1), from the networked clock (or the offline fallback).</summary>
+        public float TimeOfDay =>
+            Networked ? Mathf.Repeat(anchorTod + (float)(NetworkTime.time - anchorTime) * todSpeed, 1f)
+                      : Mathf.Repeat(offlineTod, 1f);
+
+        public bool Paused => Networked ? todSpeed <= 0f : offlinePaused;
 
         /// <summary>Human label for the current time (for the F9 readout).</summary>
         public string PhaseLabel
         {
             get
             {
-                float t = timeOfDay;
+                float t = TimeOfDay;
                 if (t < 0.22f || t >= 0.79f) return "Night";
                 if (t < 0.30f) return "Sunrise";
                 if (t < 0.70f) return "Day";
@@ -94,6 +114,11 @@ namespace AldenFall.World
             if (Instance != null && Instance != this) { Destroy(this); return; }
             Instance = this;
 
+            // A headless dedicated server runs the CLOCK only — no camera, so skip the visuals
+            // (moon/star meshes, skybox copy, RenderSettings). Clients still get the synced time.
+            renders = !(Application.isBatchMode && SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null);
+            if (!renders) return;
+
             if (sunLight == null) sunLight = RenderSettings.sun;
             if (sunLight == null)
                 foreach (var l in FindObjectsByType<Light>(FindObjectsSortMode.None))
@@ -105,29 +130,62 @@ namespace AldenFall.World
             BuildMoonDisc();
         }
 
+        public override void OnStartServer()
+        {
+            // Server owns the clock: anchor it now and let it run at the configured cadence.
+            ServerReanchor(anchorTod, 1f / Mathf.Max(1f, cycleSeconds));
+        }
+
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
         }
 
-        // ------------------------------------------------------------- public API
+        // ------------------------------------------------------------- public API (F9 / QA)
 
+        /// <summary>Jump the clock. Server-authoritative: re-anchors + replicates to everyone.</summary>
         public void SetTimeOfDay(float t)
         {
-            timeOfDay = Mathf.Repeat(t, 1f);
-            Apply();
+            if (!Networked) { offlineTod = Mathf.Repeat(t, 1f); return; }
+            if (isServer) ServerReanchor(t, todSpeed);
+            else CmdSetTimeOfDay(t);
         }
 
-        public void SetPaused(bool value) => paused = value;
-        public void TogglePaused() => paused = !paused;
+        public void SetPaused(bool value)
+        {
+            if (!Networked) { offlinePaused = value; return; }
+            if (isServer) ServerReanchor(TimeOfDay, value ? 0f : 1f / Mathf.Max(1f, cycleSeconds));
+            else CmdSetPaused(value);
+        }
+
+        public void TogglePaused() => SetPaused(!Paused);
+
+        // requiresAuthority=false: DayNightCycle is a scene object nobody owns, so the F9 panel
+        // on any client can drive it. (Dev/testing tool.)
+        [Command(requiresAuthority = false)]
+        private void CmdSetTimeOfDay(float t) => ServerReanchor(t, todSpeed);
+
+        [Command(requiresAuthority = false)]
+        private void CmdSetPaused(bool value) => ServerReanchor(TimeOfDay, value ? 0f : 1f / Mathf.Max(1f, cycleSeconds));
+
+        [Server]
+        private void ServerReanchor(float tod, float speed)
+        {
+            anchorTod = Mathf.Repeat(tod, 1f);
+            anchorTime = NetworkTime.time;
+            todSpeed = speed;
+        }
 
         // ---------------------------------------------------------------- update
 
         private void Update()
         {
-            if (!paused && cycleSeconds > 1f)
-                timeOfDay = Mathf.Repeat(timeOfDay + Time.deltaTime / cycleSeconds, 1f);
-            Apply();
+            // Offline fallback advances a local clock; networked mode extrapolates from the anchor.
+            if (!Networked && !offlinePaused && cycleSeconds > 1f)
+                offlineTod = Mathf.Repeat(offlineTod + Time.deltaTime / cycleSeconds, 1f);
+
+            timeOfDay = TimeOfDay;
+            if (renders) Apply();
         }
 
         private void Apply()

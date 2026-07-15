@@ -3806,8 +3806,11 @@ namespace AldenFall.Editor
             }
 
             // ---- DayNightCycle (singleton) — orbiting sun + moon, dawn/dusk, stars,
-            // moonlight; owns the time-based lighting and blends the eruption tint on top ----
+            // moonlight; owns the time-based lighting and blends the eruption tint on top.
+            // NetworkBehaviour scene object: the SERVER owns the clock (SyncVar anchor) and
+            // Mirror spawns it automatically on server start (sceneId baked with the scene). ----
             var dayNightObj = new GameObject("DayNightCycle");
+            dayNightObj.AddComponent<Mirror.NetworkIdentity>();
             var dayNight = dayNightObj.AddComponent<World.DayNightCycle>();
             var sunForCycle = RenderSettings.sun != null ? RenderSettings.sun.gameObject : GameObject.Find("Sun");
             if (sunForCycle != null)
