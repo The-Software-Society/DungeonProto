@@ -23,6 +23,8 @@ namespace AldenFall.Stats
         private StatBlock stats;
         private Skills skills;
         private Health health;
+        private Items.Equipment equipment;
+        private CombatStyleController combatStyle;
 
         // Hitpoints skill -> max HP: 100 at level 1, +10 per level (level 99 -> 1080).
         private static int MaxHealthForLevel(int level) => 100 + Mathf.Max(0, level - 1) * 10;
@@ -32,11 +34,19 @@ namespace AldenFall.Stats
             stats = GetComponent<StatBlock>();
             skills = GetComponent<Skills>();
             health = GetComponent<Health>();
+            equipment = GetComponent<Items.Equipment>();
+            combatStyle = GetComponent<CombatStyleController>();
         }
 
         private void Start()
         {
             skills.OnLevelUp.AddListener(OnLevelUp);
+
+            // A pure client's equipment/stance modifiers live only on its local StatBlock, so the
+            // server (which now RECOMPUTES damage + mitigation) needs them pushed. Host = server,
+            // so its local mods already ARE the server's; only a pure owning client pushes.
+            if (equipment != null) equipment.OnEquipmentChanged.AddListener(PushGearMods);
+            if (combatStyle != null) combatStyle.OnStanceChanged += PushGearMods;
 
             // The server's copy of a REMOTE player's StatBlock is driven only by the
             // owning client's pushed levels (CmdSyncCombatLevels), never by this
@@ -51,6 +61,52 @@ namespace AldenFall.Stats
         {
             if (skills != null)
                 skills.OnLevelUp.RemoveListener(OnLevelUp);
+            if (equipment != null)
+                equipment.OnEquipmentChanged.RemoveListener(PushGearMods);
+            if (combatStyle != null)
+                combatStyle.OnStanceChanged -= PushGearMods;
+        }
+
+        /// <summary>
+        /// Owning pure client → server: replicate the equipment + stance modifier TOTALS so the
+        /// server's StatBlock (skills base + these) matches the client's, letting the server
+        /// recompute damage AND incoming mitigation authoritatively. Applied as one "netmods"
+        /// source. No-op on the host (its local StatBlock already is the server's).
+        /// </summary>
+        private void PushGearMods()
+        {
+            if (!isLocalPlayer || isServer || stats == null) return;
+            CmdSyncGearMods(
+                stats.GetModifierTotal(StatType.WeaponPower),
+                stats.GetModifierTotal(StatType.SpellPower),
+                stats.GetModifierTotal(StatType.Armor),
+                stats.GetModifierTotal(StatType.AttackSpeed),
+                stats.GetModifierTotal(StatType.Defence),
+                stats.GetModifierTotal(StatType.Strength),
+                stats.GetModifierTotal(StatType.Magic),
+                stats.GetModifierTotal(StatType.Ranged),
+                stats.GetModifierTotal(StatType.MaxHealth),
+                stats.GetModifierTotal(StatType.MoveSpeed));
+        }
+
+        [Command]
+        private void CmdSyncGearMods(float weaponPower, float spellPower, float armor, float attackSpeed,
+            float defence, float strength, float magic, float ranged, float maxHealth, float moveSpeed)
+        {
+            stats.ApplyModifiers("netmods", new (StatType, float)[]
+            {
+                (StatType.WeaponPower, weaponPower),
+                (StatType.SpellPower, spellPower),
+                (StatType.Armor, armor),
+                (StatType.AttackSpeed, attackSpeed),
+                (StatType.Defence, defence),
+                (StatType.Strength, strength),
+                (StatType.Magic, magic),
+                (StatType.Ranged, ranged),
+                (StatType.MaxHealth, maxHealth),
+                (StatType.MoveSpeed, moveSpeed),
+            });
+            if (health != null) health.SetMaxHealth(stats.Get(StatType.MaxHealth));
         }
 
         /// <summary>
@@ -76,6 +132,7 @@ namespace AldenFall.Stats
             // Push current levels once on spawn, covers loaded/saved progress and
             // debug-set levels that changed before this object was network-ready.
             PushCombatLevels();
+            PushGearMods();   // initial equipment/stance mods (starter loadout equips before this)
         }
 
         private void PushCombatLevels()

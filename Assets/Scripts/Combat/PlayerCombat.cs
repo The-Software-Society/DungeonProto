@@ -42,6 +42,58 @@ namespace AldenFall.Combat
                 health.TakeDamage(damage, gameObject, canMiss, xpSkill, xpRate);
         }
 
+        // ==================== SERVER-AUTHORITATIVE PLAYER DAMAGE ====================
+        // The server RECOMPUTES the stat/gear-scaled base damage from its own StatBlock (skills +
+        // gear/stance mods synced by PlayerStatBridge) and the ability's MeleeMultiplier (from the
+        // server-side ability def). Only the small mastery/offense factor is client-provided, and
+        // it's CLAMPED — so a modified client cannot inflate damage.
+
+        public enum DamageKind : byte { Melee = 0, Ranged = 1, Spell = 2 }
+
+        public void DealAttack(Health target, byte kind, string abilityId, float extraMult, float spellBase,
+            bool canMiss, int xpSkill, float xpRate)
+        {
+            if (target == null) return;
+            if (isServer)
+                target.TakeDamage(ServerComputeDamage(kind, abilityId, extraMult, spellBase), gameObject, canMiss, xpSkill, xpRate);
+            else if (isLocalPlayer)
+                CmdDealAttack(target.netIdentity, kind, abilityId, extraMult, spellBase, canMiss, xpSkill, xpRate);
+        }
+
+        [Command]
+        private void CmdDealAttack(NetworkIdentity target, byte kind, string abilityId, float extraMult,
+            float spellBase, bool canMiss, int xpSkill, float xpRate)
+        {
+            if (target == null) return;
+            var health = target.GetComponent<Health>();
+            if (health != null)
+                health.TakeDamage(ServerComputeDamage(kind, abilityId, extraMult, spellBase), gameObject, canMiss, xpSkill, xpRate);
+        }
+
+        private float ServerComputeDamage(byte kind, string abilityId, float extraMult, float spellBase)
+        {
+            var s = GetComponent<Stats.StatBlock>();
+            if (s == null) return 0f;
+            extraMult = Mathf.Clamp(extraMult, 0f, 1.5f);   // mastery (<=~1.4) or stance offense (<=1)
+            var def = string.IsNullOrEmpty(abilityId) ? null : Abilities.AbilityDatabase.Get(abilityId);
+            float abilityMult = def != null && def.MeleeMultiplier > 0f ? def.MeleeMultiplier : 1f;
+            float baseDmg;
+            switch ((DamageKind)kind)
+            {
+                case DamageKind.Ranged:
+                    baseDmg = Stats.CombatMath.RangedDamage(s);
+                    break;
+                case DamageKind.Spell:
+                    float sb = spellBase > 0f ? spellBase : (def != null ? def.BaseDamage : 0f);
+                    baseDmg = Stats.CombatMath.SpellDamage(s, sb);
+                    break;
+                default:
+                    baseDmg = Stats.CombatMath.MeleeDamage(s);
+                    break;
+            }
+            return baseDmg * abilityMult * extraMult;
+        }
+
         /// <summary>
         /// Server → this attacker's owning client: award combat XP for damage this player just
         /// dealt. Called only from <see cref="Health.TakeDamage"/> after real damage lands, so

@@ -69,6 +69,23 @@ namespace AldenFall.Combat
         /// <summary>Cosmetic replay of another player's projectile: flies + bursts, deals no damage.</summary>
         public void SetVisualOnly(bool value) => visualOnly = value;
 
+        // Server-authoritative player projectile: carry the attack DESCRIPTOR instead of a
+        // precomputed number, so the server recomputes damage on hit (see PlayerCombat.DealAttack).
+        private bool useServerAttack;
+        private byte atkKind;
+        private string atkAbilityId;
+        private float atkExtraMult = 1f;
+        private float atkSpellBase;
+
+        public void SetServerAttack(byte kind, string abilityId, float extraMult, float spellBase)
+        {
+            useServerAttack = true;
+            atkKind = kind;
+            atkAbilityId = abilityId;
+            atkExtraMult = extraMult;
+            atkSpellBase = spellBase;
+        }
+
         /// <summary>
         /// Custom on-hit hook (status effects). Runs client-side on a successful hit for
         /// effects like bleed/burn; XP is handled separately server-side via SetXpReward.
@@ -269,8 +286,12 @@ namespace AldenFall.Combat
                     // server relay so damage is server-authoritative. Non-player owners
                     // (server-side) apply directly.
                     var ownerCombat = owner != null ? owner.GetComponent<PlayerCombat>() : null;
-                    if (ownerCombat != null)
-                        // Server mints Magic (or the ability's) XP when this bolt bites an enemy.
+                    if (ownerCombat != null && useServerAttack)
+                        // Server RECOMPUTES the damage from the caster's synced stats + the ability
+                        // descriptor (anti-cheat), and mints XP when the bolt bites an enemy.
+                        ownerCombat.DealAttack(directHealth, atkKind, atkAbilityId, atkExtraMult, atkSpellBase,
+                            canMiss: false, xpSkill, xpRate);
+                    else if (ownerCombat != null)
                         ownerCombat.DealDamage(directHealth, damage, canMiss: false, xpSkill, xpRate);
                     else
                         directHealth.TakeDamage(damage, owner);   // enemy-cast bolt: no player XP

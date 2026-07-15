@@ -316,9 +316,10 @@ namespace AldenFall.Abilities
             }
             else
             {
-                float damage = CombatMath.SpellDamage(stats, def.BaseDamage)
-                             * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
-                projectile.SetDamage(damage);
+                // Server recomputes the bolt's damage from the caster's synced stats + this ability
+                // (anti-cheat); only the bounded mastery multiplier rides along the descriptor.
+                float mm = mastery != null ? mastery.DamageMultiplier(def.Id) : 1f;
+                projectile.SetServerAttack((byte)Combat.PlayerCombat.DamageKind.Spell, def.Id, mm, def.BaseDamage);
                 // XP is minted server-side when the bolt lands on an enemy (scaled by real
                 // damage), routed to this ability's tree. The client hook only applies status.
                 projectile.SetXpReward(TreeSkill(def), 1.2f);
@@ -413,11 +414,12 @@ namespace AldenFall.Abilities
                 if (enemyHealth == null || enemyHealth.gameObject == gameObject) continue;
                 if (!damaged.Add(enemyHealth)) continue;
 
-                float damage = (meleeNova
-                    ? CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
-                    : CombatMath.SpellDamage(stats, def.BaseDamage)) * multiplier;
-                // Server grants this ability's XP per enemy actually damaged, scaled by the hit.
-                combat?.DealDamage(enemyHealth, damage, canMiss: false, (int)TreeSkill(def), 1.2f);
+                // Server grants this ability's XP per enemy actually damaged, scaled by the hit,
+                // and recomputes the damage from the caster's synced stats (anti-cheat).
+                combat?.DealAttack(enemyHealth,
+                    (byte)(meleeNova ? Combat.PlayerCombat.DamageKind.Melee : Combat.PlayerCombat.DamageKind.Spell),
+                    def.Id, multiplier, meleeNova ? 0f : def.BaseDamage,
+                    canMiss: false, (int)TreeSkill(def), 1.2f);
                 if (def.Knockback > 0f)
                 {
                     Vector3 knockDir = (enemyHealth.transform.position - transform.position).normalized;
@@ -454,9 +456,9 @@ namespace AldenFall.Abilities
                 if (animator != null)
                     animator.SetTrigger(AttackHash);
 
-                float damage = CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
-                             * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
-                combat?.DealDamage(targetHealth, damage, canMiss: false, (int)TreeSkill(def), 1.2f);
+                float mm = mastery != null ? mastery.DamageMultiplier(def.Id) : 1f;
+                combat?.DealAttack(targetHealth, (byte)Combat.PlayerCombat.DamageKind.Melee, def.Id, mm, 0f,
+                    canMiss: false, (int)TreeSkill(def), 1.2f);
                 HitEffect.CreateMeleeImpact(target.position + Vector3.up);
 
                 // The final stab opens the wound (bleed)
@@ -591,9 +593,9 @@ namespace AldenFall.Abilities
             var targetHealth = target.GetComponentInParent<Health>();
             if (targetHealth == null || targetHealth.IsDead) yield break;
 
-            float damage = CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
-                         * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
-            combat?.DealDamage(targetHealth, damage, canMiss: false, (int)TreeSkill(def), 1.2f);
+            float mm = mastery != null ? mastery.DamageMultiplier(def.Id) : 1f;
+            combat?.DealAttack(targetHealth, (byte)Combat.PlayerCombat.DamageKind.Melee, def.Id, mm, 0f,
+                canMiss: false, (int)TreeSkill(def), 1.2f);
             HitEffect.CreateMeleeImpact(target.position + Vector3.up);
 
             combat?.ApplyStatus(targetHealth, new StatusEffect
@@ -620,9 +622,9 @@ namespace AldenFall.Abilities
             var targetHealth = target.GetComponentInParent<Health>();
             if (targetHealth == null || targetHealth.IsDead) yield break;
 
-            float damage = CombatMath.MeleeDamage(stats) * def.MeleeMultiplier
-                         * (mastery != null ? mastery.DamageMultiplier(def.Id) : 1f);
-            combat?.DealDamage(targetHealth, damage, canMiss: false, (int)TreeSkill(def), 1.2f);
+            float mm = mastery != null ? mastery.DamageMultiplier(def.Id) : 1f;
+            combat?.DealAttack(targetHealth, (byte)Combat.PlayerCombat.DamageKind.Melee, def.Id, mm, 0f,
+                canMiss: false, (int)TreeSkill(def), 1.2f);
             HitEffect.CreateMeleeImpact(target.position + Vector3.up);
             ApplyDefStatus(def, targetHealth);
         }
@@ -679,9 +681,9 @@ namespace AldenFall.Abilities
                 if (enemyHealth == null || enemyHealth.gameObject == gameObject) continue;
                 if (!damaged.Add(enemyHealth)) continue;
 
-                float damage = CombatMath.SpellDamage(stats, def.BaseDamage) * multiplier;
-                // Server grants this ability's XP per enemy actually damaged, scaled by the hit.
-                combat?.DealDamage(enemyHealth, damage, canMiss: false, (int)TreeSkill(def), 1.2f);
+                // Damage recomputed server-side from the descriptor (anti-cheat); XP per enemy hit.
+                combat?.DealAttack(enemyHealth, (byte)Combat.PlayerCombat.DamageKind.Spell, def.Id, multiplier,
+                    def.BaseDamage, canMiss: false, (int)TreeSkill(def), 1.2f);
                 ApplyDefStatus(def, enemyHealth);
                 HitEffect.CreateNovaImpact(enemyHealth.transform.position + Vector3.up);
             }

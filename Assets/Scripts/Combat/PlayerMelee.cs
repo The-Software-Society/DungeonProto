@@ -245,14 +245,14 @@ namespace AldenFall.Combat
             var targetHealth = target.GetComponentInParent<Health>();
             if (targetHealth == null || targetHealth.IsDead) yield break;
 
-            float damage = Stats.CombatMath.MeleeDamage(stats);
-
             // XP is granted server-side the instant this damage actually lands (Health.TakeDamage),
             // scaled by the damage dealt and routed to the SELECTED combat style, you level what
             // you choose. Passing it through the hit means a whiff (Defence miss) or an
-            // undamageable target awards nothing: no phantom XP, ever.
+            // undamageable target awards nothing: no phantom XP, ever. Damage itself is recomputed
+            // server-side from the caster's synced stats (anti-cheat), not sent from the client.
             var trained = combatStyle != null ? combatStyle.TrainedSkill : SkillType.Attack;
-            combat?.DealDamage(targetHealth, damage, canMiss: true, xpSkill: (int)trained, xpRate: 2.4f);
+            combat?.DealAttack(targetHealth, (byte)PlayerCombat.DamageKind.Melee, null, 1f, 0f,
+                canMiss: true, (int)trained, 2.4f);
             HitEffect.CreateMeleeImpact(target.position + Vector3.up);
         }
 
@@ -288,10 +288,10 @@ namespace AldenFall.Combat
             var projectile = bolt.GetComponent<Projectile>();
             if (projectile != null)
             {
-                // No callback: the projectile's own Magic XP grant applies.
-                // Defensive stance trades offence for guard, halve the bolt.
+                // No callback: the projectile's own Magic XP grant applies. Defensive stance trades
+                // offence for guard (half). Damage is recomputed server-side from the descriptor.
                 float mult = combatStyle != null ? combatStyle.OffenseMultiplier : 1f;
-                projectile.SetDamage(Stats.CombatMath.SpellDamage(stats, boltBaseDamage) * mult);
+                projectile.SetServerAttack((byte)PlayerCombat.DamageKind.Spell, null, mult, boltBaseDamage);
                 projectile.Initialize(aimDirection, gameObject, target);
             }
         }
@@ -332,9 +332,9 @@ namespace AldenFall.Combat
             var projectile = arrow.GetComponent<Projectile>();
             if (projectile != null)
             {
-                // Defensive stance trades offence for guard, halve the arrow.
+                // Defensive stance trades offence for guard (half). Damage recomputed server-side.
                 float mult = combatStyle != null ? combatStyle.OffenseMultiplier : 1f;
-                projectile.SetDamage(Stats.CombatMath.RangedDamage(stats) * mult);
+                projectile.SetServerAttack((byte)PlayerCombat.DamageKind.Ranged, null, mult, 0f);
                 projectile.SetXpReward(Progression.SkillType.Ranged, 2.0f);   // arrows train Ranged
                 projectile.Initialize(aimDirection, gameObject, target);
             }
