@@ -30,6 +30,7 @@ namespace AldenFall.Quests
         private Inventory inventory;
         private Wallet wallet;
         private PlayerCombat combat;   // party fan-out relay (server-authoritative)
+        private World.PlayerWorldPhase worldPhase;   // per-player eruption phasing
 
         public IReadOnlyDictionary<string, QuestState> States => states;
 
@@ -38,6 +39,16 @@ namespace AldenFall.Quests
             inventory = GetComponent<Inventory>();
             wallet = GetComponent<Wallet>();
             combat = GetComponent<PlayerCombat>();
+            worldPhase = GetComponent<World.PlayerWorldPhase>();
+        }
+
+        /// <summary>Flip this player's own world phase (Erupting/Cleared) when a quest that carries a
+        /// WorldPhaseOn* tag is accepted / completed, so the eruption follows the questline.</summary>
+        private void TrySetWorldPhase(string phaseName)
+        {
+            if (string.IsNullOrEmpty(phaseName) || worldPhase == null) return;
+            if (System.Enum.TryParse<World.EmberfallWorldState.Phase>(phaseName, out var p))
+                worldPhase.RequestPhase(p);
         }
 
         private void Start()
@@ -139,6 +150,7 @@ namespace AldenFall.Quests
                 Progress = new int[def.Objectives.Count],
             };
             PlayCutscene(def.StartCutscene);
+            TrySetWorldPhase(def.WorldPhaseOnAccept);   // e.g. accepting the caldera quest erupts your world
             OnQuestChanged?.Invoke();
             CheckCompletion(id);   // handles a quest whose objectives are already satisfied
             return true;
@@ -275,6 +287,7 @@ namespace AldenFall.Quests
 
             st.Status = QuestStatus.Complete;
             PlayCutscene(def.CompleteCutscene);
+            TrySetWorldPhase(def.WorldPhaseOnComplete);   // e.g. the boss falling settles your world
             OnQuestChanged?.Invoke();
 
             // Teaching beats (no NPC hand-in) reward + chain immediately.

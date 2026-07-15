@@ -81,6 +81,11 @@ namespace AldenFall.Quests
         public string CompleteCutscene;  // optional cutscene id played when objectives finish (climax)
         public string TurnInCutscene = "";  // optional cutscene id played on hand-in (resolution beat)
         public string PrereqQuestId;     // must be TurnedIn before this can be accepted
+
+        // Per-player world PHASING: reaching this quest flips the player's (and party's) own world
+        // phase, so the eruption follows each questline. "Calm" | "Erupting" | "Cleared" | "" (none).
+        public string WorldPhaseOnAccept = "";    // set when the player accepts this quest
+        public string WorldPhaseOnComplete = "";  // set when its objectives finish (before turn-in)
     }
 
     /// <summary>File wrapper for JsonUtility (mirrors Data.MonsterFile).</summary>

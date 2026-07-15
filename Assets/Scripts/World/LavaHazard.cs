@@ -93,6 +93,11 @@ namespace AldenFall.World
                 Health health = kvp.Key;
                 if (health == null) { pruneScratch.Add(health); continue; }
 
+                // Per-player phasing: a PLAYER only burns while their OWN world is Erupting (the lava
+                // is only "real" for them then). Mobs (no PlayerWorldPhase) always burn.
+                var pwp = health.GetComponent<PlayerWorldPhase>();
+                if (pwp != null && pwp.Phase != EmberfallWorldState.Phase.Erupting) continue;
+
                 // TakeDamage no-ops on the already-dead, so lingering corpses cost nothing.
                 // No attacker → environmental damage, and it can't miss.
                 health.TakeDamage(tickDamage);

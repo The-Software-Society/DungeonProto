@@ -5,31 +5,25 @@ using Mirror;
 namespace AldenFall.World
 {
     /// <summary>
-    /// The networked world-state for Floor 1's eruption climax. A single scene object
-    /// (server-authoritative) holds one SyncVar, the current <see cref="Phase"/>, and
-    /// replicates it to every client. The hook runs on all clients and drives the
-    /// (cosmetic, client-side) <see cref="EmberAtmosphere"/> global intensity, so the
-    /// whole world flips into apocalypse and back in lock-step:
+    /// Per-CLIENT PRESENTATION hub for the eruption. The authoritative phase now lives PER-PLAYER on
+    /// <see cref="PlayerWorldPhase"/> (the eruption follows each player's own questline — MMO phasing),
+    /// and THIS scene singleton just applies the LOCAL player's phase to the local world look:
+    /// atmosphere/sky, the lava-hazard content, the volcano plume, the floor gate, and the eruption/
+    /// floor-cleared cutscenes. So a player still in town sees a calm world with no cutscene, while the
+    /// party fighting the boss sees the mountain burn. Listeners (EruptionSpawns, VolcanoPlume,
+    /// WorldStateGate, EmberAtmosphere) subscribe to <see cref="OnPhaseChanged"/> unchanged.
     ///
-    ///   Calm     → intensity 0.00  (lush, the default living world)
-    ///   Erupting → intensity 0.85  (embers + soot rain, hellish sky, city under threat)
-    ///   Cleared  → intensity 0.15  (settling embers after the Floor Boss falls, calm returning)
+    /// The server-wide floor CLEAR (the SAO "shared floor" pillar) is a SEPARATE concern that stays
+    /// global — see <see cref="ServerProgressState"/> (first-clear banner + Hope buff).
     ///
-    /// The server API is deliberately tiny, <see cref="BeginEruption"/> and
-    /// <see cref="MarkDungeonCleared"/>, and is called by the main-quest hooks the quest /
-    /// world-gen agents wire (climax cutscene → BeginEruption; Floor Boss death →
-    /// MarkDungeonCleared). Other systems (near-city lava, spawns, quest UI) subscribe to
-    /// <see cref="OnPhaseChanged"/> rather than reaching in here.
-    ///
-    /// This is a scene NetworkBehaviour: its GO must carry a NetworkIdentity and be spawned
-    /// with the scene (world-gen's responsibility), the same way Mirror handles other scene
-    /// network objects in the project.
+    /// Kept a NetworkBehaviour scene object (its baked NetworkIdentity) so nothing else that references
+    /// Instance breaks, but it no longer holds a networked phase SyncVar.
     /// </summary>
     public class EmberfallWorldState : NetworkBehaviour
     {
         public enum Phase { Calm, Erupting, Cleared }
 
-        /// <summary>Scene singleton. There is one world-state per floor.</summary>
+        /// <summary>Scene singleton (the per-client presentation hub).</summary>
         public static EmberfallWorldState Instance { get; private set; }
 
         [Header("Atmosphere intensity per phase (0..1)")]
@@ -37,27 +31,19 @@ namespace AldenFall.World
         [SerializeField, Range(0f, 1f)] private float eruptingIntensity = 0.85f;
         [SerializeField, Range(0f, 1f)] private float clearedIntensity = 0.15f;
 
-        [SyncVar(hook = nameof(OnPhaseSync))] private Phase phase = Phase.Calm;
+        private Phase phase = Phase.Calm;   // the LOCAL player's phase, mirrored for presentation
 
-        /// <summary>Fired on every machine (server + clients) whenever the phase changes.
-        /// Listeners: near-city lava hazards, eruption spawns, quest UI, etc.</summary>
+        /// <summary>Fired on this machine whenever the local presentation phase changes.</summary>
         public event Action<Phase> OnPhaseChanged;
 
-        /// <summary>The current world phase.</summary>
         public Phase CurrentPhase => phase;
 
-        // Dedupe guard so the atmosphere/event only reacts to a genuine change, no matter
-        // whether it arrives via the SyncVar hook, OnStartClient, or a server setter.
         private bool hasApplied;
         private Phase lastApplied;
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
-            {
-                Destroy(this);
-                return;
-            }
+            if (Instance != null && Instance != this) { Destroy(this); return; }
             Instance = this;
         }
 
@@ -66,89 +52,40 @@ namespace AldenFall.World
             if (Instance == this) Instance = null;
         }
 
-        [Header("Main-quest hooks")]
-        [Tooltip("MobId whose death settles the eruption (the Floor Boss).")]
-        [SerializeField] private string floorBossMobId = "cave_troll_boss";
-
         public override void OnStartClient()
         {
-            // A late-joining pure client reflects the current phase immediately. On the host
-            // the server setters already applied it, so skip to avoid a redundant pass.
-            if (!isServer) ApplyPhase(phase);
+            // Seed the calm look; the local player's PlayerWorldPhase pushes its real phase in
+            // once it spawns/syncs.
+            SetPresentationPhase(phase);
         }
 
-        public override void OnStartServer()
-        {
-            // Seed the initial phase so later setters register as genuine TRANSITIONS
-            // (the climax cutscene only plays on a transition, never on initial state).
-            ApplyPhase(phase);
-            AI.MobIdentity.OnAnyMobKilled += HandleMobKilled;
-        }
-
-        public override void OnStopServer()
-        {
-            AI.MobIdentity.OnAnyMobKilled -= HandleMobKilled;
-        }
-
-        // The Floor Boss falling is THE floor objective: settle the eruption. If the
-        // eruption somehow never triggered (entrance trigger skipped), advance through
-        // Erupting so the world still converges on Cleared.
-        [Server]
-        private void HandleMobKilled(string mobId, GameObject mob)
-        {
-            if (mobId != floorBossMobId) return;
-            if (phase == Phase.Calm) BeginEruption();
-            MarkDungeonCleared();
-        }
-
-        // ---------------------------------------------------------------- server API
-
-        /// <summary>Server: flip the world into the eruption (Calm → Erupting). No-op otherwise.
-        /// Wired to the main-quest climax cutscene.</summary>
-        [Server]
-        public void BeginEruption()
-        {
-            if (phase != Phase.Calm) return;
-            phase = Phase.Erupting;
-            ApplyPhase(phase);   // host + server-side listeners (pure clients get it via the hook)
-        }
-
-        /// <summary>Server: the Floor Boss is dead, settle the world (Erupting → Cleared).
-        /// No-op otherwise. Wired to the boss death.</summary>
-        [Server]
-        public void MarkDungeonCleared()
-        {
-            if (phase != Phase.Erupting) return;
-            phase = Phase.Cleared;
-            ApplyPhase(phase);
-        }
-
-        /// <summary>Server, DEV/testing only (F9 panel): force ANY phase, ignoring the
-        /// normal Calm → Erupting → Cleared flow, so testers can flip the world state
-        /// back and forth at will. Transition cutscenes fire like the real thing.</summary>
-        [Server]
-        public void DebugForcePhase(Phase p)
+        /// <summary>
+        /// Drive this client's world look to a phase. Called by the LOCAL player's
+        /// <see cref="PlayerWorldPhase"/>. Purely cosmetic + local lava content; the authoritative
+        /// phase (and who lava burns) is per-player on the server.
+        /// </summary>
+        public void SetPresentationPhase(Phase p)
         {
             phase = p;
             ApplyPhase(p);
         }
 
-        // --------------------------------------------------------------- replication
-
-        // Runs on clients when the SyncVar arrives. On the host the [Server] setter above
-        // already applied the change, so bail here to avoid double-firing (mirrors Health.cs).
-        private void OnPhaseSync(Phase oldPhase, Phase newPhase)
+        /// <summary>
+        /// DEV/testing (F9 panel, QA driver): force the LOCAL PLAYER's authoritative phase, which then
+        /// drives presentation for real (and lava). Falls back to presentation-only if no local player.
+        /// </summary>
+        public void DebugForcePhase(Phase p)
         {
-            if (isServer) return;
-            ApplyPhase(newPhase);
+            var local = Multiplayer.LocalPlayerLocator.Find();
+            var pwp = local != null ? local.GetComponent<PlayerWorldPhase>() : null;
+            if (pwp != null) pwp.RequestPhase(p);
+            else SetPresentationPhase(p);
         }
-
-        // ------------------------------------------------------------------ apply
 
         private void ApplyPhase(Phase p)
         {
             if (hasApplied && lastApplied == p) return;
-            bool isTransition = hasApplied; // false only for the initial state application
+            bool isTransition = hasApplied;   // no cutscene on the very first (seed) application
             hasApplied = true;
             lastApplied = p;
 
@@ -157,9 +94,8 @@ namespace AldenFall.World
 
             OnPhaseChanged?.Invoke(p);
 
-            // Climax beats: text cutscene on the LOCAL player's director. Only on a live
-            // transition, a client logging in mid-eruption gets the atmosphere, not a
-            // replay of the moment. Headless servers have no local player and skip this.
+            // Climax beats on the local player's director, only on a genuine transition (a client
+            // arriving mid-eruption gets the atmosphere, not a replay). Headless has no local player.
             if (isTransition && p != Phase.Calm)
             {
                 var localPlayer = Multiplayer.LocalPlayerLocator.Find();

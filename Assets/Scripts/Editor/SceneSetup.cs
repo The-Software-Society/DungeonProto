@@ -349,6 +349,7 @@ namespace AldenFall.Editor
             player.AddComponent<Items.Equipment>();
             player.AddComponent<Items.Wallet>();          // gold purse (economy)
             player.AddComponent<Quests.QuestLog>();        // per-player quest tracking
+            player.AddComponent<World.PlayerWorldPhase>(); // per-player eruption phase (MMO phasing)
             player.AddComponent<Items.StarterLoadout>();
             player.AddComponent<Combat.PlayerMelee>();
             player.AddComponent<Combat.PlayerCombat>();   // server-auth damage relay (NetworkBehaviour → baked in prefab)

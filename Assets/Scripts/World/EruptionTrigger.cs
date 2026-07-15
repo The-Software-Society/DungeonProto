@@ -5,15 +5,13 @@ using AldenFall.Combat;
 namespace AldenFall.World
 {
     /// <summary>
-    /// The main-quest climax tripwire: a world-space AABB at the volcano mouth.
-    /// The first time any living PLAYER crosses it, the server flips the world
-    /// into the eruption (<see cref="EmberfallWorldState.BeginEruption"/>) -
-    /// embers spread toward the city until the Floor Boss falls.
+    /// A per-player eruption tripwire: a world-space AABB at the volcano mouth. Any living PLAYER
+    /// inside it has their OWN world flipped into the eruption (their <see cref="PlayerWorldPhase"/>),
+    /// as a safety net alongside the primary quest-driven trigger (accepting q_floor_boss). No global
+    /// flip — a player in town keeps their calm world.
     ///
-    /// Polls like <see cref="SealableDoor"/>/<see cref="LavaHazard"/> instead of
-    /// relying on physics trigger callbacks, so it works no matter how avatars
-    /// are moved (CharacterController locally, synced transforms on the server).
-    /// Server-only: the phase itself replicates via the world-state SyncVar.
+    /// Polls like <see cref="LavaHazard"/> instead of relying on physics trigger callbacks, so it
+    /// works no matter how avatars are moved. Server-only.
     /// </summary>
     public class EruptionTrigger : MonoBehaviour
     {
@@ -24,7 +22,6 @@ namespace AldenFall.World
         [Header("Tuning")]
         [SerializeField] private float checkInterval = 0.5f;
 
-        private bool fired;
         private float nextCheck;
 
         /// <summary>Called by the builder to place the tripwire (volcano entry tunnel).</summary>
@@ -36,19 +33,13 @@ namespace AldenFall.World
 
         private void Update()
         {
-            if (fired) return;
             if (!NetworkServer.active) return;
             if (Time.time < nextCheck) return;
             nextCheck = Time.time + checkInterval;
 
-            var world = EmberfallWorldState.Instance;
-            if (world == null) return;
-            if (world.CurrentPhase != EmberfallWorldState.Phase.Calm)
-            {
-                fired = true; // already erupting/cleared, nothing left to trip
-                return;
-            }
-
+            // PER-PLAYER: entering the caldera erupts THIS player's own world (a safety net; the
+            // primary trigger is accepting the q_floor_boss quest). No global flip — a player in
+            // town keeps their calm world.
             var bounds = new Bounds(center, size);
             foreach (var conn in NetworkServer.connections.Values)
             {
@@ -59,9 +50,9 @@ namespace AldenFall.World
                 var health = player.GetComponent<Health>();
                 if (health != null && !health.IsAlive) continue;
 
-                fired = true;
-                world.BeginEruption();
-                return;
+                var pwp = player.GetComponent<PlayerWorldPhase>();
+                if (pwp != null && pwp.Phase == EmberfallWorldState.Phase.Calm)
+                    pwp.ServerSetPhase(EmberfallWorldState.Phase.Erupting);
             }
         }
 
