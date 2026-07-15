@@ -211,6 +211,113 @@ namespace AldenFall.Editor
             return px;
         }
 
+        // Brick wall: staggered red-brown bricks with recessed dark mortar lines.
+        public static Color32[] Brick(int s)
+        {
+            var px = new Color32[s * s];
+            Color mortar = new Color(0.22f, 0.19f, 0.16f);
+            Color[] brick = { new Color(0.52f, 0.28f, 0.20f), new Color(0.46f, 0.24f, 0.17f), new Color(0.58f, 0.33f, 0.24f), new Color(0.42f, 0.22f, 0.16f) };
+            const int rows = 8; const float bw = 1f / 4f, bh = 1f / rows, m = 0.05f;
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    float u = x / (float)s, v = y / (float)s;
+                    int row = (int)(v / bh);
+                    float uu = u + (row % 2 == 0 ? 0f : bw * 0.5f);
+                    uu -= Mathf.Floor(uu);
+                    float fu = (uu % bw) / bw, fv = (v % bh) / bh;
+                    bool inMortar = fu < m / bw || fu > 1 - m / bw || fv < m / bh || fv > 1 - m / bh;
+                    int idx = ((int)(uu / bw) * 3 + row * 7) % brick.Length;
+                    Color c = inMortar ? mortar : Color.Lerp(brick[idx], brick[(idx + 1) % brick.Length], Fbm(u, v, 24f));
+                    px[y * s + x] = c;
+                }
+            return px;
+        }
+
+        // Stone wall: irregular grey ashlar blocks with dark joints.
+        public static Color32[] StoneWall(int s)
+        {
+            var px = new Color32[s * s];
+            Color joint = new Color(0.17f, 0.16f, 0.15f);
+            Color d = new Color(0.34f, 0.33f, 0.31f), l = new Color(0.56f, 0.55f, 0.52f);
+            const float cell = 5f;
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    float u = x / (float)s, v = y / (float)s;
+                    int row = (int)(v * cell);
+                    float uu = u * cell + (row % 2 == 0 ? 0f : 0.5f);
+                    float fu = uu - Mathf.Floor(uu), fv = (v * cell) - Mathf.Floor(v * cell);
+                    float edge = Mathf.Min(Mathf.Min(fu, 1 - fu), Mathf.Min(fv, 1 - fv));
+                    float n = Fbm(u, v, 16f);
+                    Color c = Color.Lerp(d, l, n);
+                    if (edge < 0.09f) c = Color.Lerp(c, joint, (0.09f - edge) / 0.09f);
+                    px[y * s + x] = c;
+                }
+            return px;
+        }
+
+        // Thatch roof: golden straw with vertical fibre streaks + darker horizontal courses.
+        public static Color32[] Thatch(int s)
+        {
+            var px = new Color32[s * s];
+            Color dark = new Color(0.42f, 0.31f, 0.13f), mid = new Color(0.60f, 0.46f, 0.20f), light = new Color(0.74f, 0.60f, 0.30f);
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    float u = x / (float)s, v = y / (float)s;
+                    float fib = Fbm(u * 3f, v, 40f);                 // vertical straw fibres
+                    float course = Mathf.Abs(Mathf.Sin(v * 3.14159f * 7f));
+                    Color c = Color.Lerp(dark, mid, course);
+                    c = Color.Lerp(c, light, Mathf.Clamp01((fib - 0.5f) * 2f));
+                    px[y * s + x] = c;
+                }
+            return px;
+        }
+
+        // Terracotta tile roof: rows of overlapping orange-red curved tiles.
+        public static Color32[] RoofTile(int s)
+        {
+            var px = new Color32[s * s];
+            Color gap = new Color(0.32f, 0.14f, 0.08f);
+            Color d = new Color(0.62f, 0.26f, 0.15f), l = new Color(0.82f, 0.42f, 0.24f);
+            const int rows = 7, cols = 6;
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    float u = x / (float)s, v = y / (float)s;
+                    float fv = (v * rows) - Mathf.Floor(v * rows);
+                    int row = (int)(v * rows);
+                    float uu = u * cols + (row % 2 == 0 ? 0f : 0.5f);
+                    float fu = uu - Mathf.Floor(uu);
+                    float dome = Mathf.Sin(fu * 3.14159f);            // rounded tile shading
+                    Color c = Color.Lerp(d, l, dome * (0.6f + 0.4f * Fbm(u, v, 20f)));
+                    if (fv > 0.82f) c = Color.Lerp(c, gap, (fv - 0.82f) / 0.18f);   // row overlap shadow
+                    px[y * s + x] = c;
+                }
+            return px;
+        }
+
+        // Wood plank floor: horizontal boards with dark seams + grain.
+        public static Color32[] Plank(int s)
+        {
+            var px = new Color32[s * s];
+            Color seam = new Color(0.16f, 0.10f, 0.06f);
+            Color d = new Color(0.30f, 0.20f, 0.11f), l = new Color(0.46f, 0.33f, 0.19f);
+            const int boards = 6;
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    float u = x / (float)s, v = y / (float)s;
+                    float fv = (v * boards) - Mathf.Floor(v * boards);
+                    float grain = Fbm(u, v * 0.3f, 30f);
+                    Color c = Color.Lerp(d, l, grain);
+                    if (fv < 0.06f || fv > 0.94f) c = Color.Lerp(c, seam, 0.7f);
+                    px[y * s + x] = c;
+                }
+            return px;
+        }
+
         private static Texture2D Save(string name, Color32[] px)
         {
             var tex = new Texture2D(Size, Size, TextureFormat.RGBA32, true);

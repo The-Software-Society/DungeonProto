@@ -364,6 +364,9 @@ PROPS = {
     "Cauldron": "black cast-iron cooking cauldron pot hanging on an iron tripod over embers, medieval, stylized low-poly game prop, standalone",
     "Rug": "rectangular woven wool rug with a red and gold medieval geometric pattern, flat, stylized low-poly game prop",
     "WallLantern": "wrought-iron wall-mounted lantern with a warm glowing candle behind glass panes, medieval, stylized low-poly game prop, standalone",
+    # ---- Building roofs (gable-shaped, drop onto a rectangular house) ----
+    "TiledRoof": "medieval house gable roof, two long sloped sides covered in rows of orange-red terracotta clay tiles meeting at a ridge beam, rectangular, stylized low-poly game building roof, standalone",
+    "ThatchRoof": "medieval house gable roof, two long sloped sides of thick layered dry golden straw thatch meeting at a ridge, rectangular, stylized low-poly game building roof, standalone",
 }
 
 # ---------------------------------------------------------------------------

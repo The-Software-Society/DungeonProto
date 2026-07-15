@@ -1377,7 +1377,9 @@ namespace AldenFall.Editor
                     // Streets: cross axes between the four gates.
                     bool street = Mathf.Abs(cx) < 5f || Mathf.Abs(cz) < 5f;
                     var mat = street ? streetMat : cobble[rng.Next(cobble.Length)];
-                    var t = Cube($"City_{x}_{z}", new Vector3(cx, -0.25f, cz),
+                    // Top sits at y=0.05 (clearly ABOVE the terrain) so the tiles don't z-fight/shimmer
+                    // with the ground on camera moves (Jon: "gray blocks shake on move").
+                    var t = Cube($"City_{x}_{z}", new Vector3(cx, -0.2f, cz),
                         new Vector3(tile, 0.5f, tile), mat, container);
                     t.isStatic = true;
                     if (groundLayer >= 0) t.layer = groundLayer;
@@ -1399,22 +1401,24 @@ namespace AldenFall.Editor
 
             // ---- ENTERABLE district buildings: block shells + furnished Meshy interiors + NPCs
             // with intention. A mix of 1/2/3 stories; doors face the plaza streets. All walkable in.
-            // NW — the flagship 3-STORY inn + homes.
-            BuildTownBuilding(container, "TheEmberRest", new Vector3(-39f, 0f, 40f), 8f, 7f, 3, 0, "inn", groundLayer,
+            // BIG buildings (Jon: 2-3x, "so the city feels full") placed in the NORTH/SOUTH strips of
+            // each quadrant, kept clear of the diagonal R3 canal (east z~10 -> centre z~6 -> NW z~40)
+            // and the gate streets. 3-story inn + several 2-story.
+            // NW (north, clear of the canal's NW exit): the flagship 3-STORY inn + a home.
+            BuildTownBuilding(container, "TheEmberRest", new Vector3(-40f, 0f, 46f), 9f, 7f, 3, 3, "inn", groundLayer,
                 "Hobb", new[] { "cooked_fish", "cooked_trout", "cooked_bass", "cooked_carp" });
-            BuildTownBuilding(container, "HomeNW1", new Vector3(-47f, 0f, 18f), 6f, 5f, 2, 3, "house", groundLayer);
-            BuildTownBuilding(container, "HomeNW2", new Vector3(-20f, 0f, 44f), 6f, 5f, 1, 0, "house", groundLayer);
-            // NE — shops behind the market row.
-            BuildTownBuilding(container, "GeneralStore", new Vector3(40f, 0f, 44f), 7f, 6f, 2, 0, "shop", groundLayer);
-            BuildTownBuilding(container, "ProvisionerShop", new Vector3(48f, 0f, 20f), 6f, 5f, 1, 2, "shop", groundLayer);
-            // SE — the Forge (smithy) + an armory + a home.
-            BuildTownBuilding(container, "TheForge", new Vector3(40f, 0f, -34f), 7f, 6f, 1, 1, "smithy", groundLayer);
-            BuildTownBuilding(container, "Armory", new Vector3(48f, 0f, -14f), 6f, 5f, 2, 2, "shop", groundLayer);
-            BuildTownBuilding(container, "HomeSE1", new Vector3(20f, 0f, -26f), 6f, 5f, 1, 1, "house", groundLayer);
-            // SW — residential lane (incl. a 2-story).
-            BuildTownBuilding(container, "HomeSW1", new Vector3(-39f, 0f, -40f), 7f, 6f, 1, 1, "house", groundLayer);
-            BuildTownBuilding(container, "HomeSW2", new Vector3(-48f, 0f, -18f), 6f, 5f, 2, 3, "house", groundLayer);
-            BuildTownBuilding(container, "HomeSW3", new Vector3(-20f, 0f, -26f), 6f, 5f, 1, 1, "house", groundLayer);
+            BuildTownBuilding(container, "HomeNW1", new Vector3(-18f, 0f, 44f), 8f, 7f, 2, 0, "house", groundLayer);
+            // NE (north): general store + provisioner (2-story shops).
+            BuildTownBuilding(container, "GeneralStore", new Vector3(39f, 0f, 42f), 11f, 9f, 2, 0, "shop", groundLayer);
+            BuildTownBuilding(container, "ProvisionerShop", new Vector3(18f, 0f, 42f), 8f, 7f, 1, 0, "shop", groundLayer);
+            // SE (south): the Forge (smithy) + armory + a home on the east wall.
+            BuildTownBuilding(container, "TheForge", new Vector3(38f, 0f, -36f), 10f, 9f, 1, 1, "smithy", groundLayer);
+            BuildTownBuilding(container, "Armory", new Vector3(18f, 0f, -40f), 8f, 7f, 2, 1, "shop", groundLayer);
+            BuildTownBuilding(container, "HomeSE1", new Vector3(46f, 0f, -16f), 8f, 8f, 1, 2, "house", groundLayer);
+            // SW (south): residential lane (a 2-story + homes).
+            BuildTownBuilding(container, "HomeSW1", new Vector3(-38f, 0f, -38f), 11f, 9f, 2, 1, "house", groundLayer);
+            BuildTownBuilding(container, "HomeSW2", new Vector3(-18f, 0f, -40f), 8f, 7f, 1, 1, "house", groundLayer);
+            BuildTownBuilding(container, "HomeSW3", new Vector3(-46f, 0f, -16f), 8f, 8f, 1, 3, "house", groundLayer);
 
             // Market dressing + lanterns.
             PlaceMeshyProp(container, "TownWell", new Vector3(18f, 0f, 18f), 0f, 3f, groundLayer);
@@ -1434,20 +1438,27 @@ namespace AldenFall.Editor
             if (groundLayer >= 0) anvil.layer = groundLayer;
             CreateTorch(container, new Vector3(27f, 0f, -26f), 0.9f); // forge glow
 
-            // Plaza + street torches for warm, lived-in light — lamps pace the
-            // four gate streets so the walk from any gate feels tended.
-            foreach (var p in new[]
+            // STREET LAMPS everywhere (Jon): two variations (a glowing globe lamp + an iron
+            // hanging-lantern post), each a REAL point light, paced along both gate streets + a
+            // ring around the plaza + the perimeter walk. All recorded in the JSON mapper.
+            int lampN = 0;
+            void Lamp(Vector3 p)
             {
-                new Vector3(9f, 0f, 9f), new Vector3(-9f, 0f, 9f),
-                new Vector3(9f, 0f, -9f), new Vector3(-9f, 0f, -9f),
-                new Vector3(0f, 0f, 30f), new Vector3(0f, 0f, -30f),
-                new Vector3(30f, 0f, 0f), new Vector3(-30f, 0f, 0f),
-                new Vector3(6.5f, 0f, 18f), new Vector3(-6.5f, 0f, -18f),
-                new Vector3(18f, 0f, 6.5f), new Vector3(-18f, 0f, -6.5f),
-                new Vector3(6.5f, 0f, 42f), new Vector3(-6.5f, 0f, -42f),
-                new Vector3(42f, 0f, 6.5f), new Vector3(-42f, 0f, -6.5f),
+                if (DistToCityCanal(p.x, p.z) < 6f) return;   // not in the canal
+                if (Mathf.Abs(p.x) < 6f && Mathf.Abs(p.z) < 6f) return;   // not on the fountain
+                BuildStreetLamp(container, p, lampN++ % 2, groundLayer);
+            }
+            for (float d = -46f; d <= 46f; d += 11f)
+            {
+                Lamp(new Vector3(3.2f, 0f, d)); Lamp(new Vector3(-3.2f, 0f, d));   // N-S street both sides
+                Lamp(new Vector3(d, 0f, 3.2f)); Lamp(new Vector3(d, 0f, -3.2f));   // E-W street both sides
+            }
+            foreach (var p in new[]   // plaza ring + inner corners
+            {
+                new Vector3(10f, 0f, 10f), new Vector3(-10f, 0f, 10f), new Vector3(10f, 0f, -10f), new Vector3(-10f, 0f, -10f),
+                new Vector3(24f, 0f, 24f), new Vector3(-24f, 0f, 24f), new Vector3(24f, 0f, -24f), new Vector3(-24f, 0f, -24f),
             })
-                CreateTorch(container, p, 1f);
+                Lamp(p);
 
             // Ambient (decorative) townsfolk — gentle, non-hostile figures for life.
             PlaceTownsfolk(container, new Vector3(24f, 0f, 26f), new Color(0.4f, 0.32f, 0.5f), groundLayer);   // market
@@ -1630,14 +1641,31 @@ namespace AldenFall.Editor
             int stories, int doorSide, string type, int groundLayer, string npcName = null, string[] npcStock = null)
         {
             var container = Child(parent, key);
+            float canalD = DistToCityCanal(c.x, c.z);
+            if (canalD < Mathf.Max(halfX, halfZ) + 4f) Debug.Log($"BUILDING {key} @({c.x:F0},{c.z:F0}) too close to canal (dist {canalD:F0}, needs {Mathf.Max(halfX, halfZ) + 4f:F0})");
             const float wallH = 3.4f, thick = 0.4f;
             var timber = Mat("BldgTimber", new Color(0.34f, 0.24f, 0.15f), smoothness: 0.08f);
-            var wallMat = ((int)(Mathf.Abs(c.x) + Mathf.Abs(c.z)) % 2 == 0)
-                ? Mat("BldgPlasterA", new Color(0.74f, 0.68f, 0.57f), smoothness: 0.06f)
-                : Mat("BldgPlasterB", new Color(0.66f, 0.58f, 0.47f), smoothness: 0.06f);
-            var roofMat = Mat("BldgRoof", new Color(0.42f, 0.2f, 0.14f), smoothness: 0.05f);
-            var floorMat = Mat("BldgFloor", new Color(0.3f, 0.22f, 0.13f), smoothness: 0.1f);
-            var windowMat = Mat("BldgWindow", new Color(1f, 0.78f, 0.42f), smoothness: 0.4f, emission: new Color(1f, 0.62f, 0.25f) * 1.3f);
+            // Real MATERIAL on the blocks (Jon: "brick/stone slabs on top of blocks"): brick or
+            // stone walls, tile or thatch roofs, plank floors - procedural textures on the cubes.
+            Material TexMat(string n, System.Func<Color32[]> gen, float tile)
+            {
+                var m = Mat(n, Color.white, smoothness: 0.04f);
+                var tex = GetGeneratedTexture($"{n}_Tex", gen);
+                if (m.HasProperty("_BaseMap")) { m.SetTexture("_BaseMap", tex); m.SetTextureScale("_BaseMap", new Vector2(tile, tile)); }
+                if (m.HasProperty("_MainTex")) { m.SetTexture("_MainTex", tex); m.SetTextureScale("_MainTex", new Vector2(tile, tile)); }
+                return m;
+            }
+            int variant = (int)(Mathf.Abs(c.x) + Mathf.Abs(c.z) * 1.7f);
+            bool stoneWall = variant % 3 == 0;
+            bool thatchRoof = (variant / 3) % 2 == 0;
+            var wallMat = stoneWall ? TexMat("BldgStone", () => GroundTextureGenerator.StoneWall(256), 3f)
+                                    : TexMat("BldgBrick", () => GroundTextureGenerator.Brick(256), 3f);
+            var roofMat = thatchRoof ? TexMat("BldgThatch", () => GroundTextureGenerator.Thatch(256), 2.5f)
+                                     : TexMat("BldgTile", () => GroundTextureGenerator.RoofTile(256), 2.5f);
+            var floorMat = TexMat("BldgPlank", () => GroundTextureGenerator.Plank(256), 3f);
+            // Daytime GLASS window (dark blue-grey, barely-emissive) - the bright emissive panes
+            // read as floating light-cards against the dark walls (Jon). Glass, not a lamp.
+            var windowMat = Mat("BldgWindow", new Color(0.22f, 0.27f, 0.33f), smoothness: 0.55f, emission: new Color(0.5f, 0.42f, 0.28f) * 0.08f);
 
             GameObject Solid(string n, Vector3 local, Vector3 size, Material m, bool collide = true)
             {
@@ -1733,6 +1761,19 @@ namespace AldenFall.Editor
             }
             Solid("Ridge", new Vector3(0f, top + 2.3f, 0f), new Vector3(0.6f, 0.4f, halfZ * 2f + 1.4f), timber);
 
+            // ---- Gable-end walls: fill the OPEN triangle between the flat wall top and the pitched
+            // roof (Jon's "triangle on the sides of houses"). Stepped narrowing slabs = a solid
+            // triangular gable at each Z end. ----
+            float gableH = halfX * 0.49f;
+            const int gSteps = 12;   // more, thinner steps => reads as a smooth triangle, not a blocky pyramid
+            foreach (float zEnd in new[] { -halfZ, halfZ })
+                for (int i = 0; i < gSteps; i++)
+                {
+                    float f = i / (float)gSteps;
+                    float w = halfX * 2f * (1f - f) + 0.3f;
+                    Solid($"Gable{(zEnd < 0 ? "S" : "N")}_{i}", new Vector3(0f, top + (i + 0.5f) * (gableH / gSteps), zEnd), new Vector3(w, gableH / gSteps + 0.06f, thick), wallMat);
+                }
+
             // ---- Interior fill light per story (so rooms read cozy, not cave-dark) ----
             for (int s = 0; s < stories; s++)
             {
@@ -1761,7 +1802,9 @@ namespace AldenFall.Editor
             void Place(string mesh, float lx, float lz, float yaw, float h, Vector3 fbSize, Color fbCol, bool collide = false)
             {
                 Vector3 wp = c + new Vector3(lx, fy, lz);
-                if (HasMesh(mesh))
+                // Rugs must lie FLAT; the mesh imports standing up like a tapestry, so use the flat
+                // cube (a low patterned slab on the floor) instead.
+                if (mesh != "Rug" && HasMesh(mesh))
                     PlaceMeshyProp(container, mesh, wp, yaw, h, groundLayer, collide ? PropCollision.FitBox : PropCollision.None);
                 else
                 {
@@ -1849,6 +1892,39 @@ namespace AldenFall.Editor
                     Place("Rug", 0f, 0f, 0f, 2f, new Vector3(1.8f, 0.05f, 1.4f), new Color(0.4f, 0.2f, 0.14f));
                 }
             }
+        }
+
+        /// <summary>A street lamp that ACTUALLY emits light. variant 0 = a frosted glowing globe on
+        /// an iron post; variant 1 = an iron post with a hanging warm lantern on an arm. Both add a
+        /// real point light + are recorded in the placement catalog.</summary>
+        private static void BuildStreetLamp(Transform container, Vector3 basePos, int variant, int groundLayer)
+        {
+            var iron = Mat("LampIron", new Color(0.13f, 0.12f, 0.13f), smoothness: 0.25f);
+            const float h = 3.6f;
+            var post = Cube("Lamp_Post", basePos + Vector3.up * (h / 2f), new Vector3(0.18f, h, 0.18f), iron, container);
+            post.isStatic = true; if (groundLayer >= 0) post.layer = groundLayer;
+            Color glow;
+            if (variant == 0)
+            {
+                glow = new Color(1f, 0.93f, 0.72f);
+                var globeMat = Mat("LampGlobe", new Color(1f, 0.97f, 0.82f), smoothness: 0.4f, emission: new Color(1f, 0.93f, 0.72f) * 2.4f);
+                var globe = Sphere("Lamp_Globe", basePos + Vector3.up * (h + 0.28f), Vector3.one * 0.55f, globeMat, container);
+                Object.DestroyImmediate(globe.GetComponent<Collider>());
+            }
+            else
+            {
+                glow = new Color(1f, 0.66f, 0.3f);
+                var lantMat = Mat("LampLantern", new Color(1f, 0.8f, 0.5f), smoothness: 0.3f, emission: new Color(1f, 0.62f, 0.28f) * 2.2f);
+                var arm = Cube("Lamp_Arm", basePos + Vector3.up * (h - 0.15f) + new Vector3(0.45f, 0f, 0f), new Vector3(0.95f, 0.12f, 0.12f), iron, container);
+                Object.DestroyImmediate(arm.GetComponent<BoxCollider>());
+                var lant = Cube("Lamp_Lantern", basePos + Vector3.up * (h - 0.45f) + new Vector3(0.9f, 0f, 0f), new Vector3(0.42f, 0.62f, 0.42f), lantMat, container);
+                Object.DestroyImmediate(lant.GetComponent<BoxCollider>());
+            }
+            var lo = new GameObject("Lamp_Light"); lo.transform.SetParent(container);
+            lo.transform.position = basePos + Vector3.up * (h + 0.2f);
+            var L = lo.AddComponent<Light>();
+            L.type = LightType.Point; L.color = glow; L.range = 15f; L.intensity = 2.6f; L.shadows = LightShadows.None;
+            RecordDetail(variant == 0 ? "lamp_globe" : "lamp_lantern", basePos.x, basePos.z, 0f, h);
         }
 
         /// <summary>
