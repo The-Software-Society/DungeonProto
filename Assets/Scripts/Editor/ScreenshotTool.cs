@@ -111,7 +111,7 @@ namespace AldenFall.Editor
             ("dbg_nsroad",      new Vector3(2f, 4f, 90f),     new Vector3(0f, 1.5f, 200f)),  // N-S dirt road toward lake
             ("dbg_nsroad_lo",   new Vector3(3f, 2.2f, 140f),  new Vector3(0f, 1.2f, 210f)),  // road grazing (shine)
             ("city_over",       new Vector3(0f, 62f, -46f),   new Vector3(0f, 4f, 16f)),      // city: enterable buildings from above
-            ("inn_ext",         new Vector3(-39f, 6f, 22f),   new Vector3(-39f, 6f, 40f)),    // 3-story inn front
+            ("inn_ext",         new Vector3(-25f, 9f, 16f),   new Vector3(-39f, 7f, 42f)),    // 3-story inn front, pulled back
             ("inn_int",         new Vector3(-39f, 1.8f, 35f), new Vector3(-39f, 1.4f, 44f)),  // inn interior (bar/tables/fire)
             ("city_street",     new Vector3(40f, 4f, 8f),     new Vector3(45f, 3f, -30f)),    // SE street: forge + armory doors
             ("dbg_fall_rocks",  new Vector3(40f, 12f, 430f),  new Vector3(0f, 8f, 486f)),    // waterfall rock variety + foam

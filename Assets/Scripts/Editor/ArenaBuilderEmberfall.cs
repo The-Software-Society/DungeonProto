@@ -1676,27 +1676,33 @@ namespace AldenFall.Editor
                     if (isDoor)
                     {
                         float dH = 1.3f, segW = (span * 2f - dH * 2f) / 2f;
+                        float woff = thick / 2f + 0.05f;
                         if (spanX)
                         {
                             Solid($"W{s}_{side}L", new Vector3(-(dH + segW / 2f), yc, wc.z), new Vector3(segW, wallH, thick), wallMat);
                             Solid($"W{s}_{side}R", new Vector3(dH + segW / 2f, yc, wc.z), new Vector3(segW, wallH, thick), wallMat);
                             Solid($"Lin{s}_{side}", new Vector3(0, y0 + wallH - 0.5f, wc.z), new Vector3(dH * 2f + 0.6f, 1f, thick), timber);
+                            foreach (float wx in new[] { -(dH + segW / 2f), dH + segW / 2f })   // windows flanking the door
+                                Solid($"WinD{s}_{side}_{wx:F0}", new Vector3(wx, y0 + 2.1f, wc.z + Mathf.Sign(wc.z) * woff), new Vector3(1.2f, 1.1f, 0.1f), windowMat, collide: false);
                         }
                         else
                         {
                             Solid($"W{s}_{side}L", new Vector3(wc.x, yc, -(dH + segW / 2f)), new Vector3(thick, wallH, segW), wallMat);
                             Solid($"W{s}_{side}R", new Vector3(wc.x, yc, dH + segW / 2f), new Vector3(thick, wallH, segW), wallMat);
                             Solid($"Lin{s}_{side}", new Vector3(wc.x, y0 + wallH - 0.5f, 0), new Vector3(thick, 1f, dH * 2f + 0.6f), timber);
+                            foreach (float wz in new[] { -(dH + segW / 2f), dH + segW / 2f })
+                                Solid($"WinD{s}_{side}_{wz:F0}", new Vector3(wc.x + Mathf.Sign(wc.x) * woff, y0 + 2.1f, wz), new Vector3(0.1f, 1.1f, 1.2f), windowMat, collide: false);
                         }
                     }
                     else
                     {
                         Solid($"W{s}_{side}", wc, wsize, wallMat);
-                        // one glowing window centered on the wall (skip walls that are too short)
-                        Vector3 wp = wc + (spanX ? new Vector3(0, 0, -Mathf.Sign(wc.z == 0 ? 1 : wc.z) * (thick / 2f + 0.05f))
-                                                 : new Vector3(-Mathf.Sign(wc.x == 0 ? 1 : wc.x) * (thick / 2f + 0.05f), 0, 0));
+                        // glowing window(s) on the EXTERIOR face so the facade reads as inhabited.
+                        float woff2 = thick / 2f + 0.06f;
+                        Vector3 wp = wc + (spanX ? new Vector3(0, 0, Mathf.Sign(wc.z == 0 ? 1 : wc.z) * woff2)
+                                                 : new Vector3(Mathf.Sign(wc.x == 0 ? 1 : wc.x) * woff2, 0, 0));
                         wp.y = y0 + 2.1f;
-                        Vector3 winSize = spanX ? new Vector3(1.5f, 1.2f, 0.12f) : new Vector3(0.12f, 1.2f, 1.5f);
+                        Vector3 winSize = spanX ? new Vector3(1.6f, 1.3f, 0.1f) : new Vector3(0.1f, 1.3f, 1.6f);
                         Solid($"Win{s}_{side}", wp - c, winSize, windowMat, collide: false);
                     }
                 }
@@ -1730,8 +1736,8 @@ namespace AldenFall.Editor
                 var fl = new GameObject($"Fill{s}"); fl.transform.SetParent(container);
                 fl.transform.position = c + new Vector3(0f, s * wallH + wallH * 0.75f, 0f);
                 var L = fl.AddComponent<Light>();
-                L.type = LightType.Point; L.color = new Color(1f, 0.86f, 0.62f);
-                L.range = Mathf.Max(halfX, halfZ) * 2.4f; L.intensity = 1.25f; L.shadows = LightShadows.None;
+                L.type = LightType.Point; L.color = new Color(1f, 0.87f, 0.64f);
+                L.range = Mathf.Max(halfX, halfZ) * 2.6f; L.intensity = 1.75f; L.shadows = LightShadows.None;
             }
 
             // ---- Furnish + NPCs per story ----
