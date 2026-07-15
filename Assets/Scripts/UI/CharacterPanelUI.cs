@@ -37,8 +37,16 @@ namespace AldenFall.UI
         private Wallet wallet;
         private GameObject boundPlayer;
 
+        private SlidePanel slidePanel;
+        private float bindTime;
+        // Ignore auto-open during the spawn/save-restore settle window: StarterLoadout
+        // and PlayerSave.Apply both fire OnEquipmentChanged as they rebuild gear, and
+        // we don't want the panel flying open on login.
+        private const float AutoOpenSettle = 2.5f;
+
         private void Start()
         {
+            slidePanel = GetComponent<SlidePanel>();
             EnsureBagGold();
             EnsureHandLabels();
             TryBindPlayer();
@@ -110,17 +118,31 @@ namespace AldenFall.UI
             equipment = player.GetComponent<Equipment>();
             stats = player.GetComponent<StatBlock>();
             wallet = player.GetComponent<Wallet>();
+            bindTime = Time.unscaledTime;
 
             if (inventory != null) inventory.OnChanged.AddListener(Refresh);
-            if (equipment != null) equipment.OnEquipmentChanged.AddListener(Refresh);
+            if (equipment != null) equipment.OnEquipmentChanged.AddListener(OnEquipmentChanged);
             if (wallet != null) wallet.OnChanged.AddListener(OnGoldChanged);
             Refresh();
+        }
+
+        /// <summary>
+        /// Gear changed: refresh the readout and pop the character panel open so the
+        /// new item is visible (Jon: "auto-open equipment when armor/weapon changes").
+        /// Suppressed during the login settle window so spawn/save-restore re-equips
+        /// don't fling it open.
+        /// </summary>
+        private void OnEquipmentChanged()
+        {
+            Refresh();
+            if (slidePanel != null && Time.unscaledTime - bindTime > AutoOpenSettle)
+                slidePanel.Set(true);
         }
 
         private void Unbind()
         {
             if (inventory != null) inventory.OnChanged.RemoveListener(Refresh);
-            if (equipment != null) equipment.OnEquipmentChanged.RemoveListener(Refresh);
+            if (equipment != null) equipment.OnEquipmentChanged.RemoveListener(OnEquipmentChanged);
             if (wallet != null) wallet.OnChanged.RemoveListener(OnGoldChanged);
             inventory = null;
             equipment = null;

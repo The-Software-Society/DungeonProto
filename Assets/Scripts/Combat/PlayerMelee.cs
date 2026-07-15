@@ -260,8 +260,10 @@ namespace AldenFall.Combat
             var projectile = bolt.GetComponent<Projectile>();
             if (projectile != null)
             {
-                // No callback: the projectile's own Magic XP grant applies
-                projectile.SetDamage(Stats.CombatMath.SpellDamage(stats, boltBaseDamage));
+                // No callback: the projectile's own Magic XP grant applies.
+                // Defensive stance trades offence for guard, halve the bolt.
+                float mult = combatStyle != null ? combatStyle.OffenseMultiplier : 1f;
+                projectile.SetDamage(Stats.CombatMath.SpellDamage(stats, boltBaseDamage) * mult);
                 projectile.Initialize(aimDirection, gameObject, target);
             }
         }
@@ -302,7 +304,9 @@ namespace AldenFall.Combat
             var projectile = arrow.GetComponent<Projectile>();
             if (projectile != null)
             {
-                projectile.SetDamage(Stats.CombatMath.RangedDamage(stats));
+                // Defensive stance trades offence for guard, halve the arrow.
+                float mult = combatStyle != null ? combatStyle.OffenseMultiplier : 1f;
+                projectile.SetDamage(Stats.CombatMath.RangedDamage(stats) * mult);
                 projectile.SetXpReward(Progression.SkillType.Ranged, 2.0f);   // arrows train Ranged
                 projectile.Initialize(aimDirection, gameObject, target);
             }

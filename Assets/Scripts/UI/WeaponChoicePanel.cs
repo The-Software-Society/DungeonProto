@@ -37,7 +37,7 @@ namespace AldenFall.UI
         public const string StarterMagicFocus = "apprentice_focus"; // off hand (focus)
         public const string StarterBow = "short_bow";               // main hand (bow)
         public const string StarterArrows = "arrow";                // consumable ammo
-        public const int StarterArrowCount = 60;
+        public const int StarterArrowCount = 100;
         public const string PathKey = "starter_path_v1";            // "melee" | "magic" | "archery"
 
         // Starter kits for action bar keys 1-5 (see ActionBar.ApplyCombatKit).
@@ -92,32 +92,31 @@ namespace AldenFall.UI
             var scrim = NewImage("Scrim", transform, new Color(0f, 0f, 0f, 0.62f));
             Stretch(scrim.rectTransform);
 
-            var prompt = Label(transform, "Prompt", "CHOOSE YOUR FIRST WEAPON",
-                new Vector2(0, 292), new Vector2(1200, 56), 38, UITheme.TextGold);
+            var prompt = Label(transform, "Prompt", "ALDRIC'S PARTING GIFT",
+                new Vector2(0, 300), new Vector2(1200, 56), 38, UITheme.TextGold);
             prompt.fontStyle = FontStyles.Bold;
             prompt.characterSpacing = 8;
             var sub = Label(transform, "Sub",
-                "Aldric offers you a parting gift. You can swap weapons and playstyles freely, anytime: this is only what you set out with.",
-                new Vector2(0, 246), new Vector2(1320, 36), 17, UITheme.TextDim);
+                "Take all three. Explore what suits you, your action bar swaps to match whatever you draw. Bind or rebind a bar to a weapon anytime with the [X] on the bar.",
+                new Vector2(0, 252), new Vector2(1360, 60), 17, UITheme.TextDim);
             sub.characterSpacing = 1;
 
             BuildCard(
-                new Vector2(-580, -32), UITheme.Gold,
-                "A WORN BLADE", "Starter sword, main hand",
-                "Step in close and cut them down.\n\nSwinging trains Attack / Strength / Defence.\nYour bar fills with five sword skills.\n\nJust your first weapon: trade up whenever you like.",
-                ChooseMelee);
+                new Vector2(-580, -8), UITheme.Gold,
+                "A WORN BLADE", "Sword, main hand",
+                "Step in close and cut them down.\n\nSwinging trains Attack / Strength / Defence.\nThe MELEE bar (1-5) fills with five sword skills.");
 
             BuildCard(
-                new Vector2(0, -32), UITheme.MagicBlue,
-                "APPRENTICE'S KIT", "Starter wand and off-hand focus",
-                "Strike from range with wand and focus.\n\nCasting levels the Magic skill.\nYour bar fills with five spells.\n\nJust your first weapons: pick up a blade anytime.",
-                ChooseMagic);
+                new Vector2(0, -8), UITheme.MagicBlue,
+                "APPRENTICE'S KIT", "Wand and off-hand focus",
+                "Strike from range with wand and focus.\n\nCasting levels the Magic skill, Pure or Defensive stance.\nThe MAGIC bar fills with five spells.");
 
             BuildCard(
-                new Vector2(580, -32), UITheme.TextGold,
-                "A HUNTER'S BOW", "Starter short bow and a quiver",
-                "Loose arrows from afar and keep your distance.\n\nShooting trains Archery (and Hitpoints).\nYour bar fills with five bow skills.\n\nArrows are ammo: gather them from foes and traders.",
-                ChooseArchery);
+                new Vector2(580, -8), UITheme.TextGold,
+                "A HUNTER'S BOW", "Short bow and 100 arrows",
+                "Loose arrows from afar and keep your distance.\n\nShooting trains Archery, Pure or Defensive stance.\nThe ARCHERY bar fills with five bow skills.");
+
+            BuildContinueButton();
         }
 
         private void Update()
@@ -128,9 +127,9 @@ namespace AldenFall.UI
 
         // ==================== CARDS ====================
 
-        private void BuildCard(Vector2 pos, Color accent, string title, string subtitle, string body, Action onClick)
+        private void BuildCard(Vector2 pos, Color accent, string title, string subtitle, string body)
         {
-            var card = Rect(transform, "Card_" + title, new Vector2(0.5f, 0.5f), pos, new Vector2(560, 408));
+            var card = Rect(transform, "Card_" + title, new Vector2(0.5f, 0.5f), pos, new Vector2(560, 384));
 
             // Drop shadow behind the card, then accent keyline, then opaque body.
             var shadow = NewImage("DropShadow", card, UITheme.DropShadow);
@@ -149,19 +148,7 @@ namespace AldenFall.UI
 
             var bg = card.gameObject.AddComponent<Image>();
             bg.color = UITheme.PanelBgDeep;
-
-            var button = card.gameObject.AddComponent<Button>();
-            button.transition = Selectable.Transition.ColorTint;
-            button.targetGraphic = bg;
-            var colors = button.colors;
-            colors.normalColor = Color.white;
-            colors.highlightedColor = new Color(1.55f, 1.5f, 1.4f, 1f);   // subtle on the near-black body
-            colors.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
-            colors.colorMultiplier = 1f;
-            colors.fadeDuration = 0.08f;
-            button.colors = colors;
-            button.onClick.AddListener(() => onClick());
-            card.gameObject.AddComponent<HoverScale>().hoverScale = 1.02f;
+            bg.raycastTarget = false;
 
             // Accent bar along the top edge.
             var bar = NewImage("Accent", card, accent);
@@ -172,73 +159,93 @@ namespace AldenFall.UI
             bar.rectTransform.sizeDelta = new Vector2(0, 4);
             bar.raycastTarget = false;
 
-            var titleLabel = Label(card, "Title", title, new Vector2(0, 138), new Vector2(512, 44), 30, accent);
+            var titleLabel = Label(card, "Title", title, new Vector2(0, 130), new Vector2(512, 44), 30, accent);
             titleLabel.fontStyle = FontStyles.Bold;
             titleLabel.characterSpacing = 6;
 
             var subLabel = Label(card, "Subtitle", subtitle.ToUpperInvariant(),
-                new Vector2(0, 102), new Vector2(512, 24), 13, UITheme.TextDim);
+                new Vector2(0, 96), new Vector2(512, 24), 13, UITheme.TextDim);
             subLabel.characterSpacing = 3;
 
             var rule = NewImage("Rule", card, new Color(accent.r, accent.g, accent.b, 0.25f));
             rule.rectTransform.anchorMin = rule.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-            rule.rectTransform.anchoredPosition = new Vector2(0, 84);
+            rule.rectTransform.anchoredPosition = new Vector2(0, 78);
             rule.rectTransform.sizeDelta = new Vector2(464, 1);
             rule.raycastTarget = false;
 
-            var bodyLabel = Label(card, "Body", body, new Vector2(0, -32), new Vector2(464, 200), 18, UITheme.TextMain);
+            var bodyLabel = Label(card, "Body", body, new Vector2(0, -36), new Vector2(464, 200), 18, UITheme.TextMain);
             bodyLabel.alignment = TextAlignmentOptions.Top;
             bodyLabel.lineSpacing = 6;
 
-            var hint = Label(card, "Hint", "CLICK TO CHOOSE", new Vector2(0, -178), new Vector2(512, 20), 12,
+            var hint = Label(card, "Hint", "YOURS TO KEEP", new Vector2(0, -168), new Vector2(512, 20), 12,
                 new Color(accent.r, accent.g, accent.b, 0.85f));
             hint.fontStyle = FontStyles.Bold;
             hint.characterSpacing = 4;
         }
 
-        // ==================== SELECTION ====================
+        private void BuildContinueButton()
+        {
+            var card = Rect(transform, "Continue", new Vector2(0.5f, 0.5f), new Vector2(0, -274), new Vector2(360, 60));
 
-        private void ChooseMelee()
+            var bg = card.gameObject.AddComponent<Image>();
+            bg.color = UITheme.Gold;
+
+            var button = card.gameObject.AddComponent<Button>();
+            button.transition = Selectable.Transition.ColorTint;
+            button.targetGraphic = bg;
+            var colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1.12f, 1.1f, 1.0f, 1f);
+            colors.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
+            button.onClick.AddListener(GrantAll);
+            card.gameObject.AddComponent<HoverScale>().hoverScale = 1.03f;
+
+            var label = Label(card, "Label", "TAKE THEM ALL", new Vector2(0, 0), new Vector2(360, 40), 22,
+                new Color(0.06f, 0.05f, 0.03f));
+            label.fontStyle = FontStyles.Bold;
+            label.characterSpacing = 6;
+        }
+
+        // ==================== GRANT ====================
+
+        /// <summary>
+        /// Aldric hands over every family at once, blade equipped as the default.
+        /// StarterLoadout grants the same kit on spawn/relog; the ActionBar's three
+        /// category presets (Melee/Magic/Archery) are (re)configured so drawing any
+        /// weapon auto-swaps its skill bar in.
+        /// </summary>
+        private void GrantAll()
         {
             var inv = player != null ? player.GetComponent<Inventory>() : null;
             var equip = player != null ? player.GetComponent<Equipment>() : null;
             if (inv == null || equip == null) { Resolve(); return; }
 
-            GrantAndEquip(inv, equip, StarterMelee); // sword into the main hand
+            GrantAndEquip(inv, equip, StarterMelee);       // blade -> main hand (default)
+            GrantOnly(inv, equip, StarterMagicWand);       // in the bag, draw to go magic
+            GrantOnly(inv, equip, StarterMagicFocus);
+            GrantOnly(inv, equip, StarterBow);             // in the bag, draw to go archery
+            for (int i = inv.CountOf(StarterArrows); i < StarterArrowCount; i++) inv.Add(StarterArrows);
 
-            // Default melee sub-style; harmless if already set.
             player.GetComponent<CombatStyleController>()?.Set(CombatStyle.Attack);
 
-            player.GetComponent<ActionBar>()?.ApplyCombatKit(MeleeKit);
+            var bar = player.GetComponent<ActionBar>();
+            if (bar != null)
+            {
+                bar.ConfigurePreset(0, WeaponCategory.Melee, MeleeKit);
+                bar.ConfigurePreset(1, WeaponCategory.Magic, MagicKit);
+                bar.ConfigurePreset(2, WeaponCategory.Archery, ArcheryKit);
+                bar.SetActivePreset(0);
+            }
+
             Commit("melee");
         }
 
-        private void ChooseMagic()
+        private static void GrantOnly(Inventory inv, Equipment equip, string itemId)
         {
-            var inv = player != null ? player.GetComponent<Inventory>() : null;
-            var equip = player != null ? player.GetComponent<Equipment>() : null;
-            if (inv == null || equip == null) { Resolve(); return; }
-
-            // Wand into the MAIN hand (displacing the starter sword into the bag),
-            // focus into the OFF hand. Both hands filled = full spell kit usable.
-            GrantAndEquip(inv, equip, StarterMagicWand);
-            GrantAndEquip(inv, equip, StarterMagicFocus);
-
-            player.GetComponent<ActionBar>()?.ApplyCombatKit(MagicKit);
-            Commit("magic");
-        }
-
-        private void ChooseArchery()
-        {
-            var inv = player != null ? player.GetComponent<Inventory>() : null;
-            var equip = player != null ? player.GetComponent<Equipment>() : null;
-            if (inv == null || equip == null) { Resolve(); return; }
-
-            GrantAndEquip(inv, equip, StarterBow);   // bow into the main hand
-            for (int i = 0; i < StarterArrowCount; i++) inv.Add(StarterArrows);
-
-            player.GetComponent<ActionBar>()?.ApplyCombatKit(ArcheryKit);
-            Commit("archery");
+            if (equip != null && equip.IsEquipped(itemId)) return;
+            if (!inv.Contains(itemId)) inv.Add(itemId);
         }
 
         private static void GrantAndEquip(Inventory inv, Equipment equip, string itemId)

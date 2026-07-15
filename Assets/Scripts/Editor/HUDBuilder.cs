@@ -64,6 +64,7 @@ namespace AldenFall.Editor
             BuildHealthCluster(canvasObj.transform, hud);
             BuildAbilityBar(canvasObj.transform, hud);
             BuildCombatStyleCluster(canvasObj.transform);
+            BuildPresetSwitcher(canvasObj.transform);
             BuildTargetFrame(canvasObj.transform, hud);
             BuildFeedsAndToasts(canvasObj.transform, hud, xpFeed);
             // v9: skills are window-only now (K / the bottom-right Skills button). The always-on
@@ -199,11 +200,14 @@ namespace AldenFall.Editor
             label.characterSpacing = 2;
             Anchor(label.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, -3), new Vector2(140, 14));
 
+            // Index-based handlers: each button dispatches by the CURRENT weapon
+            // category (melee Attack/Str/Def vs ranged Pure/Defensive), so the same
+            // three baked buttons drive both stance families.
             var styles = new (Combat.CombatStyle style, string glyph, UnityEngine.Events.UnityAction onClick)[]
             {
-                (Combat.CombatStyle.Attack,   "icon_sword",    styleUI.SelectAttack),
-                (Combat.CombatStyle.Strength, "icon_strength", styleUI.SelectStrength),
-                (Combat.CombatStyle.Defence,  "icon_shield",   styleUI.SelectDefence),
+                (Combat.CombatStyle.Attack,   "icon_sword",    styleUI.SelectSlot0),
+                (Combat.CombatStyle.Strength, "icon_strength", styleUI.SelectSlot1),
+                (Combat.CombatStyle.Defence,  "icon_shield",   styleUI.SelectSlot2),
             };
 
             float x = -44f;
@@ -218,13 +222,76 @@ namespace AldenFall.Editor
                 var icon = Image(btn, "Icon", S(glyph), new Color(0.92f, 0.88f, 0.8f, 1f), stretch: true, padding: 8);
                 icon.preserveAspect = true;
 
+                // Tiny label under each button, retitled per category by CombatStyleUI.
+                var slabel = Text(btn, "SlotLabel", "", 8, UITheme.TextDim, FontStyles.Bold);
+                slabel.characterSpacing = 1;
+                Anchor(slabel.rectTransform, new Vector2(0.5f, 0f), new Vector2(0, -8), new Vector2(40, 10));
+
                 var button = btn.gameObject.AddComponent<Button>();
                 button.targetGraphic = bg;
                 UnityEditor.Events.UnityEventTools.AddPersistentListener(button.onClick, onClick);
 
-                styleUI.entries.Add(new CombatStyleUI.Entry { style = style, border = border, icon = icon });
+                styleUI.entries.Add(new CombatStyleUI.Entry
+                {
+                    style = style, root = btn.gameObject, border = border, icon = icon, label = slabel,
+                });
                 x += 44f;
             }
+        }
+
+        // ==================== ACTION-BAR PRESET SWITCHER ====================
+        // Sits to the RIGHT of the bar (mirrors the combat-style cluster): up/down
+        // cycle the preset bars, the [X] chip shows and rebinds the weapon family
+        // that auto-swaps to the active bar.
+        private static void BuildPresetSwitcher(Transform root)
+        {
+            const float slotSize = 58f, gap = 8f;
+            const int slotCount = Abilities.ActionBar.SlotCount;
+            float barWidth = slotCount * slotSize + (slotCount - 1) * gap;
+            float clusterX = barWidth / 2f + 40f;   // over the dodge TAPx2 slot
+
+            var cluster = Panel(root, "PresetSwitcher", new Vector2(0.5f, 0f),
+                new Vector2(clusterX, 136), new Vector2(150, 58));
+            var presetUI = cluster.gameObject.AddComponent<ActionBarPresetUI>();
+
+            Image(cluster, "ClusterBg", S("panel_r16"), new Color(0.07f, 0.063f, 0.10f, 0.62f), stretch: true, padding: -4);
+
+            var header = Text(cluster, "Header", "BAR 1/3", 11, UITheme.TextGold, FontStyles.Bold);
+            header.characterSpacing = 2;
+            Anchor(header.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, -3), new Vector2(150, 14));
+            presetUI.barLabel = header;
+
+            // Up / Down arrow buttons on the left of the cluster.
+            presetUI.upButton = MakeTextButton(cluster, "Up", "▲", new Vector2(-56, -6), new Vector2(24, 20));
+            presetUI.downButton = MakeTextButton(cluster, "Down", "▼", new Vector2(-56, -30), new Vector2(24, 20));
+
+            // Trigger chip: shows and cycles which weapon family auto-swaps here.
+            var chip = Panel(cluster, "TriggerChip", new Vector2(0.5f, 0.5f), new Vector2(24, -8), new Vector2(86, 30));
+            var chipBg = Image(chip, "Bg", S("slot_r10"), UITheme.SlotBg, stretch: true);
+            chipBg.raycastTarget = true;
+            Image(chip, "Border", S("slot_border_r10"), new Color(1f, 1f, 1f, 0.12f), stretch: true, padding: -1);
+            var chipBtn = chip.gameObject.AddComponent<Button>();
+            chipBtn.targetGraphic = chipBg;
+            chip.gameObject.AddComponent<HoverScale>();
+            var trig = Text(chip, "Trigger", "AUTO: MELEE", 10, UITheme.TextDim, FontStyles.Bold);
+            trig.characterSpacing = 1;
+            Stretch(trig.rectTransform);
+            presetUI.triggerButton = chipBtn;
+            presetUI.triggerLabel = trig;
+        }
+
+        private static Button MakeTextButton(Transform parent, string name, string glyph, Vector2 pos, Vector2 size)
+        {
+            var btn = Panel(parent, name, new Vector2(0.5f, 0.5f), pos, size);
+            btn.gameObject.AddComponent<HoverScale>();
+            var bg = Image(btn, "Bg", S("slot_r10"), UITheme.SlotBg, stretch: true);
+            bg.raycastTarget = true;
+            Image(btn, "Border", S("slot_border_r10"), new Color(1f, 1f, 1f, 0.12f), stretch: true, padding: -1);
+            var label = Text(btn, "Glyph", glyph, 12, UITheme.TextMain, FontStyles.Bold);
+            Stretch(label.rectTransform);
+            var button = btn.gameObject.AddComponent<Button>();
+            button.targetGraphic = bg;
+            return button;
         }
 
         private static AbilitySlotUI BuildAbilitySlot(RectTransform parent, string name,

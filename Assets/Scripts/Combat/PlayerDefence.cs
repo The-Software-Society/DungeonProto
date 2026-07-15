@@ -24,7 +24,9 @@ namespace AldenFall.Combat
 
         private void OnRawDamage(float rawDamage)
         {
-            if (combatStyle != null && combatStyle.Style != CombatStyle.Defence) return;
+            // Defence trains from taking hits only while a guarding stance is active:
+            // the melee Defence style, or a magic/archery Defensive stance.
+            if (combatStyle != null && !combatStyle.TrainsDefenceFromHits) return;
             skills?.AddXp(SkillType.Defence, rawDamage * 1.1f);
         }
     }

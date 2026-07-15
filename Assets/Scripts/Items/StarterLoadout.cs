@@ -4,22 +4,20 @@ using UnityEngine;
 namespace AldenFall.Items
 {
     /// <summary>
-    /// Grants and equips the starting gear on spawn. Path-aware: once the intro
-    /// weapon choice is persisted (see UI.WeaponChoicePanel.PathKey), a magic
-    /// player relogs into wand + focus, not the default rusty sword, inventory
-    /// does not persist between sessions, so this IS the relog kit.
+    /// Grants the starting gear on spawn. Aldric hands you ALL THREE weapon
+    /// families (blade, wand + focus, bow) plus a full quiver, so you can explore
+    /// whatever playstyle you like, the action bar auto-swaps to match whatever you
+    /// draw. Inventory does not persist between sessions for pure clients, so this
+    /// IS the relog kit; the blade is equipped by default (melee bar active).
     /// </summary>
     [RequireComponent(typeof(Inventory), typeof(Equipment))]
     public class StarterLoadout : MonoBehaviour
     {
-        // Mirrors UI.WeaponChoicePanel.PathKey / its starter item ids (Items
-        // deliberately doesn't reference the UI namespace).
-        private const string StarterPathKey = "starter_path_v1";
         private const string MagicWand = "apprentice_wand";
         private const string MagicFocus = "apprentice_focus";
         private const string Bow = "short_bow";
         private const string Arrows = "arrow";
-        private const int ArrowCount = 60;
+        private const int ArrowCount = 100;
 
         [SerializeField] private string starterWeapon = "rusty_sword";
         [SerializeField] private string starterTool = "fishing_pole";
@@ -42,26 +40,24 @@ namespace AldenFall.Items
             var equipment = GetComponent<Equipment>();
             if (inventory == null) return;
 
-            // You begin with one terrible weapon set and a fishing pole, everything
-            // better comes from the world.
-            string path = PlayerPrefs.GetString(StarterPathKey, "");
-            if (path == "magic")
-            {
-                GrantAndEquip(inventory, equipment, MagicWand);   // main hand
-                GrantAndEquip(inventory, equipment, MagicFocus);  // off hand
-            }
-            else if (path == "archery")
-            {
-                GrantAndEquip(inventory, equipment, Bow);         // main hand
-                if (inventory.CountOf(Arrows) < ArrowCount)       // top the quiver back up on relog
-                    for (int i = inventory.CountOf(Arrows); i < ArrowCount; i++) inventory.Add(Arrows);
-            }
-            else
-            {
-                GrantAndEquip(inventory, equipment, starterWeapon);
-            }
+            // All three families in the bag; the blade goes to the main hand as the
+            // default, everything better comes from the world.
+            GrantAndEquip(inventory, equipment, starterWeapon);   // blade -> main hand (equipped)
+            GrantOnly(inventory, equipment, MagicWand);            // in the bag, draw to go magic
+            GrantOnly(inventory, equipment, MagicFocus);
+            GrantOnly(inventory, equipment, Bow);                 // in the bag, draw to go archery
+            if (inventory.CountOf(Arrows) < ArrowCount)            // top the quiver back up on relog
+                for (int i = inventory.CountOf(Arrows); i < ArrowCount; i++) inventory.Add(Arrows);
+
             if (!inventory.Contains(starterTool))
                 inventory.Add(starterTool);
+        }
+
+        /// <summary>Put an item in the bag once, without equipping it (skip if already held/worn).</summary>
+        private static void GrantOnly(Inventory inventory, Equipment equipment, string itemId)
+        {
+            if (equipment != null && equipment.IsEquipped(itemId)) return;
+            if (!inventory.Contains(itemId)) inventory.Add(itemId);
         }
 
         /// <summary>Grant once and equip; no duplicates if it's already in hand or bag.</summary>
