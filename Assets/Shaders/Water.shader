@@ -1,25 +1,20 @@
 Shader "AldenFall/Water"
 {
-    // SELF-CONTAINED stylized water: procedural surface swell (vertex waves) + animated ripple
-    // normals driving a moving sun sparkle and a fresnel sky-reflection, semi-transparent so you
-    // see into it. Deliberately does NOT sample the scene depth texture - depth-based water is
-    // fragile in player builds (variant stripping / depth-prepass config) and was rendering FLAT
-    // with no ripples in the shipped build. This version ripples + reads as translucent water in
-    // ANY build, editor or standalone.
+    // CHEAP, MATTE, non-repeating stylized water. Self-contained (no scene depth). Designed to be
+    // fill-rate friendly (few instructions/pixel) because water covers most of the screen when
+    // swimming, and to AVOID the regular diagonal bands + pulsing specular "star" the old
+    // 27-sin/high-spec version produced. Gentle detuned ripples, a broad soft sheen (no sharp
+    // sparkle), translucent depth-ish tint via fresnel.
     Properties
     {
-        _ShallowColor ("Shallow tint",   Color) = (0.30, 0.55, 0.58, 0.6)
-        _DeepColor    ("Water body",     Color) = (0.10, 0.30, 0.42, 0.85)
-        _FresnelTint  ("Sky reflection", Color) = (0.58, 0.74, 0.86, 1)
-        _FoamColor    ("Crest foam",     Color) = (0.92, 0.97, 1.0, 1.0)
-        _RippleScale  ("Ripple scale",    Float) = 0.5
-        _RippleSpeed  ("Ripple speed",    Float) = 0.7
-        _RippleStrength("Ripple strength",Float) = 0.5
-        _WaveHeight   ("Wave height",     Float) = 0.10
-        _WaveScale    ("Wave scale",      Float) = 0.12
-        _SpecSharp    ("Sparkle sharpness",Range(8,600)) = 200
-        _SpecGain     ("Sparkle gain",    Float) = 0.8
-        _Opacity      ("Base opacity",    Range(0,1)) = 0.62
+        _ShallowColor ("Shallow tint",   Color) = (0.26, 0.50, 0.55, 0.6)
+        _DeepColor    ("Water body",     Color) = (0.09, 0.26, 0.36, 0.85)
+        _FresnelTint  ("Sky reflection", Color) = (0.42, 0.58, 0.68, 1)
+        _RippleSpeed  ("Ripple speed",    Float) = 0.5
+        _RippleStrength("Ripple strength",Float) = 0.10
+        _WaveHeight   ("Wave height",     Float) = 0.05
+        _Sheen        ("Sheen gain",      Float) = 0.10
+        _Opacity      ("Base opacity",    Range(0,1)) = 0.72
     }
     SubShader
     {
@@ -37,69 +32,50 @@ Shader "AldenFall/Water"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
             CBUFFER_START(UnityPerMaterial)
-                float4 _ShallowColor, _DeepColor, _FresnelTint, _FoamColor;
-                float _RippleScale, _RippleSpeed, _RippleStrength;
-                float _WaveHeight, _WaveScale, _SpecSharp, _SpecGain, _Opacity;
+                float4 _ShallowColor, _DeepColor, _FresnelTint;
+                float _RippleSpeed, _RippleStrength, _WaveHeight, _Sheen, _Opacity;
             CBUFFER_END
 
             struct Attributes { float4 positionOS:POSITION; };
-            struct Varyings {
-                float4 positionHCS:SV_POSITION;
-                float3 positionWS:TEXCOORD0;
-                float  wave:TEXCOORD1;
-            };
-
-            float WaveH(float2 p, float t)
-            {
-                return sin(p.x * _WaveScale + t) * cos(p.y * _WaveScale * 0.8 + t * 1.1) * _WaveHeight
-                     + sin((p.x + p.y) * _WaveScale * 1.7 + t * 1.6) * _WaveHeight * 0.4;
-            }
-
-            // Procedural ripple normal from a sum of travelling sines (animated by _Time).
-            float3 RippleNormal(float2 p, float t)
-            {
-                float2 q = p * _RippleScale;
-                float e = 0.2;
-                float h0 = sin(q.x + t) + sin(q.y * 1.3 - t * 1.2) + sin((q.x + q.y) * 0.7 + t * 0.6);
-                float hx = sin(q.x + e + t) + sin(q.y * 1.3 - t * 1.2) + sin((q.x + e + q.y) * 0.7 + t * 0.6);
-                float hy = sin(q.x + t) + sin((q.y + e) * 1.3 - t * 1.2) + sin((q.x + q.y + e) * 0.7 + t * 0.6);
-                return normalize(float3((h0 - hx) * _RippleStrength, 1.0, (h0 - hy) * _RippleStrength));
-            }
+            struct Varyings { float4 positionHCS:SV_POSITION; float3 positionWS:TEXCOORD0; };
 
             Varyings vert(Attributes IN)
             {
                 Varyings OUT;
                 float3 wp = TransformObjectToWorld(IN.positionOS.xyz);
-                float w = WaveH(wp.xz, _Time.y * _RippleSpeed);
-                wp.y += w;
+                float t = _Time.y * _RippleSpeed;
+                // Gentle non-harmonic swell (2 cheap sines, detuned so they don't beat uniformly).
+                wp.y += (sin(wp.x * 0.09 + wp.z * 0.13 + t) + sin(wp.x * -0.07 + wp.z * 0.05 - t * 0.8)) * _WaveHeight;
                 OUT.positionWS = wp;
-                OUT.wave = w;
                 OUT.positionHCS = TransformWorldToHClip(wp);
                 return OUT;
             }
 
             half4 frag(Varyings IN) : SV_Target
             {
+                float2 p = IN.positionWS.xz;
                 float t = _Time.y * _RippleSpeed;
-                float3 rn = RippleNormal(IN.positionWS.xz, t);
+                // THREE detuned directional ripples (irrational-ish freqs/dirs -> long beat, no
+                // regular grid). Cheap: 3 sins total for the surface normal.
+                float a = sin(p.x *  0.113 + p.y *  0.071 + t);
+                float b = sin(p.x * -0.052 + p.y *  0.131 - t * 0.83);
+                float c = sin(p.x *  0.087 + p.y * -0.159 + t * 1.27);
+                float2 slope = float2(a * 0.6 + c * 0.4, b * 0.6 - c * 0.4) * _RippleStrength;
+                float3 n = normalize(float3(slope.x, 1.0, slope.y));
+
                 float3 viewDir = normalize(GetCameraPositionWS() - IN.positionWS);
+                float fres = pow(1.0 - saturate(dot(n, viewDir)), 4.0);
 
-                // Fresnel: look straight down -> see the water body; grazing -> sky reflection.
-                float fres = pow(1.0 - saturate(dot(rn, viewDir)), 4.0);
-                float3 col = lerp(_DeepColor.rgb, _ShallowColor.rgb, saturate(rn.y * 0.0 + fres * 0.35));
-                col = lerp(col, _FresnelTint.rgb, fres * 0.55);
+                float3 col = lerp(_DeepColor.rgb, _ShallowColor.rgb, fres * 0.35);
+                col = lerp(col, _FresnelTint.rgb, fres * 0.45);          // gentle sky tint at grazing
 
-                // Moving sun sparkle off the rippled surface.
-                Light mainLight = GetMainLight();
-                float3 hv = normalize(mainLight.direction + viewDir);
-                float spec = pow(saturate(dot(rn, hv)), _SpecSharp) * _SpecGain;
-                col += mainLight.color.rgb * spec;
+                // BROAD, soft sheen instead of a sharp specular star (low power, low gain).
+                Light L = GetMainLight();
+                float3 h = normalize(L.direction + viewDir);
+                float sheen = pow(saturate(dot(n, h)), 16.0) * _Sheen;
+                col += L.color.rgb * sheen;
 
-                // Subtle white foam on the highest wave crests (no depth needed).
-                float crest = smoothstep(_WaveHeight * 0.55, _WaveHeight * 1.1, IN.wave);
-                col = lerp(col, _FoamColor.rgb, crest * 0.35);
-
-                float alpha = saturate(lerp(_Opacity, 0.95, fres) + spec + crest * 0.3);
+                float alpha = saturate(lerp(_Opacity, 0.9, fres));
                 return half4(col, alpha);
             }
             ENDHLSL

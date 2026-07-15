@@ -834,7 +834,7 @@ namespace AldenFall.Editor
             if (groundLayer >= 0) terrainObj.layer = groundLayer;
             terrainObj.isStatic = true;
             var terrain = terrainObj.GetComponent<Terrain>();
-            terrain.detailObjectDistance = 250f;   // max: grass covers mid-distance ground so bare splat doesn't wash pale
+            terrain.detailObjectDistance = 140f;   // perf: grass is the densest thing; 140m keeps the near ground lush while cutting far-grass instance count hard (250m was a big cost)
             terrain.detailObjectDensity = 1f;
             // Low pixel error: a high value let the terrain LOD flatten/drop the mesh BELOW the
             // heightmap at distance, dipping under the world water sheet so it showed through the
@@ -2179,18 +2179,14 @@ namespace AldenFall.Editor
             var m = AssetDatabase.LoadAssetAtPath<Material>(mp);
             if (m == null) { m = new Material(shader); AssetDatabase.CreateAsset(m, mp); }
             else if (m.shader != shader) m.shader = shader;
-            m.SetColor("_ShallowColor", new Color(0.34f, 0.58f, 0.60f, 0.6f));
-            m.SetColor("_DeepColor", new Color(0.10f, 0.30f, 0.42f, 0.85f));
-            m.SetColor("_FoamColor", new Color(0.92f, 0.97f, 1f, 1f));
-            m.SetColor("_FresnelTint", new Color(0.58f, 0.74f, 0.86f, 1f));
-            m.SetFloat("_RippleScale", 0.5f);
-            m.SetFloat("_RippleSpeed", 0.7f);
-            m.SetFloat("_RippleStrength", 0.5f);
-            m.SetFloat("_WaveHeight", 0.10f);
-            m.SetFloat("_WaveScale", 0.12f);
-            m.SetFloat("_SpecSharp", 200f);
-            m.SetFloat("_SpecGain", 0.8f);
-            m.SetFloat("_Opacity", 0.62f);
+            m.SetColor("_ShallowColor", new Color(0.26f, 0.50f, 0.55f, 0.6f));
+            m.SetColor("_DeepColor", new Color(0.09f, 0.26f, 0.36f, 0.85f));
+            m.SetColor("_FresnelTint", new Color(0.42f, 0.58f, 0.68f, 1f));
+            m.SetFloat("_RippleSpeed", 0.5f);
+            m.SetFloat("_RippleStrength", 0.10f);
+            m.SetFloat("_WaveHeight", 0.05f);
+            m.SetFloat("_Sheen", 0.10f);
+            m.SetFloat("_Opacity", 0.72f);
             m.renderQueue = 3000;
             EditorUtility.SetDirty(m);
             return m;
