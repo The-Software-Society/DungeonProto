@@ -37,20 +37,31 @@ namespace AldenFall.AI
             if (component != null) component.enabled = value;
         }
 
-        /// <summary>Server (BossRageMode) → all clients: play the boss rage cinematic locally
-        /// on each machine. Runs on the boss's networked component so a pure client gets the
-        /// letterbox/camera framing + local combat-pause too, not just the host/server.</summary>
+        [Tooltip("Radius around the boss within which players count as 'fighting it' and see the rage cinematic.")]
+        [SerializeField] private float engageRadius = 55f;
+
+        /// <summary>Server (BossRageMode) → only players ACTIVELY AT THE BOSS: play the rage
+        /// cinematic locally. Scoped by proximity so someone in town never sees it, while everyone
+        /// fighting the boss (their whole party is right there) sees it in sync. A solo fighter
+        /// just sees it themselves.</summary>
         [Server]
         public void ServerPlayRageCinematic()
         {
-            RpcPlayRageCinematic();
+            float rangeSqr = engageRadius * engageRadius;
+            Vector3 bossPos = transform.position;
+            foreach (var conn in NetworkServer.connections.Values)
+            {
+                if (conn == null || conn.identity == null) continue;
+                if ((conn.identity.transform.position - bossPos).sqrMagnitude <= rangeSqr)
+                    TargetPlayRageCinematic(conn);
+            }
         }
 
-        [ClientRpc]
-        private void RpcPlayRageCinematic()
+        [TargetRpc]
+        private void TargetPlayRageCinematic(NetworkConnectionToClient target)
         {
             // BossRageMode is disabled on pure clients, but a disabled MonoBehaviour's methods
-            // still execute — call its local cinematic builder directly on every client.
+            // still execute — call its local cinematic builder directly.
             GetComponent<BossRageMode>()?.PlayRageCinematicLocal();
         }
     }

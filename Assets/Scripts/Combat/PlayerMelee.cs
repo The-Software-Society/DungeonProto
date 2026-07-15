@@ -190,7 +190,35 @@ namespace AldenFall.Combat
             if (animator != null)
                 animator.SetTrigger(AttackHash);
 
+            // Let other players see the swing (visual only; damage is server-authoritative).
+            combat?.BroadcastAuto(0, transform.position, target.position - transform.position, target.position);
+
             StartCoroutine(SwingRoutine(target));
+        }
+
+        /// <summary>Replay another player's auto-attack on THIS observer: kind 0=melee swing,
+        /// 1=magic bolt, 2=arrow. Damage-free — the server already resolved the hit. Runs on the
+        /// remote avatar's (disabled) PlayerMelee via PlayerCombat's Rpc.</summary>
+        public void ReplayRemoteAuto(byte kind, Vector3 origin, Vector3 aimDir, Vector3 targetPos)
+        {
+            if (animator == null) animator = GetComponentInChildren<Animator>();
+            if (kind == 0)
+            {
+                if (animator != null) animator.SetTrigger(AttackHash);
+                return;
+            }
+            if (animator != null) animator.SetTrigger(SpecialAttackHash);
+            var prefab = abilities != null ? abilities.FireballPrefab : null;
+            if (prefab == null || aimDir.sqrMagnitude < 0.0001f) return;
+            var proj = Object.Instantiate(prefab, origin, Quaternion.LookRotation(aimDir.normalized));
+            proj.transform.localScale *= kind == 2 ? 0.45f : 0.6f;
+            var p = proj.GetComponent<Projectile>();
+            if (p != null)
+            {
+                p.SetVisualOnly(true);
+                p.SetDamage(0f);
+                p.Initialize(aimDir.normalized, gameObject, null);
+            }
         }
 
         private System.Collections.IEnumerator SwingRoutine(Transform target)

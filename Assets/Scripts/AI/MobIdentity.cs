@@ -75,13 +75,23 @@ namespace AldenFall.AI
         {
             if (lastAttacker == null) return;
 
+            // Gold is shared with the whole party (no quest prerequisite).
             int gold = Random.Range(goldRange.x, goldRange.y + 1) * Mathf.Max(1, combatLevel);
-            GrantRewardsTo(lastAttacker, gold);
-            Multiplayer.PartySystem.ForEachOtherMember(lastAttacker,
-                member => GrantRewardsTo(member, gold));
+            GrantGoldTo(lastAttacker, gold);
+            Multiplayer.PartySystem.ForEachOtherMember(lastAttacker, member => GrantGoldTo(member, gold));
+
+            // Kill-quest credit is the KILLER's own advance; it fans out to partymates (step-gated,
+            // must have the quest active + be at that step) through QuestLog's unified party
+            // fan-out, so we must NOT also fan it here or it would double-count.
+            if (!string.IsNullOrEmpty(MobId))
+            {
+                var combat = lastAttacker.GetComponent<Combat.PlayerCombat>();
+                if (combat != null) combat.ServerAdvanceKillQuest(MobId);
+                else lastAttacker.GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, MobId);
+            }
         }
 
-        private void GrantRewardsTo(GameObject player, int gold)
+        private void GrantGoldTo(GameObject player, int gold)
         {
             if (player == null) return;
             // Server-authoritative gold: host player gets it directly, a pure-client
@@ -89,15 +99,6 @@ namespace AldenFall.AI
             var combat = player.GetComponent<Combat.PlayerCombat>();
             if (combat != null) combat.ServerGrantGold(gold);
             else player.GetComponent<Wallet>()?.Add(gold);
-
-            // KillMob quest credit is client-local state, so route it through the same
-            // host-inline / pure-client-TargetRpc bridge as gold (else a dedicated-server
-            // client's kill quests never advance).
-            if (!string.IsNullOrEmpty(MobId))
-            {
-                if (combat != null) combat.ServerAdvanceKillQuest(MobId);
-                else player.GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, MobId);
-            }
         }
 
         private void RollLoot()

@@ -171,6 +171,11 @@ namespace AldenFall.Quests
                     if (!string.IsNullOrEmpty(obj.TargetId) && obj.TargetId != targetId) continue;
                     if (kv.Value.Progress[i] >= obj.Count) continue;
 
+                    // Party credit CANNOT SKIP STEPS: a partymate's advance only counts for this
+                    // member if this objective is their CURRENT step — every earlier objective is
+                    // already complete for them. An out-of-sync member must catch up themselves.
+                    if (fromParty && !PriorObjectivesComplete(kv.Value, def, i)) continue;
+
                     kv.Value.Progress[i] = Mathf.Min(obj.Count, kv.Value.Progress[i] + amount);
                     changed = true;
 
@@ -230,6 +235,15 @@ namespace AldenFall.Quests
                 if (!string.IsNullOrEmpty(next.GiverNpcId)) continue;
                 if (CanAccept(next.Id)) { Accept(next.Id); break; }
             }
+            return true;
+        }
+
+        /// <summary>True when every objective BEFORE index i is already complete for this quest
+        /// state — i.e. objective i is this player's current sequential step.</summary>
+        private static bool PriorObjectivesComplete(QuestState st, QuestDef def, int i)
+        {
+            for (int j = 0; j < i; j++)
+                if (st.Progress[j] < def.Objectives[j].Count) return false;
             return true;
         }
 

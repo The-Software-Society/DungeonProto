@@ -103,11 +103,13 @@ namespace AldenFall.Combat
         /// client-local (the owning client's HUD reads it), so the host player advances
         /// inline while a pure-client player on the dedicated server gets a TargetRpc.
         /// Mirrors ServerGrantGold; without it a pure client's kill quests never progress.</summary>
+        // The KILLER's own kill credit: a normal (own-action) advance that fans out to the party
+        // through QuestLog's unified path (fromParty:false = fans + not step-gated for the killer).
         public void ServerAdvanceKillQuest(string mobId)
         {
             if (!isServer || string.IsNullOrEmpty(mobId)) return;
             if (isLocalPlayer)
-                GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, mobId, 1, fromParty: true);
+                GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, mobId);
             else
                 TargetAdvanceKillQuest(mobId);
         }
@@ -115,7 +117,7 @@ namespace AldenFall.Combat
         [TargetRpc]
         private void TargetAdvanceKillQuest(string mobId)
         {
-            GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, mobId, 1, fromParty: true);
+            GetComponent<Quests.QuestLog>()?.Advance(Quests.ObjectiveKind.KillMob, mobId);
         }
 
         // ---- party quest fan-out: when a LOCAL objective advances (collect/reach/talk/inspect/
@@ -300,6 +302,28 @@ namespace AldenFall.Combat
             var abilities = GetComponent<Abilities.PlayerAbilities>();
             if (abilities != null)
                 abilities.ReplayRemoteCast(abilityId, origin, aimDir, target != null ? target.transform : null);
+        }
+
+        // ---- auto-attack visuals: broadcast the melee swing + the magic-bolt/arrow autos so
+        // other players SEE everyone's basic attacks (abilities already replicate via RpcCast).
+        // Damage is server-authoritative, so these are visual-only. kind: 0=melee, 1=bolt, 2=arrow. ----
+
+        public void BroadcastAuto(byte kind, Vector3 origin, Vector3 aimDir, Vector3 targetPos)
+        {
+            if (!isLocalPlayer) return;
+            CmdAuto(kind, origin, aimDir, targetPos);
+        }
+
+        [Command]
+        private void CmdAuto(byte kind, Vector3 origin, Vector3 aimDir, Vector3 targetPos)
+        {
+            RpcAuto(kind, origin, aimDir, targetPos);
+        }
+
+        [ClientRpc(includeOwner = false)]
+        private void RpcAuto(byte kind, Vector3 origin, Vector3 aimDir, Vector3 targetPos)
+        {
+            GetComponent<PlayerMelee>()?.ReplayRemoteAuto(kind, origin, aimDir, targetPos);
         }
     }
 }
