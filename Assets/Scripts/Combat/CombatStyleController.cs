@@ -21,29 +21,31 @@ namespace AldenFall.Combat
         Defensive = 1,  // slower, half damage, but gains half the melee Defence guard
     }
 
+    /// <summary>The weapon family the equipped hands select, for stance bookkeeping.</summary>
+    public enum CombatCategory
+    {
+        Melee = 0,
+        Magic = 1,
+        Archery = 2,
+    }
+
     /// <summary>
-    /// The player's selected combat stance: you level only what you choose, and
-    /// each stance carries a real mechanical trade-off applied as StatBlock
-    /// modifiers under the "style" source.
-    ///
-    /// The stance axis is WEAPON-CATEGORY aware:
-    ///   Melee (sword)      -> Attack / Strength / Defence
-    ///       Attack   : faster swings (AttackSpeed up), trains Attack
-    ///       Strength : harder hits (WeaponPower up),   trains Strength
-    ///       Defence  : mitigate + dodge (Armor+Defence up), trains Defence
-    ///   Magic / Archery    -> Pure / Defensive
-    ///       Pure      : faster attacks, full damage, trains Magic/Ranged
-    ///       Defensive : slower + half damage, but HALF the Defence guard
-    ///                   (mitigation + dodge) and also trains Defence from hits.
-    ///
-    /// V cycles within the active category; UI buttons Set directly. Persists via
-    /// PlayerPrefs. Modifiers are re-applied on any stance OR equipment change so
-    /// swapping weapon swaps you onto that category's stance set cleanly.
+    /// The player's selected combat stance, remembered INDEPENDENTLY per weapon
+    /// family. Three stances live at once and never bleed into each other:
+    ///   Melee   -> Attack / Strength / Defence   (pref combat_style_v1)
+    ///   Magic   -> Pure / Defensive              (pref magic_stance_v1,   default Pure)
+    ///   Archery -> Pure / Defensive              (pref archery_stance_v1, default Pure)
+    /// The ACTIVE stance is whichever family the equipped weapon selects. Swapping
+    /// weapon restores that family's last stance (e.g. Strength melee + Defensive
+    /// archery + Pure magic all persist at once), so switching never rewrites another
+    /// category. V cycles within the active family; UI buttons set directly. Each
+    /// stance carries a real trade-off applied as StatBlock modifiers ("style").
     /// </summary>
     public class CombatStyleController : MonoBehaviour
     {
         private const string MeleePrefsKey = "combat_style_v1";
-        private const string RangedPrefsKey = "ranged_stance_v1";
+        private const string MagicPrefsKey = "magic_stance_v1";
+        private const string ArcheryPrefsKey = "archery_stance_v1";
         private const string StyleSource = "style";
 
         [SerializeField] private KeyCode cycleKey = KeyCode.V;
@@ -60,7 +62,8 @@ namespace AldenFall.Combat
         [SerializeField] private float defensiveDamageMultiplier = 0.5f; // Defensive: half offensive output
 
         private CombatStyle meleeStyle = CombatStyle.Attack;
-        private RangedStance rangedStance = RangedStance.Pure;
+        private RangedStance magicStance = RangedStance.Pure;
+        private RangedStance archeryStance = RangedStance.Pure;
 
         private StatBlock stats;
         private Equipment equipment;
@@ -71,64 +74,75 @@ namespace AldenFall.Combat
         public event System.Action OnStanceChanged;
 
         public CombatStyle Style => meleeStyle;
-        public RangedStance Stance => rangedStance;
+
+        /// <summary>The active ranged family's stance (magic vs archery tracked separately).</summary>
+        public RangedStance Stance =>
+            ActiveCategory == CombatCategory.Archery ? archeryStance : magicStance;
+
+        /// <summary>The weapon family the equipped hands currently select (fists count as melee).</summary>
+        public CombatCategory ActiveCategory
+        {
+            get
+            {
+                if (equipment != null && equipment.HasBow) return CombatCategory.Archery;
+                if (equipment != null && equipment.HasMagicImplement) return CombatCategory.Magic;
+                return CombatCategory.Melee;
+            }
+        }
 
         /// <summary>True when the equipped hands make this a ranged family (magic OR archery).</summary>
-        public bool IsRangedCategory =>
-            equipment != null && (equipment.HasMagicImplement || equipment.HasBow);
+        public bool IsRangedCategory => ActiveCategory != CombatCategory.Melee;
 
         /// <summary>
         /// The skill an AUTO trains under the current stance. Melee routes to the
         /// selected style; magic/archery autos grant their own skill (Magic via the
         /// bolt projectile, Ranged via the arrow) so this is only read by the melee
-        /// path, but we answer sensibly for both.
+        /// path, but we answer sensibly for all three.
         /// </summary>
-        public SkillType TrainedSkill
+        public SkillType TrainedSkill => ActiveCategory switch
         {
-            get
+            CombatCategory.Archery => SkillType.Ranged,
+            CombatCategory.Magic => SkillType.Magic,
+            _ => meleeStyle switch
             {
-                if (IsRangedCategory)
-                    return equipment != null && equipment.HasBow ? SkillType.Ranged : SkillType.Magic;
-                return meleeStyle switch
-                {
-                    CombatStyle.Strength => SkillType.Strength,
-                    CombatStyle.Defence => SkillType.Defence,
-                    _ => SkillType.Attack,
-                };
-            }
-        }
+                CombatStyle.Strength => SkillType.Strength,
+                CombatStyle.Defence => SkillType.Defence,
+                _ => SkillType.Attack,
+            },
+        };
 
-        /// <summary>Damage scale applied to autos: 1.0 except ranged/magic Defensive stance.</summary>
+        /// <summary>Damage scale applied to autos: 1.0 except a ranged/magic Defensive stance.</summary>
         public float OffenseMultiplier =>
-            IsRangedCategory && rangedStance == RangedStance.Defensive ? defensiveDamageMultiplier : 1f;
+            IsRangedCategory && Stance == RangedStance.Defensive ? defensiveDamageMultiplier : 1f;
 
         /// <summary>
         /// True when the active stance grants passive Defence training from taking
         /// hits: melee Defence style, or a ranged/magic Defensive stance.
         /// </summary>
         public bool TrainsDefenceFromHits =>
-            (!IsRangedCategory && meleeStyle == CombatStyle.Defence) ||
-            (IsRangedCategory && rangedStance == RangedStance.Defensive);
+            (ActiveCategory == CombatCategory.Melee && meleeStyle == CombatStyle.Defence) ||
+            (IsRangedCategory && Stance == RangedStance.Defensive);
 
         private void Awake()
         {
             stats = GetComponent<StatBlock>();
             equipment = GetComponent<Equipment>();
             meleeStyle = (CombatStyle)PlayerPrefs.GetInt(MeleePrefsKey, (int)CombatStyle.Attack);
-            rangedStance = (RangedStance)PlayerPrefs.GetInt(RangedPrefsKey, (int)RangedStance.Pure);
+            magicStance = (RangedStance)PlayerPrefs.GetInt(MagicPrefsKey, (int)RangedStance.Pure);
+            archeryStance = (RangedStance)PlayerPrefs.GetInt(ArcheryPrefsKey, (int)RangedStance.Pure);
         }
 
         private void Start()
         {
             if (equipment != null)
-                equipment.OnEquipmentChanged.AddListener(ApplyStanceModifiers);
+                equipment.OnEquipmentChanged.AddListener(OnEquipmentChanged);
             ApplyStanceModifiers();
         }
 
         private void OnDestroy()
         {
             if (equipment != null)
-                equipment.OnEquipmentChanged.RemoveListener(ApplyStanceModifiers);
+                equipment.OnEquipmentChanged.RemoveListener(OnEquipmentChanged);
         }
 
         private void Update()
@@ -140,40 +154,66 @@ namespace AldenFall.Combat
                 CycleActive();
         }
 
-        /// <summary>V cycles within whichever category the equipped weapon selects.</summary>
+        // Weapon swap: reapply the newly-active family's stance modifiers and let the
+        // UI repaint to that family's remembered stance.
+        private void OnEquipmentChanged()
+        {
+            ApplyStanceModifiers();
+            OnStanceChanged?.Invoke();
+        }
+
+        /// <summary>V cycles within whichever family the equipped weapon selects.</summary>
         private void CycleActive()
         {
             if (IsRangedCategory)
-                SetStance((RangedStance)(((int)rangedStance + 1) % 2));
+                SetStance((RangedStance)(((int)Stance + 1) % 2));
             else
                 Set((CombatStyle)(((int)meleeStyle + 1) % 3));
         }
 
-        /// <summary>Set the melee style (Attack/Strength/Defence).</summary>
+        /// <summary>Set the melee style (Attack/Strength/Defence). Only touches the melee family.</summary>
         public void Set(CombatStyle newStyle)
         {
             if (newStyle == meleeStyle) return;
             meleeStyle = newStyle;
             PlayerPrefs.SetInt(MeleePrefsKey, (int)meleeStyle);
-            ApplyStanceModifiers();
+            if (ActiveCategory == CombatCategory.Melee) ApplyStanceModifiers();
             OnChanged?.Invoke(meleeStyle);
             OnStanceChanged?.Invoke();
         }
 
-        /// <summary>Set the magic/archery stance (Pure/Defensive).</summary>
+        /// <summary>
+        /// Set the active ranged family's stance (Pure/Defensive). Magic and archery
+        /// remember separately, so this writes only the currently-equipped family and
+        /// never disturbs the other.
+        /// </summary>
         public void SetStance(RangedStance newStance)
         {
-            if (newStance == rangedStance) return;
-            rangedStance = newStance;
-            PlayerPrefs.SetInt(RangedPrefsKey, (int)rangedStance);
+            var cat = ActiveCategory;
+            if (cat == CombatCategory.Archery)
+            {
+                if (newStance == archeryStance) return;
+                archeryStance = newStance;
+                PlayerPrefs.SetInt(ArcheryPrefsKey, (int)archeryStance);
+            }
+            else if (cat == CombatCategory.Magic)
+            {
+                if (newStance == magicStance) return;
+                magicStance = newStance;
+                PlayerPrefs.SetInt(MagicPrefsKey, (int)magicStance);
+            }
+            else
+            {
+                return; // no ranged weapon equipped: nothing to set
+            }
             ApplyStanceModifiers();
             OnStanceChanged?.Invoke();
         }
 
         /// <summary>
-        /// Rewrites the "style" StatBlock modifier set for the active category and
-        /// stance. Additive contributions ride the existing modifier machinery, so
-        /// they stack with equipment and flow through CombatMath untouched.
+        /// Rewrites the "style" StatBlock modifier set for the active family and its
+        /// remembered stance. Additive contributions ride the existing modifier
+        /// machinery, so they stack with equipment and flow through CombatMath.
         /// </summary>
         private void ApplyStanceModifiers()
         {
@@ -183,7 +223,7 @@ namespace AldenFall.Combat
 
             if (IsRangedCategory)
             {
-                if (rangedStance == RangedStance.Pure)
+                if (Stance == RangedStance.Pure)
                 {
                     mods.Add((StatType.AttackSpeed, pureSpeedBonus));
                 }

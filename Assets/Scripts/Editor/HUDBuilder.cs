@@ -69,14 +69,17 @@ namespace AldenFall.Editor
             BuildFeedsAndToasts(canvasObj.transform, hud, xpFeed);
             // v9: skills are window-only now (K / the bottom-right Skills button). The always-on
             // left strip was removed per Jon's feedback; BuildSkillsPanel below is the window.
-            hud.inventoryPanel = BuildCharacterPanel(canvasObj.transform);
+            var equipmentPanel = BuildEquipmentPanel(canvasObj.transform, out var charUI);
+            var inventoryPanel = BuildInventoryPanel(canvasObj.transform, charUI);
+            hud.inventoryPanel = inventoryPanel;
             hud.skillsPanel = BuildSkillsPanel(canvasObj.transform);
             var treesPanel = BuildSkillTreePanel(canvasObj.transform);
             BuildTooltip(canvasObj.transform);
 
             // Hotkeys isolated from the HUD + clickable buttons for mouse users
             var hotkeys = canvasObj.AddComponent<PanelHotkeys>();
-            hotkeys.characterPanel = hud.inventoryPanel;
+            hotkeys.characterPanel = equipmentPanel;   // C -> equipment (auto-opens on gear change)
+            hotkeys.inventoryPanel = inventoryPanel;   // I / B -> inventory
             hotkeys.skillsPanel = hud.skillsPanel;
             hotkeys.treesPanel = treesPanel;
             BuildPanelButtons(canvasObj.transform, hotkeys);
@@ -391,65 +394,50 @@ namespace AldenFall.Editor
             hud.toastPillSprite = S("panel_r16");   // rounded pill bg behind each toast
         }
 
-        // ==================== CHARACTER PANEL ====================
-        // Paper-doll equipment column + OSRS-style bonuses + bag grid.
+        // ==================== EQUIPMENT + INVENTORY PANELS ====================
+        // Split into two openers (Jon: combined panel was too crowded): the
+        // EQUIPMENT panel (C, paper doll + bonuses, slides from the right, auto-opens
+        // on gear change) and the INVENTORY panel (I/B, bag grid + gold, slides from
+        // the left). One CharacterPanelUI (on the equipment panel) drives both.
 
-        private static SlidePanel BuildCharacterPanel(Transform root)
+        private static SlidePanel BuildEquipmentPanel(Transform root, out CharacterPanelUI charUI)
         {
-            var panel = Panel(root, "CharacterPanel", new Vector2(1f, 0.5f), new Vector2(300, 0), new Vector2(478, 660));
+            var panel = Panel(root, "EquipmentPanel", new Vector2(1f, 0.5f), new Vector2(300, 0), new Vector2(340, 720));
             var slide = panel.gameObject.AddComponent<SlidePanel>();
-            slide.shownPos = new Vector2(-258, 0);
-            slide.hiddenPos = new Vector2(300, 0);
-            var charUI = panel.gameObject.AddComponent<CharacterPanelUI>();
+            slide.shownPos = new Vector2(-190, 0);
+            slide.hiddenPos = new Vector2(320, 0);
+            charUI = panel.gameObject.AddComponent<CharacterPanelUI>();
 
             Image(panel, "Shadow", S("glow_soft"), UITheme.Shadow, stretch: true, padding: -14);
             Image(panel, "Bg", S("panel_r16"), UITheme.PanelBg, stretch: true);
             Image(panel, "Border", S("panel_border_r16"), UITheme.PanelBorder, stretch: true, padding: -1);
 
-            var header = Text(panel, "Header", "CHARACTER", 20, UITheme.TextGold, FontStyles.Bold);
+            var header = Text(panel, "Header", "EQUIPMENT", 20, UITheme.TextGold, FontStyles.Bold);
             header.characterSpacing = 6;
             var headerRect = header.rectTransform;
-            headerRect.anchorMin = new Vector2(0, 1); headerRect.anchorMax = new Vector2(0.7f, 1);
-            headerRect.offsetMin = new Vector2(24, -46); headerRect.offsetMax = new Vector2(0, -16);
+            headerRect.anchorMin = new Vector2(0, 1); headerRect.anchorMax = new Vector2(1, 1);
+            headerRect.offsetMin = new Vector2(24, -46); headerRect.offsetMax = new Vector2(-24, -16);
             header.alignment = TextAlignmentOptions.MidlineLeft;
 
-            charUI.countText = Text(panel, "Count", "0 / 20", 12, UITheme.TextDim, FontStyles.Normal);
-            var countRect = charUI.countText.rectTransform;
-            countRect.anchorMin = new Vector2(0.7f, 1); countRect.anchorMax = new Vector2(1, 1);
-            countRect.offsetMin = new Vector2(0, -46); countRect.offsetMax = new Vector2(-24, -16);
-            charUI.countText.alignment = TextAlignmentOptions.MidlineRight;
-
-            // Thin gold rule under the header line.
             var headerRule = Image(panel, "HeaderRule", null, UITheme.HeaderRule, stretch: false);
             var ruleRect = headerRule.rectTransform;
             ruleRect.anchorMin = new Vector2(0, 1); ruleRect.anchorMax = new Vector2(1, 1);
             ruleRect.offsetMin = new Vector2(24, -55); ruleRect.offsetMax = new Vector2(-24, -54);
 
-            // Gold readout (moved off the quest tracker), under the header, left column.
-            charUI.goldText = Text(panel, "Gold", "<color=#F2CC8C><b>Gold:</b> 0</color>", 15,
-                UITheme.TextGold, FontStyles.Bold);
-            var goldRect = charUI.goldText.rectTransform;
-            goldRect.anchorMin = new Vector2(0, 1); goldRect.anchorMax = new Vector2(0.7f, 1);
-            goldRect.offsetMin = new Vector2(24, -86); goldRect.offsetMax = new Vector2(0, -64);
-            charUI.goldText.alignment = TextAlignmentOptions.MidlineLeft;
-            charUI.goldText.richText = true;
-
-            // ---- Paper doll (left column, top→bottom: helm/cape/chest/legs/weapon/focus)
-            // Starts clear of the gold line; labels sit in the gaps between slots. ----
+            // ---- Paper doll: col 1 armor/weapons, col 2 accessories/jewelry ----
             var dollSlots = new (Items.EquipSlot slot, string label, float x, float y)[]
             {
-                (Items.EquipSlot.Helm,   "HELM", 56, -128),
-                (Items.EquipSlot.Cape,   "CAPE", 56, -208),
-                (Items.EquipSlot.Chest,  "CHEST", 56, -288),
-                (Items.EquipSlot.Legs,   "LEGS", 56, -368),
-                (Items.EquipSlot.Weapon, "MAIN HAND", 56, -448),
-                (Items.EquipSlot.Focus,  "OFF HAND", 56, -528),
-                // Second column: gloves/boots/jewelry.
-                (Items.EquipSlot.Gloves,   "GLOVES", 176, -128),
-                (Items.EquipSlot.Boots,    "BOOTS", 176, -208),
-                (Items.EquipSlot.Necklace, "NECKLACE", 176, -288),
-                (Items.EquipSlot.Ring1,    "RING 1", 176, -368),
-                (Items.EquipSlot.Ring2,    "RING 2", 176, -448),
+                (Items.EquipSlot.Helm,   "HELM", 56, -96),
+                (Items.EquipSlot.Cape,   "CAPE", 56, -176),
+                (Items.EquipSlot.Chest,  "CHEST", 56, -256),
+                (Items.EquipSlot.Legs,   "LEGS", 56, -336),
+                (Items.EquipSlot.Weapon, "MAIN HAND", 56, -416),
+                (Items.EquipSlot.Focus,  "OFF HAND", 56, -496),
+                (Items.EquipSlot.Gloves,   "GLOVES", 176, -96),
+                (Items.EquipSlot.Boots,    "BOOTS", 176, -176),
+                (Items.EquipSlot.Necklace, "NECKLACE", 176, -256),
+                (Items.EquipSlot.Ring1,    "RING 1", 176, -336),
+                (Items.EquipSlot.Ring2,    "RING 2", 176, -416),
             };
             foreach (var (slot, label, x, y) in dollSlots)
             {
@@ -462,31 +450,71 @@ namespace AldenFall.Editor
                 Anchor(slotLabel.rectTransform, new Vector2(0, 1), new Vector2(x, y - 40), new Vector2(120, 12));
             }
 
-            // ---- Bonuses block (bottom-right, under the bag grid, table-aligned) ----
+            // ---- Bonuses block (bottom of the panel, full width) ----
             var bonusHeader = Text(panel, "BonusHeader", "BONUSES", 12, UITheme.TextDim, FontStyles.Bold);
             bonusHeader.characterSpacing = 3;
-            Anchor(bonusHeader.rectTransform, new Vector2(0, 0), new Vector2(238, 182), new Vector2(180, 16));
+            Anchor(bonusHeader.rectTransform, new Vector2(0, 0), new Vector2(24, 150), new Vector2(180, 16));
             bonusHeader.alignment = TextAlignmentOptions.MidlineLeft;
 
             charUI.bonusText = Text(panel, "BonusText", "", 12, UITheme.TextMain, FontStyles.Normal);
             var bonusRect = charUI.bonusText.rectTransform;
-            bonusRect.anchorMin = new Vector2(0, 0); bonusRect.anchorMax = new Vector2(0, 0);
+            bonusRect.anchorMin = new Vector2(0, 0); bonusRect.anchorMax = new Vector2(1, 0);
             bonusRect.pivot = new Vector2(0, 0);
-            bonusRect.anchoredPosition = new Vector2(148, 44);
-            bonusRect.sizeDelta = new Vector2(300, 124);
+            bonusRect.anchoredPosition = new Vector2(24, 18);
+            bonusRect.sizeDelta = new Vector2(-48, 128);
             charUI.bonusText.alignment = TextAlignmentOptions.TopLeft;
             charUI.bonusText.lineSpacing = 8;
 
-            // ---- Bag grid (right side, 4 wide x 5 tall) ----
+            return slide;
+        }
+
+        private static SlidePanel BuildInventoryPanel(Transform root, CharacterPanelUI charUI)
+        {
+            var panel = Panel(root, "InventoryPanel", new Vector2(0f, 0.5f), new Vector2(-320, 0), new Vector2(360, 540));
+            var slide = panel.gameObject.AddComponent<SlidePanel>();
+            slide.shownPos = new Vector2(196, 0);
+            slide.hiddenPos = new Vector2(-320, 0);
+
+            Image(panel, "Shadow", S("glow_soft"), UITheme.Shadow, stretch: true, padding: -14);
+            Image(panel, "Bg", S("panel_r16"), UITheme.PanelBg, stretch: true);
+            Image(panel, "Border", S("panel_border_r16"), UITheme.PanelBorder, stretch: true, padding: -1);
+
+            var header = Text(panel, "Header", "INVENTORY", 20, UITheme.TextGold, FontStyles.Bold);
+            header.characterSpacing = 6;
+            var headerRect = header.rectTransform;
+            headerRect.anchorMin = new Vector2(0, 1); headerRect.anchorMax = new Vector2(0.6f, 1);
+            headerRect.offsetMin = new Vector2(24, -46); headerRect.offsetMax = new Vector2(0, -16);
+            header.alignment = TextAlignmentOptions.MidlineLeft;
+
+            charUI.countText = Text(panel, "Count", "0 / 20", 12, UITheme.TextDim, FontStyles.Normal);
+            var countRect = charUI.countText.rectTransform;
+            countRect.anchorMin = new Vector2(0.6f, 1); countRect.anchorMax = new Vector2(1, 1);
+            countRect.offsetMin = new Vector2(0, -46); countRect.offsetMax = new Vector2(-24, -16);
+            charUI.countText.alignment = TextAlignmentOptions.MidlineRight;
+
+            var headerRule = Image(panel, "HeaderRule", null, UITheme.HeaderRule, stretch: false);
+            var ruleRect = headerRule.rectTransform;
+            ruleRect.anchorMin = new Vector2(0, 1); ruleRect.anchorMax = new Vector2(1, 1);
+            ruleRect.offsetMin = new Vector2(24, -55); ruleRect.offsetMax = new Vector2(-24, -54);
+
+            charUI.goldText = Text(panel, "Gold", "<color=#F2CC8C><b>Gold:</b> 0</color>", 15,
+                UITheme.TextGold, FontStyles.Bold);
+            var goldRect = charUI.goldText.rectTransform;
+            goldRect.anchorMin = new Vector2(0, 1); goldRect.anchorMax = new Vector2(1, 1);
+            goldRect.offsetMin = new Vector2(24, -86); goldRect.offsetMax = new Vector2(-24, -64);
+            charUI.goldText.alignment = TextAlignmentOptions.MidlineLeft;
+            charUI.goldText.richText = true;
+
+            // ---- Bag grid (4 wide x 5 tall) ----
             var gridObj = new GameObject("Grid");
             gridObj.transform.SetParent(panel, false);
             var gridRect = gridObj.AddComponent<RectTransform>();
             gridRect.anchorMin = new Vector2(0, 1); gridRect.anchorMax = new Vector2(1, 1);
-            gridRect.offsetMin = new Vector2(148, -440); gridRect.offsetMax = new Vector2(-20, -74);
+            gridRect.offsetMin = new Vector2(24, -470); gridRect.offsetMax = new Vector2(-24, -100);
             var grid = gridObj.AddComponent<GridLayoutGroup>();
             grid.cellSize = new Vector2(64, 64);
             grid.spacing = new Vector2(9, 9);
-            grid.childAlignment = TextAnchor.UpperLeft;
+            grid.childAlignment = TextAnchor.UpperCenter;
 
             for (int i = 0; i < Items.Inventory.Capacity; i++)
             {
@@ -718,14 +746,16 @@ namespace AldenFall.Editor
 
         private static void BuildPanelButtons(Transform root, PanelHotkeys hotkeys)
         {
-            var cluster = Panel(root, "PanelButtons", new Vector2(1f, 0f), new Vector2(-130, 52), new Vector2(220, 60));
+            var cluster = Panel(root, "PanelButtons", new Vector2(1f, 0f), new Vector2(-160, 52), new Vector2(300, 60));
 
             // Method groups (not closures), persistent listeners must serialize
-            BuildPanelButton(cluster, "CharacterBtn", "icon_bag", "C", new Vector2(-72, 0),
+            BuildPanelButton(cluster, "CharacterBtn", "icon_shield", "C", new Vector2(-108, 0),
                 hotkeys.ToggleCharacter);
-            BuildPanelButton(cluster, "SkillsBtn", "icon_magic", "K", new Vector2(0, 0),
+            BuildPanelButton(cluster, "InventoryBtn", "icon_bag", "I", new Vector2(-36, 0),
+                hotkeys.ToggleInventory);
+            BuildPanelButton(cluster, "SkillsBtn", "icon_magic", "K", new Vector2(36, 0),
                 hotkeys.ToggleSkills);
-            BuildPanelButton(cluster, "TreesBtn", "icon_cleave", "T", new Vector2(72, 0),
+            BuildPanelButton(cluster, "TreesBtn", "icon_cleave", "T", new Vector2(108, 0),
                 hotkeys.ToggleTrees);
         }
 
