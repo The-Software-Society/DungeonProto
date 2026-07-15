@@ -3080,6 +3080,7 @@ namespace AldenFall.Editor
                 mat.shader = LitShader(); // upgrade cached materials if the pipeline changed
             }
 
+            mat.enableInstancing = true;   // GPU-instance same-material draws (perf: many cubes/props)
             mat.color = color;
             if (mat.HasProperty("_BaseColor")) mat.SetColor("_BaseColor", color);
             if (mat.HasProperty("_Smoothness")) mat.SetFloat("_Smoothness", smoothness);

@@ -350,6 +350,9 @@ PROPS = {
     "VolcanoDormant": "large dormant stratovolcano mountain, tall steep symmetrical cone of dark grey and brown volcanic rock with a wide crater at the summit, patches of green vegetation and pine on the lower slopes, bare rocky upper slopes, stylized low-poly game environment, single standalone asset",
     "VolcanoErupting": "large erupting stratovolcano mountain, tall steep cone of black volcanic rock with bright glowing orange lava flows streaming down the sides, a fiery glowing crater with rising smoke, charred slopes, stylized low-poly game environment, single standalone asset",
     "LavaRockGround": "chunk of cracked black volcanic basalt ground with bright glowing orange molten lava seams running through it, rugged rocky surface, stylized low-poly game environment ground piece",
+    "Fence": "section of a rustic wooden fence, weathered grey-brown vertical planks and two horizontal rails held between sturdy posts, medieval village boundary fence, stylized low-poly game environment prop, standalone",
+    "Cobblestone": "flat square section of cobblestone street paving, rounded weathered grey stone cobbles packed tightly with dark earth in the gaps, worn medieval road, stylized low-poly game environment ground tile, flat top surface",
+    "DirtShrub": "small dry scrubby roadside bush, a low sparse clump of thin brown twiggy branches with a few dry olive-green leaves, hardy weed, stylized low-poly game environment plant, standalone",
 }
 
 # ---------------------------------------------------------------------------

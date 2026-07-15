@@ -73,10 +73,13 @@ namespace AldenFall.Editor
                 BuildEmberfallTerrain(root, groundLayer);  // real Terrain + splats + wind grass
                 // The forest + ground ecosystem live in BuildEmberfallGround (legacy path); wire
                 // them into the terrain path too or the world has no scattered trees/foliage/rocks.
+                BuildPlacementMap();                        // zone/occupancy map = single source of truth
                 var eco = Child(root, "EmberEcosystem");
-                ScatterForestTrees(eco, groundLayer);
+                ScatterForestTrees(eco, groundLayer);       // these RECORD into the catalog (no conflicts)
                 ScatterGroundDetail(eco, groundLayer);
-                ScatterRoadDetail(eco, groundLayer);       // pebbles + rocks + ruts give the dirt roads depth
+                ScatterRoadDetail(eco, groundLayer);
+                RenderCatalog(eco, groundLayer);            // instantiate everything from the catalog
+                ExportCatalog(root);                        // write JSON + validate + in-game overlay
             }
             else
                 BuildEmberfallGround(root, groundLayer);   // legacy cube tiles (rollback path)
@@ -86,6 +89,7 @@ namespace AldenFall.Editor
             BuildWorldSecrets(root, groundLayer);
             BuildEmberForestCamps(root, groundLayer);
             BuildEmberOrcWarcamp(root, groundLayer);
+            BuildRoadsideFences(root, groundLayer);
             BuildEmberApproach(root, groundLayer);
             BuildEmberfallVolcano(root, groundLayer);
             BuildMountainRange(root, groundLayer);     // real mountain-mesh border (when assets exist)
@@ -237,6 +241,269 @@ namespace AldenFall.Editor
             return Mathf.Clamp01(byZ * (1f - 0.7f * side));
         }
 
+        // ==================== DATA-DRIVEN PLACEMENT (single source of truth) ====================
+        private static PlacementMap _place;
+        private static PlacementCatalog _catalog;
+        private static PlacementCatalog _detailCatalog;   // scattered rocks/fences/shrubs (record-only, merged at export)
+
+        /// <summary>Record a directly-placed scatter prop into the detail catalog so it lands in the
+        /// source-of-truth JSON + validation, WITHOUT re-instantiating it (it's already placed).</summary>
+        private static void RecordDetail(string type, float x, float z, float yaw, float h)
+        {
+            if (_detailCatalog == null || _place == null || !_place.InBounds(x, z)) return;
+            _detailCatalog.Add(type, x, z, yaw, h, _place.ZoneAt(x, z), _place.BiomeAt(x, z));
+        }
+
+        // Camp / POI centres the scatter must keep clear (marked Camp zone in the map).
+        private static readonly Vector2[] CampCenters =
+        {
+            new Vector2(-195f, 0f), new Vector2(195f, 0f), new Vector2(-110f, -120f),
+            new Vector2(155f, 55f), new Vector2(-160f, 45f),
+        };
+
+        /// <summary>Build the world occupancy/zone map — the classification every scatterer queries.
+        /// One place decides "what is at (x,z)"; nothing guesses independently after this.</summary>
+        private static void BuildPlacementMap()
+        {
+            _place = new PlacementMap(-260f, -330f, 260f, 260f);
+            _catalog = new PlacementCatalog();
+            _detailCatalog = new PlacementCatalog();
+            _place.Classify((x, z) =>
+            {
+                float ring = Mathf.Sqrt(x * x + z * z);
+                // ---- ZONE (priority order) ----
+                PlaceZone zone;
+                bool nearCity = Mathf.Abs(x) < CityHalf + 8f && Mathf.Abs(z) < CityHalf + 8f;
+                if (InLakeWater(x, z) || InAnyRiver(x, z) || DistToCityCanal(x, z) < 9f) zone = PlaceZone.Water;
+                else if (InCityFootprint(x, z)) zone = PlaceZone.City;
+                else if (nearCity) zone = PlaceZone.Wall;                                  // 8m ring around the walls
+                else if (InGlade(x, z)) zone = PlaceZone.Glade;
+                else if (InApproachFootprint(x, z)) zone = PlaceZone.Approach;
+                else if (Mathf.Abs(x) < 12f && z > -66f && z < 214f) zone = PlaceZone.Road;
+                else if (ring > 244f) zone = PlaceZone.Mountain;
+                else
+                {
+                    zone = PlaceZone.Open;
+                    foreach (var c in CampCenters)
+                        if ((x - c.x) * (x - c.x) + (z - c.y) * (z - c.y) < 20f * 20f) { zone = PlaceZone.Camp; break; }
+                }
+                // ---- BIOME ----
+                float soot = SootAmount(x, z);
+                float lakeDist = Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) - LakeEdge(x, z);
+                PlaceBiome biome;
+                if (soot > 0.4f) biome = PlaceBiome.Volcanic;
+                else if (lakeDist < 16f) biome = PlaceBiome.Shore;
+                else if (Mathf.Abs(x) < 95f && z > 55f && z < 250f) biome = PlaceBiome.DarkForest;
+                else if (soot < 0.15f && lakeDist > 20f) biome = PlaceBiome.Meadow;
+                else biome = PlaceBiome.Lush;
+                return (zone, biome);
+            });
+        }
+
+        /// <summary>Record a placement into the catalog IF the map says it fits (right zones, no
+        /// overlap). Returns true when accepted. Nothing is instantiated here — the render pass
+        /// reads the catalog. This is the choke point that guarantees no tree-in-road/water/etc.</summary>
+        private static bool TryScatter(string type, float x, float z, float yaw, float h, float radius,
+            System.Func<PlaceZone, bool> zoneOk)
+        {
+            if (_place == null || !_place.CanPlace(x, z, radius, zoneOk)) return false;
+            _catalog.Add(type, x, z, yaw, h, _place.ZoneAt(x, z), _place.BiomeAt(x, z));
+            _place.Occupy(x, z, radius);
+            return true;
+        }
+
+        /// <summary>Zone+overlap guard for DIRECT (non-catalog) scatters that run after the catalog
+        /// export - keeps them out of road/water/city and off already-placed catalog props (Occupies
+        /// on success). Returns true (allow) when no map exists (non-terrain build path). Full catalog
+        /// migration of these scatters is a follow-up; this at least enforces the zone rules.</summary>
+        private static bool MapClear(float x, float z, float radius)
+        {
+            if (_place == null) return true;
+            if (!_place.CanPlace(x, z, radius, zn => zn == PlaceZone.Open)) return false;
+            _place.Occupy(x, z, radius);
+            return true;
+        }
+
+        /// <summary>Warm-dark tint on a placed rock so roadside/dirt stones sit IN the earth instead
+        /// of popping as bright white granite (distinct "_Earth" material, shared + cached).</summary>
+        private static void EarthTint(GameObject go)
+        {
+            if (go == null) return;
+            var tinted = MeshyCharacterImporter.BuildTexturedMaterial(go.name + "_Earth",
+                $"Assets/Models/Props/{go.name}_baseColor", new Color(0.52f, 0.46f, 0.39f));
+            if (tinted != null) foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = tinted;
+        }
+
+        /// <summary>Instantiate everything in the catalog. Collision + foliage tint are derived from
+        /// the type + position (deterministic) so the JSON stays pure placement data.</summary>
+        private static void RenderCatalog(Transform container, int groundLayer)
+        {
+            foreach (var kv in _catalog.Objects)
+            {
+                var collision = CatalogCollision(kv.Key);
+                foreach (var it in kv.Value)
+                {
+                    var go = PlaceMeshyProp(container, kv.Key, new Vector3(it.x, 0f, it.z), it.yaw, it.h, groundLayer, collision);
+                    var tint = CatalogTint(kv.Key, it.x, it.z, it.biome);
+                    if (go != null && tint.HasValue)
+                    {
+                        var m = Mat($"Fol_{Mathf.RoundToInt(tint.Value.r*12)}_{Mathf.RoundToInt(tint.Value.g*12)}_{Mathf.RoundToInt(tint.Value.b*12)}", tint.Value, smoothness: 0.03f);
+                        foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = m;
+                    }
+                    if (go != null && it.y != 0f) go.transform.position += Vector3.up * it.y;
+                }
+            }
+        }
+
+        private static PropCollision CatalogCollision(string type)
+        {
+            string n = type.ToLowerInvariant();
+            if (n.Contains("tree")) return PropCollision.Trunk;
+            if (n.Contains("boulder") || n.Contains("rock") || n.Contains("cliff") || n.Contains("moss")) return PropCollision.FitBox;
+            return PropCollision.None;
+        }
+
+        // Deterministic foliage tint (position hash) so beds vary without storing per-item colours.
+        private static Color? CatalogTint(string type, float x, float z, PlaceBiome biome)
+        {
+            string n = type.ToLowerInvariant();
+            float Hash() { float s = Mathf.Sin(x * 12.9898f + z * 78.233f) * 43758.5453f; return s - Mathf.Floor(s); }
+            if (n.Contains("wildflower") || n.Contains("flower"))
+            {
+                Color[] pal = { new Color(0.62f,0.40f,0.66f), new Color(0.80f,0.72f,0.28f), new Color(0.86f,0.86f,0.80f), new Color(0.72f,0.34f,0.40f) };
+                return pal[Mathf.FloorToInt(Hash() * pal.Length) % pal.Length];
+            }
+            if (n.Contains("reed")) return Color.Lerp(new Color(0.30f,0.38f,0.14f), new Color(0.40f,0.46f,0.20f), Hash());
+            if (n == "fern" && biome == PlaceBiome.DarkForest) return Color.Lerp(new Color(0.09f,0.18f,0.10f), new Color(0.14f,0.24f,0.12f), Hash());
+            if (n.Contains("fern") || n.Contains("bush")) return Color.Lerp(new Color(0.13f,0.26f,0.12f), new Color(0.20f,0.36f,0.15f), Hash());
+            return null;
+        }
+
+        private static float CatalogFootprint(string type)
+        {
+            string n = type.ToLowerInvariant();
+            if (n.Contains("tree")) return 3.0f;
+            if (n.Contains("boulder") || n.Contains("rock") || n.Contains("cliff")) return 2.0f;
+            return 0.6f;
+        }
+
+        // Mob-spawn data mirrors the object catalog: monsters.json already holds each mob's camp
+        // coordinates + roam radius + count, so we run it through the SAME zone map to map mob
+        // locations/density and flag conflicts (camp or roam overlapping water/road/city/mountain).
+        [System.Serializable] private class MJRoot { public MJMonster[] monsters; }
+        [System.Serializable] private class MJMonster { public string id; public MJSpawn[] spawns; }
+        [System.Serializable] private class MJSpawn { public string kind; public float x, y, z; public int count; public float radius; }
+
+        /// <summary>Parse monsters.json spawns, validate each camp+roam against the placement map,
+        /// write mob_placements.json (single source of truth for mob locations), and log conflicts +
+        /// density so mobs-in-water / camps-on-the-road / overlaps surface the same way tree
+        /// conflicts do.</summary>
+        private static void ExportAndValidateMobs(PlacementMap map)
+        {
+            string mpath = "Assets/StreamingAssets/monsters.json";
+            if (!System.IO.File.Exists(mpath)) return;
+            MJRoot root;
+            try { root = JsonUtility.FromJson<MJRoot>(System.IO.File.ReadAllText(mpath)); }
+            catch (System.Exception e) { Debug.Log($"MOBS parse failed: {e.Message}"); return; }
+            if (root?.monsters == null) return;
+
+            var sb = new System.Text.StringBuilder(1 << 16);
+            sb.Append("{\n  \"mobs\": {\n");
+            int totalCamps = 0, totalMobs = 0, conflicts = 0;
+            var issues = new System.Collections.Generic.List<string>();
+            var centres = new System.Collections.Generic.List<(string id, float x, float z, float r)>();
+            bool firstType = true;
+            foreach (var m in root.monsters)
+            {
+                if (m.spawns == null || m.spawns.Length == 0) continue;
+                if (!firstType) sb.Append(",\n");
+                firstType = false;
+                sb.Append("    \"").Append(m.id).Append("\": [\n");
+                for (int i = 0; i < m.spawns.Length; i++)
+                {
+                    var sp = m.spawns[i];
+                    totalCamps++; totalMobs += Mathf.Max(1, sp.count);
+                    centres.Add((m.id, sp.x, sp.z, sp.radius));
+                    var zc = map.InBounds(sp.x, sp.z) ? map.ZoneAt(sp.x, sp.z) : PlaceZone.Open;
+                    int water = 0, road = 0, city = 0, mtn = 0;   // roam-ring zone tally (8 samples)
+                    for (int a = 0; a < 8; a++)
+                    {
+                        float ang = a / 8f * Mathf.PI * 2f;
+                        float rx = sp.x + Mathf.Cos(ang) * sp.radius, rz = sp.z + Mathf.Sin(ang) * sp.radius;
+                        if (!map.InBounds(rx, rz)) continue;
+                        switch (map.ZoneAt(rx, rz))
+                        {
+                            case PlaceZone.Water: water++; break;
+                            case PlaceZone.Road: road++; break;
+                            case PlaceZone.City: city++; break;
+                            case PlaceZone.Mountain: mtn++; break;
+                        }
+                    }
+                    bool centreBad = zc == PlaceZone.Water || zc == PlaceZone.City || zc == PlaceZone.Mountain;
+                    if (centreBad || water > 0)
+                    {
+                        conflicts++;
+                        issues.Add($"{m.id} camp#{i} @({sp.x:0},{sp.z:0}) r={sp.radius:0}: centre={zc} roam[water={water} road={road} city={city} mtn={mtn}]");
+                    }
+                    sb.Append("      {\"p\":[").Append(sp.x.ToString("0.#")).Append(",").Append(sp.y.ToString("0.#")).Append(",").Append(sp.z.ToString("0.#"))
+                      .Append("],\"count\":").Append(sp.count).Append(",\"roam\":").Append(sp.radius.ToString("0.#"))
+                      .Append(",\"zone\":\"").Append(zc).Append("\"}").Append(i < m.spawns.Length - 1 ? ",\n" : "\n");
+                }
+                sb.Append("    ]");
+            }
+            // Camp-vs-camp overcrowding: centres whose roam circles heavily overlap a DIFFERENT type.
+            for (int i = 0; i < centres.Count; i++)
+                for (int j = i + 1; j < centres.Count; j++)
+                {
+                    if (centres[i].id == centres[j].id) continue;
+                    float dx = centres[i].x - centres[j].x, dz = centres[i].z - centres[j].z;
+                    float dd = Mathf.Sqrt(dx * dx + dz * dz);
+                    if (dd < (centres[i].r + centres[j].r) * 0.6f)
+                    { conflicts++; issues.Add($"overlap {centres[i].id} x {centres[j].id} centres {dd:0}m apart (roam {centres[i].r:0}+{centres[j].r:0})"); }
+                }
+            sb.Append("\n  },\n  \"meta\": { \"camps\": ").Append(totalCamps).Append(", \"mobs\": ").Append(totalMobs)
+              .Append(", \"conflicts\": ").Append(conflicts).Append(" }\n}\n");
+            System.IO.File.WriteAllText("Assets/StreamingAssets/mob_placements.json", sb.ToString());
+            Debug.Log($"MOBS wrote {totalCamps} camps ({totalMobs} mobs) -> mob_placements.json; conflicts={conflicts}");
+            foreach (var l in issues) Debug.Log($"MOBS CONFLICT {l}");
+            _mobCentres = centres;   // fed to the in-game F3 overlay so mobs are mappable live too
+        }
+
+        private static System.Collections.Generic.List<(string id, float x, float z, float r)> _mobCentres;
+
+        /// <summary>Write the catalog to the source-of-truth JSON, log the validation report, and
+        /// spawn the in-game F3 coord/zone overlay that reads the same map.</summary>
+        private static void ExportCatalog(Transform root)
+        {
+            try
+            {
+                string dir = "Assets/StreamingAssets";
+                System.IO.Directory.CreateDirectory(dir);
+                string path = $"{dir}/world_placements.json";
+                if (_detailCatalog != null) _catalog.Merge(_detailCatalog);   // scattered rocks/fences/shrubs too
+                System.IO.File.WriteAllText(path, _catalog.ToJson(_place));
+                Debug.Log($"CATALOG wrote {_catalog.Count} placements -> {path}");
+                foreach (var s in _catalog.Validate(_place, CatalogFootprint)) Debug.Log($"CATALOG {s}");
+                ExportAndValidateMobs(_place);   // mobs run through the SAME map: locations + conflicts
+            }
+            catch (System.Exception e) { Debug.Log($"CATALOG export failed: {e.Message}"); }
+
+            var ov = new GameObject("WorldCoordOverlay");
+            ov.transform.SetParent(root);
+            var comp = ov.AddComponent<AldenFall.World.WorldCoordOverlay>();
+            comp.originX = _place.OriginX; comp.originZ = _place.OriginZ;
+            comp.cellSize = PlacementMap.Cell; comp.gridW = _place.W; comp.gridH = _place.H;
+            comp.zones = _place.ZoneBytes();
+            if (_mobCentres != null && _mobCentres.Count > 0)
+            {
+                int n = _mobCentres.Count;
+                comp.mobIds = new string[n]; comp.mobX = new float[n]; comp.mobZ = new float[n]; comp.mobRoam = new float[n];
+                for (int i = 0; i < n; i++)
+                { comp.mobIds[i] = _mobCentres[i].id; comp.mobX[i] = _mobCentres[i].x; comp.mobZ[i] = _mobCentres[i].z; comp.mobRoam[i] = _mobCentres[i].r; }
+            }
+            EditorUtility.SetDirty(comp);
+        }
+
         // ==================== GROUND (forest ring + approach) ====================
 
         // ==================== REAL TERRAIN (greenlit rewrite) ====================
@@ -360,9 +627,10 @@ namespace AldenFall.Editor
             var sootLayer = MakeTerrainLayer("TL_Soot", new Color(0.115f, 0.09f, 0.08f), 0.04f);
             var dirtLayer = MakeTerrainLayer("TL_Dirt", new Color(0.36f, 0.28f, 0.19f), 0.04f);
             var rockLayer = MakeTerrainLayer("TL_Rock", new Color(0.3f, 0.28f, 0.29f), 0.02f);
-            data.terrainLayers = new[] { grassLayer, sandLayer, sootLayer, dirtLayer, rockLayer };
+            var cobbleLayer = MakeTerrainLayer("TL_Cobble", new Color(0.42f, 0.41f, 0.39f), 0.03f);
+            data.terrainLayers = new[] { grassLayer, sandLayer, sootLayer, dirtLayer, rockLayer, cobbleLayer };
 
-            var alpha = new float[splatRes, splatRes, 5];
+            var alpha = new float[splatRes, splatRes, 6];
             for (int iz = 0; iz < splatRes; iz++)
             {
                 for (int ix = 0; ix < splatRes; ix++)
@@ -408,13 +676,26 @@ namespace AldenFall.Editor
                     if (shore) { s = 0.8f; g *= 0.2f; rk *= 0.2f; }                                                 // sand/mud shores
                     if (road || InCityFootprint(wx, wz)) { d = Mathf.Max(d, 0.85f); g *= 0.15f; so *= 0.4f; }       // dirt roads + city
 
-                    float sum = g + s + so + d + rk;
+                    // COBBLESTONE transition: on the road just OUTSIDE each city gate, cobbles emerge
+                    // from the dirt (full at the wall, fading to dirt over ~16m) so the manmade street
+                    // eases into the natural trail instead of a hard dirt/cobble seam.
+                    float cb = 0f;
+                    if (road && !InCityFootprint(wx, wz))
+                    {
+                        float gd = -1f;
+                        if (wz >= CityHalf && wz < CityHalf + 16f) gd = wz - CityHalf;          // north gate -> lake
+                        else if (wz <= -CityHalf && wz > -CityHalf - 16f) gd = -CityHalf - wz;  // south gate -> approach
+                        if (gd >= 0f) { cb = Mathf.Clamp01(1f - gd / 16f); d *= 1f - cb; g *= 1f - cb; }
+                    }
+
+                    float sum = g + s + so + d + rk + cb;
                     if (sum <= 0f) { g = 1f; sum = 1f; }
                     alpha[iz, ix, 0] = g / sum;
                     alpha[iz, ix, 1] = s / sum;
                     alpha[iz, ix, 2] = so / sum;
                     alpha[iz, ix, 3] = d / sum;
                     alpha[iz, ix, 4] = rk / sum;
+                    alpha[iz, ix, 5] = cb / sum;
                 }
             }
             data.SetAlphamaps(0, 0, alpha);
@@ -466,6 +747,12 @@ namespace AldenFall.Editor
                 useInstancing = true,
                 usePrototypeMesh = true,
             };
+            // A THIRD detail layer for the DIRT ROADS: short, sparse dry-earth stubble + gravel
+            // clumps so the bare road bed carries 3D speckle depth under the SAME GPU-instanced
+            // detail engine as the grass. NOTE: an earlier "DirtTuft" detail-mesh carpet on the road
+            // read as blotchy angular quads - the REAL dirt look (ref: New World) comes from the
+            // richly-mottled Dirt() albedo (baked damp/dry variation) + occasional real rocks + mud
+            // decals, NOT a carpet of flecks. So the road carries no detail-mesh layer.
             data.detailPrototypes = new[] { detail, charDetail };
 
             var density = new int[detailRes, detailRes];
@@ -572,6 +859,7 @@ namespace AldenFall.Editor
                 "TL_Soot"  => GroundTextureGenerator.Soot(s),
                 "TL_Dirt"  => GroundTextureGenerator.Dirt(s),
                 "TL_Rock"  => GroundTextureGenerator.Rock(s),
+                "TL_Cobble" => GroundTextureGenerator.Cobble(s),
                 _          => GroundTextureGenerator.Grass(s),
             };
             // CRITICAL: terrain layers use SmoothnessSource=AlbedoAlpha, so the diffuse ALPHA (not
@@ -587,10 +875,13 @@ namespace AldenFall.Editor
             AssetDatabase.CreateAsset(tex, $"{MaterialDir}/{name}_Tex.asset");
 
             AssetDatabase.DeleteAsset($"{MaterialDir}/{name}.terrainlayer");
+            // Bigger tile for dirt/cobble roads so the texture doesn't visibly REPEAT as squares
+            // underfoot (Jon: "repeat squares"); grass/sand/etc stay finer for close detail.
+            float tile = (name == "TL_Dirt" || name == "TL_Cobble") ? 11f : 6f;
             var layer = new TerrainLayer
             {
                 diffuseTexture = tex,
-                tileSize = new Vector2(6f, 6f),
+                tileSize = new Vector2(tile, tile),
                 specular = Color.black,
                 metallic = 0f,
                 smoothness = 0f,   // fully matte: any smoothness let flat low ground mirror the sky at grazing angles, reading as teal "water"/marsh
@@ -605,7 +896,7 @@ namespace AldenFall.Editor
         /// detail tinting reads as depth. Saved under MaterialDir like the layers.
         /// </summary>
         private static GameObject MakeGrassTuftPrefab(string id = "GrassTuft",
-            Color? tuftDark = null, Color? tuftLight = null, Color? matTint = null)
+            Color? tuftDark = null, Color? tuftLight = null, Color? matTint = null, bool useGrassTex = true)
         {
             // Baked vertex colours + material tint define the look. Terrain MESH details ignore
             // the DetailPrototype healthy/dry colours, so a charred variant needs its OWN prefab
@@ -655,7 +946,7 @@ namespace AldenFall.Editor
             var grassTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Ground/grass_tuft_alpha.png");
             Color tint = matTint ?? Color.white;
             Material mat;
-            if (grassTex != null)
+            if (useGrassTex && grassTex != null)
             {
                 string mp = $"{MaterialDir}/{id}Detail.mat";
                 AssetDatabase.DeleteAsset(mp);
@@ -667,7 +958,7 @@ namespace AldenFall.Editor
                 if (mat.HasProperty("_Cull")) mat.SetFloat("_Cull", 0f);
                 AssetDatabase.CreateAsset(mat, mp);
             }
-            else mat = Mat($"{id}Mat", new Color(0.3f, 0.5f, 0.2f) * tint, smoothness: 0.05f);
+            else mat = Mat($"{id}Mat", matTint ?? new Color(0.3f, 0.5f, 0.2f), smoothness: 0.05f);
 
             var go = new GameObject(id);
             var mf = go.AddComponent<MeshFilter>();
@@ -840,18 +1131,20 @@ namespace AldenFall.Editor
                 foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = m;
             }
 
-            // Rock outcrops - VARIED meshes (4 kinds) + full tilt so they're not clones.
+            // Rock outcrops - VARIED meshes (4 kinds) + full tilt so they're not clones. Earth-toned
+            // so field boulders sit in the grass instead of popping as bright white granite.
             Clump(120, 4, 14f, null, (x, z) =>
             {
-                string rock = new[] { "BoulderCluster", "MossBoulder", "MossyRock", "RockCliff" }[rng.Next(4)];
+                string rock = new[] { "BoulderCluster", "MossBoulder", "MossBoulder", "RockCliff" }[rng.Next(4)];
+                float rh = 1.2f + (float)rng.NextDouble() * 3.6f;
                 var g = PlaceMeshyProp(container, rock, new Vector3(x, 0f, z),
-                    (float)rng.NextDouble() * 360f, 1.2f + (float)rng.NextDouble() * 3.6f, groundLayer, PropCollision.FitBox);
+                    (float)rng.NextDouble() * 360f, rh, groundLayer, PropCollision.FitBox);
                 if (g != null) g.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 24f, (float)rng.NextDouble() * 360f, (float)(rng.NextDouble() - 0.5) * 24f) * g.transform.rotation;
+                EarthTint(g);
+                if (g != null) RecordDetail(rock, x, z, 0f, rh);
             });
-            // Pebble/gravel patches.
-            Clump(90, 5, 10f, null, (x, z) =>
-                PlaceMeshyProp(container, "PebblePatch", new Vector3(x, 0f, z),
-                    (float)rng.NextDouble() * 360f, 1.6f + (float)rng.NextDouble() * 1.8f, groundLayer, PropCollision.None));
+            // (Removed the white PebblePatch "gravel clumps" - they read as ugly white hat-patches
+            // on the dirt; damp variation is now baked into the dirt texture + road mud decals.)
             // General lush undergrowth (ferns + bushes), tinted for variation. Skip the open
             // meadows so they read as flower fields, not a wall of ferns.
             System.Func<float, float, bool> lushNotMeadow = (x, z) => lush(x, z) && !meadow(x, z);
@@ -913,6 +1206,8 @@ namespace AldenFall.Editor
         private static void ScatterRoadDetail(Transform container, int groundLayer)
         {
             var rutMat = Mat("RoadRut", new Color(0.22f, 0.16f, 0.11f));
+            var mudMat = Mat("RoadMud", new Color(0.20f, 0.145f, 0.095f), smoothness: 0.14f);   // damp wet earth (subtle)
+            bool haveShrub = HasMesh("DirtShrub");
             for (float z = -312f; z <= 212f; z += 2.2f)
             {
                 if (InCityFootprint(0f, z)) continue;   // city lays cobbles
@@ -924,85 +1219,84 @@ namespace AldenFall.Editor
                             new Vector3(1.1f, 0.03f, 2.3f), rutMat, container);
                         Object.DestroyImmediate(rut.GetComponent<BoxCollider>());
                     }
-                // Gravel / pebble patches scattered across the road bed.
-                if (rng.NextDouble() < 0.75)
-                    PlaceMeshyProp(container, "PebblePatch",
-                        new Vector3((float)(rng.NextDouble() * 2 - 1) * 6f, 0f, z + (float)(rng.NextDouble() - 0.5) * 2f),
-                        (float)rng.NextDouble() * 360f, 1.1f + (float)rng.NextDouble() * 1.5f, groundLayer, PropCollision.None);
-                // Occasional stone lying in the road.
-                if (rng.NextDouble() < 0.12)
-                    PlaceMeshyProp(container, rng.NextDouble() < 0.5 ? "MossyRock" : "BoulderCluster",
+                // DAMP / MUD patches worn into the road bed (REPLACES the white pebble "hat patch"
+                // clumps): flat, dark, irregular, ground-hugging so they read as wet earth/erosion.
+                if (rng.NextDouble() < 0.18)
+                {
+                    float mw = 2f + (float)rng.NextDouble() * 2.5f;
+                    var mud = Cube($"Mud{z:F0}", new Vector3((float)(rng.NextDouble() * 2 - 1) * 5.5f, 0.02f, z + (float)(rng.NextDouble() - 0.5) * 2f),
+                        new Vector3(mw, 0.03f, mw * (0.55f + (float)rng.NextDouble() * 0.7f)), mudMat, container);
+                    mud.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 360f, 0);
+                    Object.DestroyImmediate(mud.GetComponent<BoxCollider>());
+                }
+                // Roadside dry shrub (real mesh when present) tucked at the road edge.
+                if (haveShrub && rng.NextDouble() < 0.16)
+                    PlaceMeshyProp(container, "DirtShrub",
+                        new Vector3((rng.NextDouble() < 0.5 ? -1f : 1f) * (7f + (float)rng.NextDouble() * 3f), 0f, z),
+                        (float)rng.NextDouble() * 360f, 0.6f + (float)rng.NextDouble() * 0.6f, groundLayer, PropCollision.None);
+                // Occasional EARTH-TONED stone embedded in the road (warm-dark, not white gravel).
+                if (rng.NextDouble() < 0.10)
+                    EarthTint(PlaceMeshyProp(container, rng.NextDouble() < 0.5 ? "MossBoulder" : "BoulderCluster",
                         new Vector3((float)(rng.NextDouble() * 2 - 1) * 5f, 0f, z), (float)rng.NextDouble() * 360f,
-                        0.5f + (float)rng.NextDouble() * 0.7f, groundLayer, PropCollision.FitBox);
-                // Rocks + boulders lining the shoulders.
+                        0.45f + (float)rng.NextDouble() * 0.6f, groundLayer, PropCollision.FitBox));
+                // Earth-toned rocks lining the shoulders.
                 foreach (float s in new[] { -1f, 1f })
-                    if (rng.NextDouble() < 0.32)
-                        PlaceMeshyProp(container, new[] { "MossyRock", "BoulderCluster", "MossBoulder" }[rng.Next(3)],
+                    if (rng.NextDouble() < 0.30)
+                        EarthTint(PlaceMeshyProp(container, new[] { "MossBoulder", "BoulderCluster", "MossBoulder" }[rng.Next(3)],
                             new Vector3(s * (7.5f + (float)rng.NextDouble() * 4f), 0f, z), (float)rng.NextDouble() * 360f,
-                            1f + (float)rng.NextDouble() * 2f, groundLayer, PropCollision.FitBox);
+                            1f + (float)rng.NextDouble() * 1.8f, groundLayer, PropCollision.FitBox));
             }
+        }
+
+        /// <summary>Wooden rail fences lining the road shoulders near the city + penning the camps,
+        /// so the settled areas read as kept and lived-in (ref: village road fencing). Sections run
+        /// end-to-end; yaw orients the wide face ALONG the run.</summary>
+        private static void BuildRoadsideFences(Transform root, int groundLayer)
+        {
+            if (!HasMesh("Fence")) return;
+            var container = Child(root, "RoadsideFences");
+            const float sec = 3.6f;   // fence section length
+            // Run fence sections between two points, wide face along the run.
+            void FenceRun(Vector3 a, Vector3 b)
+            {
+                Vector3 d = b - a; float len = d.magnitude;
+                if (len < sec) return;
+                float yaw = Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg + 90f;   // wide face along the run
+                int n = Mathf.RoundToInt(len / sec);
+                for (int i = 0; i < n; i++)
+                {
+                    Vector3 p = a + d * ((i + 0.5f) / n);
+                    if (InCityFootprint(p.x, p.z) || InLakeWater(p.x, p.z) || InAnyRiver(p.x, p.z)) continue;
+                    PlaceMeshyProp(container, "Fence", new Vector3(p.x, 0f, p.z), yaw, sec, groundLayer, PropCollision.FitBox);
+                }
+            }
+            // Both shoulders of the N-S road, from the north gate up toward the lakeside.
+            FenceRun(new Vector3(-9.5f, 0f, CityHalf + 5f), new Vector3(-9.5f, 0f, 172f));
+            FenceRun(new Vector3(9.5f, 0f, CityHalf + 5f), new Vector3(9.5f, 0f, 172f));
         }
 
         private static void ScatterForestTrees(Transform container, int groundLayer)
         {
-            var trunkMat = Mat("EmberTreeTrunk", new Color(0.30f, 0.21f, 0.13f), smoothness: 0.05f);
-            var leafMat = Mat("EmberPineLeaf", new Color(0.13f, 0.29f, 0.15f), smoothness: 0.08f);
-            var charTrunk = Mat("EmberCharTrunk", new Color(0.15f, 0.11f, 0.09f), smoothness: 0.03f);
-            var charLeaf = Mat("EmberCharLeaf", new Color(0.17f, 0.13f, 0.10f), smoothness: 0.03f);
-            string[] kit = { "PineTree", "OakTree", "BirchTree", "PineTree", "OakTree", "DeadTree" };   // real Meshy trees; cube pine only if a load misses
-
-            // Camps + POIs the trees must NOT bury.
-            var keepClear = new Vector2[]
-            {
-                new Vector2(-195f, 0f),   // goblin camp W
-                new Vector2(195f, 0f),    // bandit camp E
-                new Vector2(-110f, -120f),// orc warcamp SW
-                new Vector2(LakeCenter.x, LakeCenter.z), // lake
-                new Vector2(0f, 195f),    // deep dark woods handled separately
-                GladeCenter,              // Aldric's glade (player spawn)
-                new Vector2(0f, 68f),     // the open path from the glade to the north gate
-            };
-
-            int planted = 0;
-            // Dense forest EVERYWHERE (Jon: "trees spread out everywhere... foresty vibe"). More
-            // trees + wider ring so the whole forest floor is wooded, not a thin band.
-            for (int attempt = 0; attempt < 9000 && planted < 1050; attempt++)
+            // DATA-DRIVEN: trees are recorded into the catalog only where the map says OPEN ground
+            // with no overlap. Species is chosen by BIOME - alive trees in lush/meadow/dark-forest,
+            // DeadTree ONLY in the volcanic soot band (Jon: no dead trees in the lush forest). The
+            // trunk-footprint radius keeps trees from growing into each other.
+            string[] aliveKit = { "PineTree", "OakTree", "BirchTree", "OakTree", "PineTree", "BirchTree" };
+            int planted = 0, alive = 0;
+            for (int attempt = 0; attempt < 16000 && planted < 1100; attempt++)
             {
                 float x = Mathf.Lerp(-246f, 246f, (float)rng.NextDouble());
-                float z = Mathf.Lerp(-52f, 246f, (float)rng.NextDouble());
-                float ring = Mathf.Sqrt(x * x + z * z);
-                if (ring < 62f || ring > 246f) continue;       // clear the city + trim corners
-                if (InCityFootprint(x, z) || InApproachFootprint(x, z)) continue;
-                if (InLakeWater(x, z) || InFeederRiver(x, z)) continue;
-                if (Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(x, z) + 15f) continue; // wider lake margin: no trees standing in the shallows
-                // Keep roads + rivers/canal CLEAR (Jon: trees in the road / trees in water). Trees
-                // line the road/bank but never stand in them.
-                if (Mathf.Abs(x) < 13f && z > -66f && z < 214f) continue;        // N-S dirt road + shoulders
-                if (InAnyRiver(x, z) || DistToCityCanal(x, z) < 14f) continue;   // river beds + city canal
-                // Extra margin around every river so no trunk sits in the water.
-                { bool nearWater = false;
-                  for (int ri = 0; ri < RiverPaths.Length; ri++) { var rp = RiverPaths[ri]; float rd = float.MaxValue;
-                      for (int si = 0; si < rp.Length - 1; si++) rd = Mathf.Min(rd, DistToSegment(new Vector2(x, z), new Vector2(rp[si].x, rp[si].z), new Vector2(rp[si+1].x, rp[si+1].z)));
-                      if (rd < RiverHalfWidths[ri] + 9f) { nearWater = true; break; } }
-                  if (nearWater) continue; }
-
-                bool blocked = false;
-                foreach (var c in keepClear)
-                    if (Vector2.Distance(new Vector2(x, z), c) < 22f) { blocked = true; break; }
-                if (blocked) continue;
-
-                planted++;
+                float z = Mathf.Lerp(-52f, 252f, (float)rng.NextDouble());
+                var biome = _place.BiomeAt(x, z);
+                float radius = 2.6f + (float)rng.NextDouble() * 1.6f;          // trunk + near-canopy footprint
+                bool dead = biome == PlaceBiome.Volcanic;
+                string species = dead ? "DeadTree" : aliveKit[alive % aliveKit.Length];
                 float h = 6f + (float)rng.NextDouble() * 5f;
-                // Transitional forest: healthy trees give way to charred/dead trees as the
-                // ground sooties toward the volcano — a gradient, not a seam.
-                float soot = SootAmount(x, z);
-                string species = soot > 0.35f && rng.NextDouble() < soot ? "DeadTree" : kit[planted % kit.Length];
-                if (PlaceMeshyProp(container, species, new Vector3(x, 0f, z),
-                        (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk) != null)
-                    continue;
-                var tm = soot > 0.4f ? charTrunk : trunkMat;
-                var lm = soot > 0.4f ? charLeaf : leafMat;
-                PlaceCubePine(container, planted, x, z, h, tm, lm, groundLayer);
+                if (TryScatter(species, x, z, (float)rng.NextDouble() * 360f, h, radius, zn => zn == PlaceZone.Open))
+                {
+                    planted++;
+                    if (!dead) alive++;
+                }
             }
 
             // Progressive soot patches across the blend band (flat dark decals, no collider)
@@ -1819,15 +2113,32 @@ namespace AldenFall.Editor
                 MudBank("Lake_BankS", c + new Vector3(0f, midY, -mid), new Vector3(w + 2f, 0.6f, slabLen), new Vector3(tilt, 0f, 0f));
             }
 
-            // Water trigger volume (Water layer) — only the DEEP core, so you swim in the
-            // middle and wade the mud shallows. Swim detection is depth-based.
+            // Water trigger volume (Water layer) covering the WHOLE lake basin (was a tiny 60m core
+            // -> you could run underwater far out on the bed without ever swimming). Swim detection
+            // is DEPTH-based (enter at 1.3m feet-below-surface), so a full-basin box still means you
+            // WADE the shallows and only SWIM where the water is genuinely deep - and dry corners of
+            // the box never trigger swim (depth there is ~0). Bottom sits below the bed so the
+            // deepest lakebed is inside the volume.
+            float volTop = WaterSurfaceY, volBot = LakeBedY - 4f;
             var vol = new GameObject("Lake_WaterVolume");
             vol.transform.SetParent(container);
-            vol.transform.position = c + Vector3.up * ((WaterSurfaceY + LakeBedY) / 2f);
+            vol.transform.position = c + Vector3.up * ((volTop + volBot) / 2f);
             var vbox = vol.AddComponent<BoxCollider>();
             vbox.isTrigger = true;
-            vbox.size = new Vector3(openHalf * 2f, depth, openHalf * 2f);
+            vbox.size = new Vector3(LakeHalf * 2f, volTop - volBot, LakeHalf * 2f);
             if (waterLayer >= 0) vol.layer = waterLayer;
+
+            // Carve the DEEP lake out of the NavMesh (area=Not Walkable) so enemies can't path onto
+            // the submerged bed and stand underwater (Jon: "mobs underwater"). Sized to the deep
+            // basin only, so the shallow shore RING where NPCs/fishers stand stays walkable. Both
+            // the editor bake and the dedicated-server runtime bake read this volume.
+            var carve = new GameObject("Lake_NavCarve");
+            carve.transform.SetParent(container);
+            carve.transform.position = c + Vector3.up * ((0.5f + (LakeBedY - 1f)) / 2f);
+            var nmv = carve.AddComponent<Unity.AI.Navigation.NavMeshModifierVolume>();
+            nmv.size = new Vector3(120f, 0.5f - (LakeBedY - 1f), 120f);
+            nmv.center = Vector3.zero;
+            nmv.area = 1;   // 1 = Not Walkable
 
             // LAKE surface: an ORGANIC DISC mesh that follows the shoreline exactly, NOT a square
             // plane. The square plane's corners jutted ~30m past the round basin onto dry rim,
@@ -1868,18 +2179,18 @@ namespace AldenFall.Editor
             var m = AssetDatabase.LoadAssetAtPath<Material>(mp);
             if (m == null) { m = new Material(shader); AssetDatabase.CreateAsset(m, mp); }
             else if (m.shader != shader) m.shader = shader;
-            m.SetColor("_ShallowColor", new Color(0.32f, 0.56f, 0.58f, 0.18f));
-            m.SetColor("_DeepColor", new Color(0.05f, 0.22f, 0.33f, 0.90f));
+            m.SetColor("_ShallowColor", new Color(0.34f, 0.58f, 0.60f, 0.6f));
+            m.SetColor("_DeepColor", new Color(0.10f, 0.30f, 0.42f, 0.85f));
             m.SetColor("_FoamColor", new Color(0.92f, 0.97f, 1f, 1f));
-            m.SetColor("_FresnelTint", new Color(0.52f, 0.70f, 0.84f, 1f));
-            m.SetFloat("_DepthFade", 3.5f);
-            m.SetFloat("_FoamDist", 0.9f);
+            m.SetColor("_FresnelTint", new Color(0.58f, 0.74f, 0.86f, 1f));
             m.SetFloat("_RippleScale", 0.5f);
             m.SetFloat("_RippleSpeed", 0.7f);
-            m.SetFloat("_RippleStrength", 0.35f);
-            m.SetFloat("_WaveHeight", 0.06f);
-            m.SetFloat("_SpecSharp", 220f);
-            m.SetFloat("_SpecGain", 0.7f);
+            m.SetFloat("_RippleStrength", 0.5f);
+            m.SetFloat("_WaveHeight", 0.10f);
+            m.SetFloat("_WaveScale", 0.12f);
+            m.SetFloat("_SpecSharp", 200f);
+            m.SetFloat("_SpecGain", 0.8f);
+            m.SetFloat("_Opacity", 0.62f);
             m.renderQueue = 3000;
             EditorUtility.SetDirty(m);
             return m;
@@ -1964,7 +2275,7 @@ namespace AldenFall.Editor
             // REAL rock with VARIETY (Jon: "not just a massive stack of the same"): rotate through
             // four different rock meshes, random full-3D tilt, and varied scale so the cliff reads
             // as a natural jumble of boulders, not one mesh cloned. A dark cube only if all miss.
-            string[] fallRocks = { "BoulderCluster", "MossBoulder", "MossyRock", "RockCliff" };
+            string[] fallRocks = { "BoulderCluster", "MossBoulder", "MossBoulder", "RockCliff" };
             int rockPick = 0;
             void Rock(string label, Vector3 pos, float size)
             {
@@ -1975,8 +2286,16 @@ namespace AldenFall.Editor
                 var r = PlaceMeshyProp(container, mesh, pos, ry, sz, groundLayer, PropCollision.FitBox)
                      ?? PlaceMeshyProp(container, "BoulderCluster", pos, ry, sz, groundLayer, PropCollision.FitBox)
                      ?? PlaceMeshyProp(container, "MossBoulder", pos, ry, sz, groundLayer, PropCollision.FitBox);
-                if (r != null)   // gentle tilt only - big tilts read as a chaotic pile, not a cliff
+                if (r != null)
+                {
+                    // WET, DARKER cliff rock (distinct "_Wet" material so forest boulders stay bright)
+                    // so the fall reads as wet stone, not a pale boulder pile.
+                    var wet = MeshyCharacterImporter.BuildTexturedMaterial(mesh + "_Wet",
+                        $"Assets/Models/Props/{mesh}_baseColor", new Color(0.42f, 0.47f, 0.52f));
+                    if (wet != null) foreach (var rend in r.GetComponentsInChildren<Renderer>()) rend.sharedMaterial = wet;
+                    // gentle tilt only - big tilts read as a chaotic pile, not a cliff
                     r.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 12f, ry, (float)(rng.NextDouble() - 0.5) * 12f) * r.transform.rotation;
+                }
                 if (r == null)
                 {
                     var c = Cube(label, pos, Vector3.one * sz, rockMat, container);
@@ -1986,107 +2305,101 @@ namespace AldenFall.Editor
                 }
             }
 
-            // Continuous cascade leaning against a DENSE rocky chute - stepped boulders with
-            // intention (framing walls + midstream splitters + a wet plunge basin), layered water
-            // sheets that go foamier toward the base to read as falling/crashing water, a cluster
-            // of foam bubbles where it lands, and ferns/moss for volume. The fall carries its own
-            // chute so it never floats regardless of where the border mesh sits.
-            const float leanDeg = 13f;                          // lean back from vertical (gentle)
+            // A real FALLING-WATER sheet (AldenFall/Waterfall shader: vertical foam veins + base
+            // churn, reads as moving water even in a still) is THE hero. A WIDE, gently-leaning
+            // sheet pours down the mountain face; rocks only FRAME it (a lip at the top + boulders
+            // banking each side + base) - never a tall wall in front that hides the water.
+            float vw = Mathf.Max(width, 15f);                    // visual width - avoid a narrow tower
+            const float leanDeg = 8f;                            // lean back from vertical (gentle)
             float run = height * Mathf.Tan(leanDeg * Mathf.Deg2Rad);   // horizontal setback of the top
             float sheetLen = height / Mathf.Cos(leanDeg * Mathf.Deg2Rad);
             Quaternion sheetRot = Quaternion.AngleAxis(-leanDeg, right) * rot;
             Vector3 sheetCenter = basePos + Vector3.up * (WaterSurfaceY + height * 0.5f) + intoMtn * (run * 0.5f);
 
-            // Rock CLIFF FACE: a PACKED wall of boulders directly behind + beside the sheet so the
-            // water always pours over solid rock and never floats in the mountain notch (the fall
-            // carries its own cliff). Rows climb the lean; columns span the width into a wall;
-            // shoulder rocks frame both banks; midstream boulders break the flow into foam.
-            int rows = Mathf.Max(5, Mathf.RoundToInt(height / 4f));
-            int cols = Mathf.Max(3, Mathf.RoundToInt(width / 4.5f));
-            for (int rw = 0; rw <= rows; rw++)
+            // Rocky LIP at the top where the water tips over (a short row spanning the width), and
+            // BANK boulders climbing each side to frame the fall - all set BEHIND/BESIDE the water
+            // plane and OUTSIDE the sheet width, so nothing occludes the cascade from the front.
+            int lipN = Mathf.Max(5, Mathf.RoundToInt(vw / 2.4f));
+            for (int i = 0; i <= lipN; i++)
             {
-                float fy = rw / (float)rows;
-                Vector3 lipC = basePos + Vector3.up * (WaterSurfaceY + fy * height) + intoMtn * (fy * run);
-                float bSize = (height / rows) * (2.0f + (float)rng.NextDouble() * 1.0f);
-                for (int cl = 0; cl <= cols; cl++)     // packed backing wall BEHIND the water sheet
-                {
-                    float fx = cl / (float)cols - 0.5f;
-                    Vector3 p = lipC + right * (fx * width * 1.1f)
-                              + intoMtn * (2.2f + (float)rng.NextDouble() * 0.8f)
-                              + Vector3.up * ((float)(rng.NextDouble() - 0.5f) * bSize * 0.15f);
-                    Rock($"Face{rw}_{cl}", p, bSize * (0.95f + (float)rng.NextDouble() * 0.3f));
-                }
-                Rock($"ShL{rw}", lipC - right * (width * 0.72f) + intoMtn * 0.5f, bSize * 1.05f);   // bank shoulders
-                Rock($"ShR{rw}", lipC + right * (width * 0.72f) + intoMtn * 0.5f, bSize * 1.05f);
-                if (rw % 2 == 1 && rw < rows)     // midstream splitter + foam burst
-                {
-                    Vector3 mid = lipC + right * ((float)(rng.NextDouble() - 0.5f) * width * 0.5f) + toValley * 0.3f;
-                    Rock($"Mid{rw}", mid, bSize * 0.6f);
-                    Foam($"Burst{rw}", mid + toValley * 0.6f + Vector3.up * 0.4f, bSize * 0.55f);
-                }
+                float fx = (i / (float)lipN - 0.5f) * vw * 1.05f;
+                // Lower + set back so the rocks sit AS the ledge (embedded, overlapping) instead of
+                // floating as spaced blocks above the water lip.
+                Vector3 lip = basePos + Vector3.up * (WaterSurfaceY + height - 1.6f) + intoMtn * (run + 2.2f) + right * fx;
+                Rock($"Lip{i}", lip, 3.2f + (float)rng.NextDouble() * 1.6f);
             }
-
-            // Layered falling sheets: a back water sheet + a foamier front sheet that widens the
-            // white toward the base (reads as accelerating, breaking water rather than a flat card).
-            var backSheet = Cube("Fall_Back", sheetCenter, new Vector3(width * 0.82f, sheetLen, 0.4f), fallWaterMat, container);
-            backSheet.transform.rotation = sheetRot;
-            Object.DestroyImmediate(backSheet.GetComponent<BoxCollider>());
-            // Many vertical foam streaks, denser + wider toward the bottom (base churn).
-            int streaks = Mathf.Max(5, Mathf.RoundToInt(width));
-            for (int s = 0; s < streaks; s++)
+            int banks = Mathf.Max(4, Mathf.RoundToInt(height / 4.5f));
+            for (int i = 0; i <= banks; i++)
             {
-                float fx = ((s + 0.5f) / streaks - 0.5f) * width * 0.9f + (float)(rng.NextDouble() - 0.5) * 1.2f;
-                float lenFrac = 0.4f + (float)rng.NextDouble() * 0.6f;
-                float yShift = -(1f - lenFrac) * sheetLen * 0.5f;   // shorter streaks hug the base
-                var streak = Cube($"Fall_Streak{s}", sheetCenter + right * fx + toValley * 0.3f + Vector3.up * yShift,
-                    new Vector3(0.4f + (float)rng.NextDouble() * 0.7f, sheetLen * lenFrac, 0.18f), foamMat, container);
-                streak.transform.rotation = sheetRot;
-                Object.DestroyImmediate(streak.GetComponent<BoxCollider>());
+                float fy = i / (float)banks;
+                Vector3 bc = basePos + Vector3.up * (WaterSurfaceY + fy * height) + intoMtn * (fy * run);
+                float bs = 2.6f + (float)rng.NextDouble() * 1.8f;
+                Rock($"BankL{i}", bc - right * (vw * 0.62f) + intoMtn * (0.6f + (float)rng.NextDouble()), bs);
+                Rock($"BankR{i}", bc + right * (vw * 0.62f) + intoMtn * (0.6f + (float)rng.NextDouble()), bs);
             }
-            // Foam cap at the top lip where the water tips over.
-            var cap = Cube("Fall_Cap", basePos + Vector3.up * (WaterSurfaceY + height) + intoMtn * run,
-                new Vector3(width * 0.85f, 0.9f, 2.2f), foamMat, container);
-            cap.transform.rotation = rot;
-            Object.DestroyImmediate(cap.GetComponent<BoxCollider>());
-            for (int i = 0; i < 5; i++)   // bubbling foam along the lip
-                Foam($"Lip_Foam{i}", basePos + Vector3.up * (WaterSurfaceY + height + 0.2f) + intoMtn * run
-                    + right * ((i / 4f - 0.5f) * width * 0.8f), 0.8f + (float)rng.NextDouble() * 0.7f);
+            width = vw;   // downstream foam/pool sizing uses the visual width
 
-            // CRASHING FOAM: a dense froth of MANY small, FLATTENED, overlapping blobs (not a few
-            // static balls) so the plunge reads as churning whitewater, + radial foam trails
-            // streaming downstream across the pool surface + a little rising spray.
-            Vector3 plunge = basePos + toValley * 1.8f + Vector3.up * (WaterSurfaceY + 0.15f);
-            for (int i = 0; i < 30; i++)
+            // THE water sheet: a vertical quad with the flowing-water shader. Falls back to the
+            // matte blue material if the shader failed to compile.
+            Material fallSheetMat = null;
+            var fallShader = Shader.Find("AldenFall/Waterfall");
+            if (fallShader != null)
+            {
+                string fp = $"{MaterialDir}/FallSheet.mat";
+                fallSheetMat = AssetDatabase.LoadAssetAtPath<Material>(fp);
+                if (fallSheetMat == null) { fallSheetMat = new Material(fallShader); AssetDatabase.CreateAsset(fallSheetMat, fp); }
+                else if (fallSheetMat.shader != fallShader) fallSheetMat.shader = fallShader;
+            }
+            var sheet = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            sheet.name = "Fall_Sheet";
+            sheet.transform.SetParent(container);
+            sheet.transform.position = sheetCenter + toValley * 0.4f;   // just in front of the backing rock
+            sheet.transform.rotation = sheetRot;
+            sheet.transform.localScale = new Vector3(width * 1.02f, sheetLen, 1f);
+            Object.DestroyImmediate(sheet.GetComponent<Collider>());
+            sheet.GetComponent<Renderer>().sharedMaterial = fallSheetMat ?? fallWaterMat;
+            if (groundLayer >= 0) sheet.layer = groundLayer;
+            // A second, narrower sheet a touch further forward adds depth/volume to the cascade.
+            var sheet2 = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            sheet2.name = "Fall_Sheet2";
+            sheet2.transform.SetParent(container);
+            sheet2.transform.position = sheetCenter + toValley * 0.9f + Vector3.up * (height * 0.02f);
+            sheet2.transform.rotation = sheetRot;
+            sheet2.transform.localScale = new Vector3(width * 0.7f, sheetLen * 0.98f, 1f);
+            Object.DestroyImmediate(sheet2.GetComponent<Collider>());
+            sheet2.GetComponent<Renderer>().sharedMaterial = fallSheetMat ?? fallWaterMat;
+            if (groundLayer >= 0) sheet2.layer = groundLayer;
+
+            // Foam cap at the lip + a bubbling row where the water tips over.
+            for (int i = 0; i < 5; i++)
+                Foam($"Lip_Foam{i}", basePos + Vector3.up * (WaterSurfaceY + height - 0.3f) + intoMtn * (run * 0.8f)
+                    + right * ((i / 4f - 0.5f) * width * 0.8f), 0.9f + (float)rng.NextDouble() * 0.7f);
+
+            // CRASHING FOAM at the plunge: a dense froth of flattened overlapping blobs + a little
+            // rising spray, hugging the base where the sheet lands.
+            Vector3 plunge = basePos + toValley * 1.3f + Vector3.up * (WaterSurfaceY + 0.15f);
+            for (int i = 0; i < 26; i++)
             {
                 float a = (float)rng.NextDouble() * Mathf.PI * 2f;
-                float r = (float)rng.NextDouble() * (width * 0.8f);
+                float r = (float)rng.NextDouble() * (width * 0.6f);
                 bool spray = (float)rng.NextDouble() < 0.22f;
                 float rise = spray ? 0.8f + (float)rng.NextDouble() * 1.8f : 0f;
                 var f = Foam($"Crash_Foam{i}", plunge + right * (Mathf.Cos(a) * r) + toValley * (Mathf.Sin(a) * r * 0.7f) + Vector3.up * rise,
-                    0.35f + (float)rng.NextDouble() * 0.85f);
-                if (!spray)   // churn hugs the surface: squash flat + a bit of horizontal jitter
-                    f.transform.localScale = Vector3.Scale(f.transform.localScale, new Vector3(1.3f, 0.45f, 1.3f));
+                    0.35f + (float)rng.NextDouble() * 0.8f);
+                if (!spray) f.transform.localScale = Vector3.Scale(f.transform.localScale, new Vector3(1.3f, 0.45f, 1.3f));
             }
-            // Foam trails streaming out from the plunge across the pool.
-            for (int i = 0; i < 6; i++)
+            // Foam trails fanning downstream across the plunge pool.
+            for (int i = 0; i < 5; i++)
             {
-                float a = (i / 6f - 0.5f) * 1.3f;   // fan downstream
+                float a = (i / 5f - 0.5f) * 1.2f;
                 var trail = Cube($"Fall_Trail{i}", plunge + toValley * (2f + i * 0.4f) + right * (a * width),
                     new Vector3(0.5f + (float)rng.NextDouble() * 0.6f, 0.08f, 3f + (float)rng.NextDouble() * 3f), foamMat, container);
                 trail.transform.rotation = rot;
                 Object.DestroyImmediate(trail.GetComponent<BoxCollider>());
             }
-            // Plunge pool sheen + a ring of wet boulders the pool laps around.
-            var pool = Cube("Fall_Pool", basePos + toValley * 2.6f + Vector3.up * (WaterSurfaceY + 0.05f),
-                new Vector3(width + 4f, 0.1f, width + 7f), foamMat, container);
-            pool.transform.rotation = rot;
-            Object.DestroyImmediate(pool.GetComponent<BoxCollider>());
-            for (int i = 0; i < 6; i++)
-            {
-                float a = i / 6f * Mathf.PI * 2f;
-                Rock($"Plunge_Rk{i}", basePos + toValley * 2.4f + right * (Mathf.Cos(a) * (width * 0.7f))
-                    + toValley * (Mathf.Sin(a) * (width * 0.5f)) + Vector3.up * 0.3f, 2f + (float)rng.NextDouble() * 2.5f);
-            }
+            // Just TWO wet boulders flanking the plunge base (not a ring closing off the front).
+            Rock("Plunge_RkL", basePos + toValley * 1.6f - right * (width * 0.7f) + Vector3.up * 0.3f, 2.2f + (float)rng.NextDouble() * 2f);
+            Rock("Plunge_RkR", basePos + toValley * 1.6f + right * (width * 0.7f) + Vector3.up * 0.3f, 2.2f + (float)rng.NextDouble() * 2f);
 
             // FOLIAGE volume: ferns + bushes tucked among the wet rocks, moss boulders, and a pine
             // flanking each bank so the fall sits in living terrain, not bare geometry.
@@ -2344,18 +2657,22 @@ namespace AldenFall.Editor
 
             var trunkMat = Mat("DarkTrunk", new Color(0.18f, 0.13f, 0.09f), smoothness: 0.04f);
             var leafMat = Mat("DarkLeaf", new Color(0.07f, 0.16f, 0.09f), smoothness: 0.05f);
-            string[] kit = { "PineTree", "DeadTree", "BirchTree" };
+            // Dense DARK EVERGREENS (no DeadTree - dead trees belong in the volcanic band, not this
+            // lush lakeside grove; they were reading as "dead trees in the green forest").
+            string[] kit = { "PineTree", "OakTree", "PineTree", "OakTree", "BirchTree" };
 
             int planted = 0;
-            for (int attempt = 0; attempt < 600 && planted < 150; attempt++)
+            for (int attempt = 0; attempt < 900 && planted < 150; attempt++)
             {
                 float x = c.x + ((float)rng.NextDouble() * 2f - 1f) * 62f;
                 float z = c.z + ((float)rng.NextDouble() * 2f - 1f) * 55f;
                 if (Mathf.Sqrt(x * x + z * z) > 246f) continue;
                 if (InLakeWater(x, z) || InFeederRiver(x, z)) continue;
                 if (Mathf.Abs(x - LakeCenter.x) < LakeHalf + 8f && Mathf.Abs(z - LakeCenter.z) < LakeHalf + 8f) continue;
-                planted++;
                 float h = 7f + (float)rng.NextDouble() * 6f;
+                // Respect the placement map: no trees in the road/water/city, none on catalog trees.
+                if (!MapClear(x, z, 2.7f)) continue;
+                planted++;
                 if (PlaceMeshyProp(container, kit[planted % kit.Length], new Vector3(x, 0f, z),
                         (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk) != null) continue;
                 PlaceCubePine(container, 5000 + planted, x, z, h, trunkMat, leafMat, groundLayer);
@@ -2514,27 +2831,26 @@ namespace AldenFall.Editor
                 }
             }
 
-            // ---- Scorched ground debris: dark ash rock + charred rubble scattered down the
-            // corridor (denser toward the volcano) so the floor reads as broken volcanic earth
-            // rather than a bare pale sheet, plus glowing ground cracks near the caldera. ----
-            var ashRock = Mat("EmberAshRock", new Color(0.13f, 0.105f, 0.10f), smoothness: 0.03f);
-            var ashRockDk = Mat("EmberAshRockDk", new Color(0.09f, 0.07f, 0.07f), smoothness: 0.03f);
+            // ---- Scorched ground debris: REAL textured volcanic rock (glowing lava-rock chunks +
+            // basalt boulders) scattered down the corridor, denser toward the volcano, so the floor
+            // reads as broken volcanic earth built from proper meshes rather than flat cube slop.
+            // Glowing ground cracks stay near the caldera. ----
             var emberCrack = Mat("EmberGroundCrack", new Color(1f, 0.45f, 0.12f), smoothness: 0.5f,
                 emission: new Color(1f, 0.35f, 0.08f) * 3.5f);
+            // ONLY dark volcanic lava-rock here - the pale/mossy granite boulders read as
+            // out-of-place white rocks in the charred ember corridor (wrong biome).
             for (int i = 0; i < 220; i++)
             {
                 float z = Mathf.Lerp(ApproachNorthZ - 6f, ApproachSouthZ + 4f, (float)rng.NextDouble());
                 float x = ((float)rng.NextDouble() * 2f - 1f) * (ApproachHalfW - 3f);
                 if (Mathf.Abs(x) < 6f) continue;   // keep the central road clear
                 float t = Mathf.InverseLerp(ApproachNorthZ, ApproachSouthZ, z);   // 0 gate -> 1 volcano
-                if ((float)rng.NextDouble() > 0.35f + t * 0.55f) continue;        // denser toward the volcano
-                float s = 0.5f + (float)rng.NextDouble() * (1.4f + t * 1.6f);
-                var r = Cube($"AshRock{i}", new Vector3(x, s * 0.28f, z),
-                    new Vector3(s, s * (0.5f + (float)rng.NextDouble() * 0.5f), s * (0.7f + (float)rng.NextDouble() * 0.6f)),
-                    rng.NextDouble() < 0.5 ? ashRock : ashRockDk, container);
-                r.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 18f, (float)rng.NextDouble() * 360f, (float)rng.NextDouble() * 18f);
-                r.isStatic = true;
-                if (groundLayer >= 0) r.layer = groundLayer;
+                if ((float)rng.NextDouble() > 0.30f + t * 0.50f) continue;        // denser toward the volcano
+                float s = 1.0f + (float)rng.NextDouble() * (1.6f + t * 2.0f);
+                var r = PlaceMeshyProp(container, "LavaRockGround", new Vector3(x, 0f, z),
+                    (float)rng.NextDouble() * 360f, s, groundLayer, PropCollision.FitBox);
+                if (r != null)   // gentle 3D tilt so rocks sit naturally, not a chaotic pile
+                    r.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 14f, (float)rng.NextDouble() * 360f, (float)(rng.NextDouble() - 0.5) * 14f) * r.transform.rotation;
                 // Glowing fissures crack open on the hot ground closer to the volcano.
                 if (t > 0.45f && rng.NextDouble() < 0.28)
                 {
@@ -2545,11 +2861,10 @@ namespace AldenFall.Editor
                 }
             }
 
-            // ---- Volcanic scrub: dry burnt bushes + tumbleweeds so the approach has a biome-
-            // appropriate ecosystem (Jon: "volcano = tumbleweed, burnt bush"), thinning to bare
+            // ---- Volcanic scrub: charred dead shrubs (real DeadTree meshes scaled low) + wind-worn
+            // stones so the approach has a biome-appropriate ecosystem (Jon: "volcano = tumbleweed,
+            // burnt bush") built from real assets, no primitive shard/ball clusters. Thins to bare
             // ash near the caldera. ----
-            var burntMat = Mat("BurntBush", new Color(0.16f, 0.11f, 0.07f), smoothness: 0.02f);
-            var tumbleMat = Mat("Tumbleweed", new Color(0.34f, 0.26f, 0.14f), smoothness: 0.03f);
             for (int i = 0; i < 90; i++)
             {
                 float z = Mathf.Lerp(ApproachNorthZ - 4f, ApproachSouthZ + 30f, (float)rng.NextDouble());
@@ -2557,29 +2872,15 @@ namespace AldenFall.Editor
                 if (Mathf.Abs(x) < 7f) continue;                        // clear the road
                 float t = Mathf.InverseLerp(ApproachNorthZ, ApproachSouthZ, z);
                 if ((float)rng.NextDouble() < t * 0.7f) continue;       // thin out toward the caldera
-                if (rng.NextDouble() < 0.55)
-                {
-                    // Burnt bush: a low cluster of dark spiky shards.
-                    var bush = Child(container, $"BurntBush{i}");
-                    bush.transform.position = new Vector3(x, 0f, z);
-                    int shards = 4 + rng.Next(4);
-                    for (int s = 0; s < shards; s++)
-                    {
-                        float sh = 0.5f + (float)rng.NextDouble() * 0.9f;
-                        var b = Cube($"Shard{s}", bush.transform.position + new Vector3((float)(rng.NextDouble() - 0.5) * 0.9f, sh * 0.5f, (float)(rng.NextDouble() - 0.5) * 0.9f),
-                            new Vector3(0.09f, sh, 0.09f), burntMat, bush);
-                        b.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 55f, (float)rng.NextDouble() * 360f, (float)(rng.NextDouble() - 0.5) * 55f);
-                        Object.DestroyImmediate(b.GetComponent<BoxCollider>());
-                    }
-                }
+                if (rng.NextDouble() < 0.6)
+                    // Low charred scrub: a small DeadTree reads as a burnt bush (real textured mesh).
+                    PlaceMeshyProp(container, "DeadTree", new Vector3(x, 0f, z),
+                        (float)rng.NextDouble() * 360f, 1.4f + (float)rng.NextDouble() * 1.3f, groundLayer, PropCollision.None);
                 else
-                {
-                    // Tumbleweed: a dry brown ball resting on the ash.
-                    var tw = Sphere($"Tumbleweed{i}", new Vector3(x, 0.55f + (float)rng.NextDouble() * 0.2f, z),
-                        Vector3.one * (0.9f + (float)rng.NextDouble() * 0.7f), tumbleMat, container);
-                    tw.transform.localScale = Vector3.Scale(tw.transform.localScale, new Vector3(1f, 0.85f, 1f));
-                    Object.DestroyImmediate(tw.GetComponent<SphereCollider>());
-                }
+                    // A squat wind-worn volcanic stone among the scrub (dark, biome-appropriate).
+                    PlaceMeshyProp(container, "LavaRockGround",
+                        new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
+                        0.8f + (float)rng.NextDouble() * 0.7f, groundLayer, PropCollision.FitBox);
             }
 
             // ---- EmberZones: positional darkening gradient toward the volcano ----
@@ -2642,12 +2943,19 @@ namespace AldenFall.Editor
                 float a = i / (float)rimN * Mathf.PI * 2f;
                 float rx = (hx / 2f + 0.9f) * Mathf.Cos(a);
                 float rz = (hz / 2f + 0.9f) * Mathf.Sin(a);
-                var rock = Cube($"Lava_Rim{i}",
-                    center + new Vector3(rx, 0.25f + (float)rng.NextDouble() * 0.2f, rz),
-                    new Vector3(1.6f + (float)rng.NextDouble(), 0.7f, 1.6f + (float)rng.NextDouble()), crustMat, container);
-                rock.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 60f, 0);
-                rock.isStatic = true;
-                if (groundLayer >= 0) rock.layer = groundLayer;
+                var pos = center + new Vector3(rx, 0f, rz);
+                float rs = 1.8f + (float)rng.NextDouble() * 1.3f;
+                // Real textured lava-rock / basalt boulder rim (glowing seams sell the molten heat).
+                var rock = PlaceMeshyProp(container, rng.NextDouble() < 0.55 ? "LavaRockGround" : "BoulderCluster",
+                    pos, (float)rng.NextDouble() * 360f, rs, groundLayer, PropCollision.FitBox);
+                if (rock == null)
+                {
+                    var c = Cube($"Lava_Rim{i}", center + new Vector3(rx, 0.25f + (float)rng.NextDouble() * 0.2f, rz),
+                        new Vector3(1.6f + (float)rng.NextDouble(), 0.7f, 1.6f + (float)rng.NextDouble()), crustMat, container);
+                    c.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 60f, 0);
+                    c.isStatic = true;
+                    if (groundLayer >= 0) c.layer = groundLayer;
+                }
             }
 
             // Glowing molten surface (collider stripped so the player can wade in and burn).
@@ -2826,12 +3134,22 @@ namespace AldenFall.Editor
                 var dormantMat = VolMat("VolcanoMeshRock", new Color(0.5f, 0.5f, 0.55f), null);
                 var eruptMat = VolMat("VolcanoMeshLava", new Color(0.85f, 0.55f, 0.4f), new Color(0.7f, 0.19f, 0.04f)); // charred + hot glow
                 void Skin(GameObject go, Material m) { if (go != null) foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = m; }
+                // Prefer the REAL PBR texture baked by Meshy refine (dark basalt cone / painted lava
+                // flows). Only fall back to the flat soot-skinned material when that texture is
+                // missing, so the cone is never a bald white silhouette.
+                bool dormantTex = System.IO.File.Exists("Assets/Models/Props/VolcanoDormant_baseColor.jpg");
+                bool eruptTex = System.IO.File.Exists("Assets/Models/Props/VolcanoErupting_baseColor.jpg");
                 var dormant = PlaceMeshyProp(vis, "VolcanoDormant", meshCenter, 180f, 230f, groundLayer, PropCollision.FitBox);
-                if (dormant != null) { dormant.name = "VolcanoDormant"; Skin(dormant, dormantMat); }
+                if (dormant != null) { dormant.name = "VolcanoDormant"; if (!dormantTex) Skin(dormant, dormantMat); }
                 if (HasMesh("VolcanoErupting"))
                 {
                     var erupt = PlaceMeshyProp(vis, "VolcanoErupting", meshCenter, 180f, 230f, groundLayer, PropCollision.None);
-                    if (erupt != null) { erupt.name = "VolcanoErupting"; Skin(erupt, eruptMat); erupt.SetActive(false); }
+                    if (erupt != null)
+                    {
+                        erupt.name = "VolcanoErupting";
+                        if (!eruptTex) Skin(erupt, eruptMat);
+                        erupt.SetActive(false);
+                    }
                 }
             }
 

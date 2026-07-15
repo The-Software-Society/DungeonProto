@@ -300,6 +300,91 @@ namespace AldenFall.Editor
             Drop("GoblinVisual", 60f, -30f, 2, 18f);      // near the south gate
         }
 
+        /// <summary>Fly a smooth camera path through the hero features and render every frame to
+        /// frame_####.png (stitched into the montage MP4 by tools/make_montage.sh). Waypoints reuse
+        /// the verified tour framings so each feature is well-composed as the camera glides past.</summary>
+        public static void CaptureMontage()
+        {
+            var wp = new (Vector3 pos, Vector3 look)[]
+            {
+                (new Vector3(0f, 55f, 78f),    new Vector3(0f, 5f, 230f)),   // opening overlook: lake + mountains
+                (new Vector3(2f, 10f, 120f),   new Vector3(0f, 1.5f, 220f)), // down onto the forest road
+                (new Vector3(0f, 13f, 150f),   new Vector3(0f, 0f, 240f)),   // road -> lake (spawn framing)
+                (new Vector3(-70f, 22f, 195f), new Vector3(30f, 0f, 320f)),  // lake vista pan
+                (new Vector3(60f, 26f, 412f),  new Vector3(-4f, 20f, 486f)), // waterfall 3/4
+                (new Vector3(4f, 22f, 452f),   new Vector3(0f, 16f, 496f)),  // waterfall close
+                (new Vector3(92f, 12f, 12f),   new Vector3(55f, 2f, 12f)),   // city canal culvert
+                (new Vector3(0f, 20f, -12f),   new Vector3(0f, 3f, 40f)),    // city interior
+                (new Vector3(0f, 4f, -70f),    new Vector3(0f, 3f, -260f)),  // volcano approach corridor
+                (new Vector3(0f, 24f, -150f),  new Vector3(0f, 38f, -345f)), // volcano reveal
+                (new Vector3(0f, 68f, -70f),   new Vector3(0f, 6f, 140f)),   // pull-back hero
+            };
+            // 72 frames/segment @ 30fps -> slow, smooth glide (~26s) so features are readable.
+            RunPath(wp, 72);
+        }
+
+        // Catmull-Rom through p0..p3 at t in [0,1].
+        static Vector3 CatmullRom(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, float t)
+        {
+            float t2 = t * t, t3 = t2 * t;
+            return 0.5f * ((2f * p1) + (-p0 + p2) * t
+                 + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2
+                 + (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
+        }
+
+        private static void RunPath((Vector3 pos, Vector3 look)[] wp, int framesPerSeg)
+        {
+            string outDir = "Screenshots";
+            var args = System.Environment.GetCommandLineArgs();
+            for (int i = 0; i < args.Length - 1; i++)
+                if (args[i] == "-screenshotDir") outDir = args[i + 1];
+            Directory.CreateDirectory(outDir);
+
+            EditorSceneManager.OpenScene("Assets/Scenes/EmberfallDemo.unity");
+            PopulateMobVisuals();
+
+            var camObj = new GameObject("QA_Camera");
+            var cam = camObj.AddComponent<Camera>();
+            cam.fieldOfView = 58f;
+            cam.nearClipPlane = 0.1f;
+            cam.farClipPlane = 1400f;
+
+            var rt = new RenderTexture(1280, 720, 24);
+            var tex = new Texture2D(1280, 720, TextureFormat.RGB24, false);
+
+            int frame = 0;
+            int n = wp.Length;
+            for (int s = 0; s < n - 1; s++)
+            {
+                var p0 = wp[Mathf.Max(0, s - 1)]; var p1 = wp[s];
+                var p2 = wp[s + 1]; var p3 = wp[Mathf.Min(n - 1, s + 2)];
+                for (int f = 0; f < framesPerSeg; f++)
+                {
+                    float t = f / (float)framesPerSeg;
+                    float e = t * t * (3f - 2f * t);   // smoothstep ease so waypoints don't jerk
+                    Vector3 pos = CatmullRom(p0.pos, p1.pos, p2.pos, p3.pos, e);
+                    Vector3 look = CatmullRom(p0.look, p1.look, p2.look, p3.look, e);
+                    camObj.transform.position = pos;
+                    camObj.transform.LookAt(look);
+
+                    cam.targetTexture = rt;
+                    cam.Render();
+                    RenderTexture.active = rt;
+                    tex.ReadPixels(new Rect(0, 0, 1280, 720), 0, 0);
+                    tex.Apply();
+                    RenderTexture.active = null;
+                    File.WriteAllBytes(Path.Combine(outDir, $"frame_{frame:D4}.png"), tex.EncodeToPNG());
+                    frame++;
+                }
+            }
+            Debug.Log($"MONTAGE rendered {frame} frames -> {outDir}");
+
+            cam.targetTexture = null;
+            Object.DestroyImmediate(rt);
+            Object.DestroyImmediate(tex);
+            Object.DestroyImmediate(camObj);
+        }
+
         private static void Run((string name, Vector3 pos, Vector3 lookAt)[] shots)
         {
             string outDir = "Screenshots";

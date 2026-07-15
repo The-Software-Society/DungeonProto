@@ -154,22 +154,58 @@ namespace AldenFall.Editor
             return px;
         }
 
+        // Real packed-earth road dirt (ref: New World / stylized ARPG trails): rich brown with FINE
+        // high-frequency mottle + small EARTH-TONED pebble specks. IMPORTANT: no low-frequency
+        // "damp patch" here - a big soft blob baked into a tiling texture repeats identically every
+        // tile and reads as "repeat squares with a black splotch" (Jon). Damp/erosion variation is
+        // done at WORLD scale instead (road mud decals), never baked into the tile.
         public static Color32[] Dirt(int s)
         {
             var px = new Color32[s * s];
-            Color dark = new Color(0.24f, 0.17f, 0.11f);
-            Color mid = new Color(0.36f, 0.27f, 0.18f);
-            Color light = new Color(0.48f, 0.38f, 0.27f);
-            Color stone = new Color(0.55f, 0.52f, 0.47f);
+            Color dark = new Color(0.27f, 0.20f, 0.125f);
+            Color mid = new Color(0.37f, 0.285f, 0.185f);
+            Color light = new Color(0.45f, 0.36f, 0.245f);  // dry dusty
+            Color pebble = new Color(0.33f, 0.28f, 0.21f);  // earth pebble (warm, not grey/white)
             for (int y = 0; y < s; y++)
                 for (int x = 0; x < s; x++)
                 {
                     float u = x / (float)s, v = y / (float)s;
-                    float n = Fbm(u, v, 7f);
-                    float grit = Fbm(u, v, 30f);
-                    Color c = Color.Lerp(dark, mid, Mathf.Clamp01(n * 1.4f));
-                    c = Color.Lerp(c, light, Mathf.Clamp01((grit - 0.5f) * 2f));
-                    if (grit > 0.78f) c = Color.Lerp(c, stone, (grit - 0.78f) * 3f);  // pebbles
+                    float n = Fbm(u, v, 9f);          // finer base mottle (less blobby -> tiles cleaner)
+                    float grit = Fbm(u, v, 40f);       // fine grit speckle
+                    Color c = Color.Lerp(dark, mid, Mathf.Clamp01(n * 1.5f));
+                    c = Color.Lerp(c, light, Mathf.Clamp01((grit - 0.55f) * 1.8f));    // dry speckle
+                    if (grit > 0.86f) c = Color.Lerp(c, pebble, (grit - 0.86f) * 3f);  // earth pebbles
+                    px[y * s + x] = c;
+                }
+            return px;
+        }
+
+        // Cobblestone paving for city-entrance transitions: rounded grey stones packed with dark
+        // earth in the gaps (jittered grid -> irregular cobbles, mortar lines darkened).
+        public static Color32[] Cobble(int s)
+        {
+            var px = new Color32[s * s];
+            Color mortar = new Color(0.17f, 0.15f, 0.12f);   // dark earth between stones
+            Color stoneD = new Color(0.33f, 0.32f, 0.31f);
+            Color stoneL = new Color(0.55f, 0.53f, 0.50f);
+            const float cell = 8f;
+            for (int y = 0; y < s; y++)
+                for (int x = 0; x < s; x++)
+                {
+                    float u = x / (float)s, v = y / (float)s;
+                    // Jitter each grid cell's centre so cobbles read irregular, then measure the
+                    // radial falloff from the cell centre for a domed-stone + mortar-gap look.
+                    float cu = u * cell, cv = v * cell;
+                    float gu = Mathf.Floor(cu), gv = Mathf.Floor(cv);
+                    float jx = Mathf.PerlinNoise(gu * 1.7f, gv * 2.3f) * 0.5f;
+                    float jy = Mathf.PerlinNoise(gu * 2.9f + 5f, gv * 1.3f + 3f) * 0.5f;
+                    float dx = (cu - gu) - (0.5f + (jx - 0.25f));
+                    float dy = (cv - gv) - (0.5f + (jy - 0.25f));
+                    float d = Mathf.Sqrt(dx * dx + dy * dy);
+                    float stoneN = Fbm(u, v, 22f);
+                    Color c = Color.Lerp(stoneL, stoneD, Mathf.Clamp01(d * 1.8f));      // domed stones
+                    c = Color.Lerp(c, stoneD, Mathf.Clamp01((stoneN - 0.5f) * 1.2f));   // stone mottle
+                    if (d > 0.42f) c = Color.Lerp(c, mortar, Mathf.Clamp01((d - 0.42f) * 4f)); // mortar gaps
                     px[y * s + x] = c;
                 }
             return px;
