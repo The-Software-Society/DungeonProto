@@ -45,16 +45,30 @@ Today `EmberfallWorldState` is a single GLOBAL SyncVar phase (a deliberate "SAO 
 choice) triggered by the floor-boss death, driving the atmosphere, spawns, and cutscenes for
 EVERYONE. This is a design pivot from server-wide → phased.
 
-**Layers (increasing depth):**
-1. **Presentation phasing (doable, contained).** Move the phase to PER-PLAYER state driven by that
-   player's quest progress. The eruption LOOK (`EmberAtmosphere` intensity) and the eruption/
-   floor-cleared CUTSCENES key off the local player's phase. Town players never get them. Party
-   members in sync (quest fan-out already keeps them in sync) reach the phase together.
-2. **Entity phasing (the deep MMO part).** Eruption SPAWNS are shared entities; if player A is
-   Erupting and B is Calm, they must see different mobs — per-observer network visibility
-   (interest management by phase). Mirror doesn't do this natively; it's the same instancing/
-   phasing system as the multi-world work (`MULTI_WORLD_PLAN.md`). Until built, spawns stay shared.
+**REVISED after code audit — NO interest-management rewrite needed.** The eruption has NO
+`NetworkServer.Spawn`'d entities. Every consequence is client-side presentation toggled by the
+phase: `EmberAtmosphere` (look), `EruptionSpawns` (lava-hazard scene content), `VolcanoPlume`,
+`WorldStateGate`, and the eruption/floor-cleared cutscenes. So per-player phasing is a contained
+change, not the deep instancing system.
 
-**Recommendation:** build layer 1 (per-player look + cutscene) as a focused task so the visible
-"town shouldn't see it" problem is solved; schedule layer 2 with the instancing/phasing work,
-since true per-player mobs require the interest-management system.
+**Build:**
+1. **`PlayerWorldPhase`** — a per-player NetworkBehaviour with a `[SyncVar] Phase` (Calm/Erupting/
+   Cleared), server-owned, driven by that player's quest progress. Party members stay in sync
+   because quest progress already fans out.
+2. **Redirect presentation to the LOCAL player's phase.** `EmberfallWorldState` becomes a
+   per-client presentation hub whose `CurrentPhase` mirrors the local player's `PlayerWorldPhase`
+   (instead of a global SyncVar + boss-death trigger). Its existing `OnPhaseChanged` listeners
+   (`EruptionSpawns`, `VolcanoPlume`, `WorldStateGate`, `EmberAtmosphere`, cutscenes) then all react
+   per-player. Town players (Calm) get calm sky + no cutscene.
+3. **Triggers become per-player/party:** `EruptionTrigger` sets the entering player's (+ party's)
+   phase to Erupting; the floor-boss death sets the killer's (+ party's) phase to Cleared.
+4. **One gameplay nuance — `LavaHazard` damage.** Lava content is client-side, but its damage runs
+   through `Health.TakeDamage` (server-only). With per-player phase, the SERVER must apply lava
+   damage only to players who are (a) standing in lava AND (b) in the Erupting phase — a small
+   server-side per-player phase check (the server reads each player's `PlayerWorldPhase` SyncVar).
+5. `ServerProgressState` (server-wide floor-clear / first-clear prestige) stays GLOBAL — that's
+   legitimately shared, independent of a player's personal eruption phase.
+
+**Risk:** contained (no interest management), but touches the world-state system + lava damage, so
+it wants a live 2-client sanity check (player A in Erupting sees fire/lava + takes lava damage;
+player B in town sees calm + no cutscene). Recommend as the focused next build.
