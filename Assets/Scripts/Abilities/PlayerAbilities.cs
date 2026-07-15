@@ -167,6 +167,7 @@ namespace AldenFall.Abilities
             {
                 WeaponClass.Sword => equipment.HasSwordMainHand,
                 WeaponClass.Focus => equipment.HasMagicImplement,
+                WeaponClass.Bow => equipment.HasBow,   // was unhandled -> archery abilities never activated
                 _ => false,
             };
         }

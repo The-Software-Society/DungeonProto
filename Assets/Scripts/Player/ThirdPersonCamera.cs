@@ -111,9 +111,12 @@ namespace AldenFall.Player
                 Cursor.visible = true;
             }
 
-            // Scroll to zoom
+            // Scroll to zoom — but NOT when the pointer is over a UI element (so scrolling a
+            // skills/inventory list scrolls the list instead of yanking the camera).
             float scroll = Input.GetAxis("Mouse ScrollWheel");
-            if (Mathf.Abs(scroll) > 0.01f)
+            bool overUI = UnityEngine.EventSystems.EventSystem.current != null
+                       && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject();
+            if (!overUI && Mathf.Abs(scroll) > 0.01f)
             {
                 targetDistance -= scroll * scrollSensitivity;
                 targetDistance = Mathf.Clamp(targetDistance, minDistance, maxDistance);

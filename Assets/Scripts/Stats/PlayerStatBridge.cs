@@ -1,6 +1,7 @@
 using UnityEngine;
 using Mirror;
 using AldenFall.Progression;
+using AldenFall.Combat;
 
 namespace AldenFall.Stats
 {
@@ -21,11 +22,16 @@ namespace AldenFall.Stats
     {
         private StatBlock stats;
         private Skills skills;
+        private Health health;
+
+        // Hitpoints skill -> max HP: 100 at level 1, +10 per level (level 99 -> 1080).
+        private static int MaxHealthForLevel(int level) => 100 + Mathf.Max(0, level - 1) * 10;
 
         private void Awake()
         {
             stats = GetComponent<StatBlock>();
             skills = GetComponent<Skills>();
+            health = GetComponent<Health>();
         }
 
         private void Start()
@@ -79,11 +85,12 @@ namespace AldenFall.Stats
                 skills.Level(SkillType.Strength),
                 skills.Level(SkillType.Defence),
                 skills.Level(SkillType.Magic),
-                skills.Level(SkillType.Ranged));
+                skills.Level(SkillType.Ranged),
+                skills.Level(SkillType.Health));
         }
 
         [Command]
-        private void CmdSyncCombatLevels(int attack, int strength, int defence, int magic, int ranged)
+        private void CmdSyncCombatLevels(int attack, int strength, int defence, int magic, int ranged, int health_)
         {
             // Server: mirror the owning client's leveled skills into this machine's
             // StatBlock, the single source of truth Health.TakeDamage reads.
@@ -92,6 +99,9 @@ namespace AldenFall.Stats
             stats.SetBase(StatType.Defence, defence);
             stats.SetBase(StatType.Magic, magic);
             stats.SetBase(StatType.Ranged, ranged);
+            stats.SetBase(StatType.MaxHealth, MaxHealthForLevel(health_));
+            // Push the new cap (base + equipment MaxHealth bonuses) into Health authoritatively.
+            if (health != null) health.SetMaxHealth(stats.Get(StatType.MaxHealth));
         }
 
         private void Sync()
@@ -101,6 +111,9 @@ namespace AldenFall.Stats
             stats.SetBase(StatType.Defence, skills.Level(SkillType.Defence));
             stats.SetBase(StatType.Magic, skills.Level(SkillType.Magic));
             stats.SetBase(StatType.Ranged, skills.Level(SkillType.Ranged));
+            stats.SetBase(StatType.MaxHealth, MaxHealthForLevel(skills.Level(SkillType.Health)));
+            // On the host/offline (server), apply immediately; pure clients get it via the Command RPC.
+            if (health != null && isServer) health.SetMaxHealth(stats.Get(StatType.MaxHealth));
         }
     }
 }

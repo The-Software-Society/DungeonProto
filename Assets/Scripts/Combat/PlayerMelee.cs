@@ -148,15 +148,22 @@ namespace AldenFall.Combat
                 else if (engaged)
                     playerController?.SetExternalMoveIntent(target.position - transform.position);
             }
+            else if (hasFocus)
+            {
+                // A caster (wand/focus) ALWAYS casts - never a melee swing. Previously, standing in
+                // melee range made a caster auto-SWING, which trained the melee style skill (Attack/
+                // Strength/Defence) instead of Magic (Jon: "did magic but leveled attack").
+                if (distance <= magicAutoRange)
+                {
+                    if (!onCooldown) CastBolt(target);
+                }
+                else if (engaged)
+                    playerController?.SetExternalMoveIntent(target.position - transform.position);
+            }
             else if (distance <= meleeRange)
             {
                 if (!onCooldown)
                     StartSwing(target);
-            }
-            else if (hasFocus && distance <= magicAutoRange)
-            {
-                if (!onCooldown)
-                    CastBolt(target);
             }
             else if (engaged)
             {
