@@ -110,10 +110,10 @@ namespace AldenFall.Editor
             ("dbg_approachroad",new Vector3(0f, 3.5f, -70f),  new Vector3(0f, 2f, -260f)),   // img19: ember-approach "road" wet/shiny?
             ("dbg_nsroad",      new Vector3(2f, 4f, 90f),     new Vector3(0f, 1.5f, 200f)),  // N-S dirt road toward lake
             ("dbg_nsroad_lo",   new Vector3(3f, 2.2f, 140f),  new Vector3(0f, 1.2f, 210f)),  // road grazing (shine)
-            ("dbg_riverforest", new Vector3(150f, 5f, 360f),  new Vector3(120f, 1f, 380f)),  // img20: trees in river?
-            ("dbg_reeds",       new Vector3(70f, 6f, 205f),   new Vector3(45f, 0.5f, 224f)), // img21: reed tufts + base disc
-            ("dbg_mob_water",   new Vector3(90f, 4f, 300f),   new Vector3(40f, 1f, 300f)),   // mobs/props on water?
-            ("dbg_meadow",      new Vector3(-120f, 5f, 150f), new Vector3(-90f, 1f, 190f)),  // open-field ecosystem density
+            ("city_over",       new Vector3(0f, 62f, -46f),   new Vector3(0f, 4f, 16f)),      // city: enterable buildings from above
+            ("inn_ext",         new Vector3(-39f, 6f, 22f),   new Vector3(-39f, 6f, 40f)),    // 3-story inn front
+            ("inn_int",         new Vector3(-39f, 1.8f, 35f), new Vector3(-39f, 1.4f, 44f)),  // inn interior (bar/tables/fire)
+            ("city_street",     new Vector3(40f, 4f, 8f),     new Vector3(45f, 3f, -30f)),    // SE street: forge + armory doors
             ("dbg_fall_rocks",  new Vector3(40f, 12f, 430f),  new Vector3(0f, 8f, 486f)),    // waterfall rock variety + foam
         });
 

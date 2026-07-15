@@ -1386,35 +1386,32 @@ namespace AldenFall.Editor
             // ---- Ember Fountain (plaza centre) ----
             BuildEmberFountain(container, new Vector3(0f, 0f, 0f), groundLayer);
 
-            // ---- Districts (Meshy props, auto-colored fallback) ----
-            var buildings = new (string name, Vector3 pos, float yaw, float h)[]
+            // ---- Market Row (NE): open-air stall facades (not enterable) ----
+            foreach (var (pos, yaw) in new[]
             {
-                // NW district: the Ember Rest tavern is BUILT (enterable), not placed.
-                ("Cottage",        new Vector3(-38f, 0f, 12f),  90f,  7f),
-                ("TownHouse",      new Vector3(-46f, 0f, 46f),  140f, 8f),
-                // Residential lane (W of the plaza)
-                ("TownHouse",      new Vector3(-22f, 0f, 22f),  120f, 8f),
-                ("Cottage",        new Vector3(-16f, 0f, 36f),  100f, 7f),
-                // Market Row (NE) — a real double row flanking the east street
-                ("MarketStall",    new Vector3(30f, 0f, 34f),   215f, 3.4f),
-                ("MarketStall",    new Vector3(38f, 0f, 26f),   250f, 3.4f),
-                ("MarketStall",    new Vector3(22f, 0f, 26f),   190f, 3.4f),
-                ("MarketStall",    new Vector3(16f, 0f, 38f),   170f, 3.4f),
-                ("TownHouse",      new Vector3(36f, 0f, 40f),   225f, 8f),
-                ("TownHouse",      new Vector3(46f, 0f, 46f),   225f, 8f),
-                // The Forge (SE) — the gear-upgrader is the F7 panel, so this is flavour.
-                ("BlacksmithShop", new Vector3(34f, 0f, -30f),  315f, 8f),
-                ("Storehouse",     new Vector3(40f, 0f, -12f),  270f, 7.5f),
-                ("TownHouse",      new Vector3(22f, 0f, -24f),  340f, 8f),
-                ("Storehouse",     new Vector3(46f, 0f, -44f),  300f, 7.5f),
-                // Aldric's home + residential (SW)
-                ("Cottage",        new Vector3(-34f, 0f, -30f), 45f,  7f),
-                ("TownHouse",      new Vector3(-40f, 0f, -12f), 90f,  8f),
-                ("Cottage",        new Vector3(-22f, 0f, -22f), 30f,  7f),
-                ("TownHouse",      new Vector3(-46f, 0f, -44f), 60f,  8f),
-            };
-            foreach (var b in buildings)
-                PlaceCityBuilding(container, b.name, b.pos, b.yaw, b.h, groundLayer);
+                (new Vector3(30f, 0f, 34f), 215f), (new Vector3(22f, 0f, 30f), 190f),
+                (new Vector3(16f, 0f, 40f), 170f),
+            })
+                PlaceCityBuilding(container, "MarketStall", pos, yaw, 3.4f, groundLayer);
+
+            // ---- ENTERABLE district buildings: block shells + furnished Meshy interiors + NPCs
+            // with intention. A mix of 1/2/3 stories; doors face the plaza streets. All walkable in.
+            // NW — the flagship 3-STORY inn + homes.
+            BuildTownBuilding(container, "TheEmberRest", new Vector3(-39f, 0f, 40f), 8f, 7f, 3, 0, "inn", groundLayer,
+                "Hobb", new[] { "cooked_fish", "cooked_trout", "cooked_bass", "cooked_carp" });
+            BuildTownBuilding(container, "HomeNW1", new Vector3(-47f, 0f, 18f), 6f, 5f, 2, 3, "house", groundLayer);
+            BuildTownBuilding(container, "HomeNW2", new Vector3(-20f, 0f, 44f), 6f, 5f, 1, 0, "house", groundLayer);
+            // NE — shops behind the market row.
+            BuildTownBuilding(container, "GeneralStore", new Vector3(40f, 0f, 44f), 7f, 6f, 2, 0, "shop", groundLayer);
+            BuildTownBuilding(container, "ProvisionerShop", new Vector3(48f, 0f, 20f), 6f, 5f, 1, 2, "shop", groundLayer);
+            // SE — the Forge (smithy) + an armory + a home.
+            BuildTownBuilding(container, "TheForge", new Vector3(40f, 0f, -34f), 7f, 6f, 1, 1, "smithy", groundLayer);
+            BuildTownBuilding(container, "Armory", new Vector3(48f, 0f, -14f), 6f, 5f, 2, 2, "shop", groundLayer);
+            BuildTownBuilding(container, "HomeSE1", new Vector3(20f, 0f, -26f), 6f, 5f, 1, 1, "house", groundLayer);
+            // SW — residential lane (incl. a 2-story).
+            BuildTownBuilding(container, "HomeSW1", new Vector3(-39f, 0f, -40f), 7f, 6f, 1, 1, "house", groundLayer);
+            BuildTownBuilding(container, "HomeSW2", new Vector3(-48f, 0f, -18f), 6f, 5f, 2, 3, "house", groundLayer);
+            BuildTownBuilding(container, "HomeSW3", new Vector3(-20f, 0f, -26f), 6f, 5f, 1, 1, "house", groundLayer);
 
             // Market dressing + lanterns.
             PlaceMeshyProp(container, "TownWell", new Vector3(18f, 0f, 18f), 0f, 3f, groundLayer);
@@ -1517,7 +1514,8 @@ namespace AldenFall.Editor
             // Elowen (q_rescue giver, npcId "elowen") is placed from npcs.json at (10,0,-6),
             // replacing the old hardcoded Worried Mother; the rescue cutscenes still frame there.
             BuildVendorNPC(container, groundLayer);
-            BuildEmberRestTavern(container, groundLayer);
+            // (The Ember Rest inn is now the 3-story enterable BuildTownBuilding above; the old
+            // single-room BuildEmberRestTavern is retired.)
         }
 
         /// <summary>
@@ -1616,6 +1614,232 @@ namespace AldenFall.Editor
             var sign = Cube("Tav_Sign", c + new Vector3(3.2f, 2.7f, -halfZ - 0.7f), new Vector3(1.2f, 0.9f, 0.1f),
                 Mat("TavernSign", new Color(0.55f, 0.3f, 0.15f), smoothness: 0.2f, emission: new Color(0.35f, 0.14f, 0.04f)), container);
             Object.DestroyImmediate(sign.GetComponent<BoxCollider>());
+        }
+
+        /// <summary>
+        /// A generalized ENTERABLE town building: a block shell (solid ground floor + upper floors
+        /// with a stairwell hole, walls with a door + emissive windows, pitched roof) you can walk
+        /// into, ramp-stairs between stories, a furnished interior (real Meshy furniture when it
+        /// exists, cube fallbacks otherwise) themed by type, NPCs with intention inside, and a
+        /// catalog record. doorSide: 0=-Z 1=+Z 2=-X 3=+X (the wall facing the street).
+        /// </summary>
+        private static void BuildTownBuilding(Transform parent, string key, Vector3 c, float halfX, float halfZ,
+            int stories, int doorSide, string type, int groundLayer, string npcName = null, string[] npcStock = null)
+        {
+            var container = Child(parent, key);
+            const float wallH = 3.4f, thick = 0.4f;
+            var timber = Mat("BldgTimber", new Color(0.34f, 0.24f, 0.15f), smoothness: 0.08f);
+            var wallMat = ((int)(Mathf.Abs(c.x) + Mathf.Abs(c.z)) % 2 == 0)
+                ? Mat("BldgPlasterA", new Color(0.74f, 0.68f, 0.57f), smoothness: 0.06f)
+                : Mat("BldgPlasterB", new Color(0.66f, 0.58f, 0.47f), smoothness: 0.06f);
+            var roofMat = Mat("BldgRoof", new Color(0.42f, 0.2f, 0.14f), smoothness: 0.05f);
+            var floorMat = Mat("BldgFloor", new Color(0.3f, 0.22f, 0.13f), smoothness: 0.1f);
+            var windowMat = Mat("BldgWindow", new Color(1f, 0.78f, 0.42f), smoothness: 0.4f, emission: new Color(1f, 0.62f, 0.25f) * 1.3f);
+
+            GameObject Solid(string n, Vector3 local, Vector3 size, Material m, bool collide = true)
+            {
+                var o = Cube(n, c + local, size, m, container);
+                o.isStatic = true;
+                var bc = o.GetComponent<BoxCollider>();
+                if (!collide) { if (bc) Object.DestroyImmediate(bc); }
+                else if (groundLayer >= 0) o.layer = groundLayer;
+                return o;
+            }
+
+            float top = wallH * stories;
+            bool multi = stories > 1;
+            float swX0 = halfX - 3.0f, swDepth = 4.5f;   // stairwell in the +X,-Z corner
+
+            // ---- Floors (ground solid; upper floors omit the stairwell hole) ----
+            Solid("Floor0", new Vector3(0f, 0.06f, 0f), new Vector3(halfX * 2f, 0.12f, halfZ * 2f), floorMat);
+            for (int s = 1; s < stories; s++)
+            {
+                float y = s * wallH;
+                float leftW = swX0 - (-halfX);
+                Solid($"Floor{s}A", new Vector3((-halfX + swX0) / 2f, y, 0f), new Vector3(leftW, 0.12f, halfZ * 2f), floorMat);
+                float bDepth = halfZ - (-halfZ + swDepth);
+                Solid($"Floor{s}B", new Vector3((swX0 + halfX) / 2f, y, ((-halfZ + swDepth) + halfZ) / 2f), new Vector3(halfX - swX0, 0.12f, bDepth), floorMat);
+            }
+
+            // ---- Walls per story (door gap on the ground floor's doorSide) + windows ----
+            for (int s = 0; s < stories; s++)
+            {
+                float y0 = s * wallH, yc = y0 + wallH / 2f;
+                for (int side = 0; side < 4; side++)
+                {
+                    bool isDoor = (s == 0 && side == doorSide);
+                    bool spanX = side < 2;   // sides 0/1 (-Z/+Z) span X; 2/3 (-X/+X) span Z
+                    float span = spanX ? halfX : halfZ;
+                    Vector3 wc = side == 0 ? new Vector3(0, yc, -halfZ) : side == 1 ? new Vector3(0, yc, halfZ)
+                              : side == 2 ? new Vector3(-halfX, yc, 0) : new Vector3(halfX, yc, 0);
+                    Vector3 wsize = spanX ? new Vector3(halfX * 2f, wallH, thick) : new Vector3(thick, wallH, halfZ * 2f);
+                    if (isDoor)
+                    {
+                        float dH = 1.3f, segW = (span * 2f - dH * 2f) / 2f;
+                        if (spanX)
+                        {
+                            Solid($"W{s}_{side}L", new Vector3(-(dH + segW / 2f), yc, wc.z), new Vector3(segW, wallH, thick), wallMat);
+                            Solid($"W{s}_{side}R", new Vector3(dH + segW / 2f, yc, wc.z), new Vector3(segW, wallH, thick), wallMat);
+                            Solid($"Lin{s}_{side}", new Vector3(0, y0 + wallH - 0.5f, wc.z), new Vector3(dH * 2f + 0.6f, 1f, thick), timber);
+                        }
+                        else
+                        {
+                            Solid($"W{s}_{side}L", new Vector3(wc.x, yc, -(dH + segW / 2f)), new Vector3(thick, wallH, segW), wallMat);
+                            Solid($"W{s}_{side}R", new Vector3(wc.x, yc, dH + segW / 2f), new Vector3(thick, wallH, segW), wallMat);
+                            Solid($"Lin{s}_{side}", new Vector3(wc.x, y0 + wallH - 0.5f, 0), new Vector3(thick, 1f, dH * 2f + 0.6f), timber);
+                        }
+                    }
+                    else
+                    {
+                        Solid($"W{s}_{side}", wc, wsize, wallMat);
+                        // one glowing window centered on the wall (skip walls that are too short)
+                        Vector3 wp = wc + (spanX ? new Vector3(0, 0, -Mathf.Sign(wc.z == 0 ? 1 : wc.z) * (thick / 2f + 0.05f))
+                                                 : new Vector3(-Mathf.Sign(wc.x == 0 ? 1 : wc.x) * (thick / 2f + 0.05f), 0, 0));
+                        wp.y = y0 + 2.1f;
+                        Vector3 winSize = spanX ? new Vector3(1.5f, 1.2f, 0.12f) : new Vector3(0.12f, 1.2f, 1.5f);
+                        Solid($"Win{s}_{side}", wp - c, winSize, windowMat, collide: false);
+                    }
+                }
+            }
+            foreach (var (sx, sz) in new[] { (-1f, -1f), (1f, -1f), (-1f, 1f), (1f, 1f) })
+                Solid("Corner", new Vector3(sx * halfX, top / 2f, sz * halfZ), new Vector3(0.6f, top, 0.6f), timber);
+
+            // ---- Ramp stairs through each stairwell hole ----
+            if (multi)
+                for (int s = 0; s < stories - 1; s++)
+                {
+                    float y0 = s * wallH;
+                    var ramp = Solid($"Stair{s}", new Vector3(swX0 + (halfX - swX0) / 2f, y0 + wallH / 2f + 0.1f, -halfZ + swDepth / 2f),
+                        new Vector3(halfX - swX0 - 0.3f, 0.3f, Mathf.Sqrt(wallH * wallH + swDepth * swDepth)), timber);
+                    ramp.transform.rotation = Quaternion.Euler(Mathf.Atan2(wallH, swDepth) * Mathf.Rad2Deg, 0f, 0f);
+                }
+
+            // ---- Pitched roof ----
+            foreach (var sx in new[] { -1f, 1f })
+            {
+                var slab = Cube($"Roof{(sx < 0 ? "W" : "E")}", c + new Vector3(sx * halfX * 0.5f, top + 1.3f, 0f),
+                    new Vector3(halfX * 1.32f, 0.35f, halfZ * 2f + 1.2f), roofMat, container);
+                slab.transform.rotation = Quaternion.Euler(0f, 0f, sx * -26f);
+                slab.isStatic = true; if (groundLayer >= 0) slab.layer = groundLayer;
+            }
+            Solid("Ridge", new Vector3(0f, top + 2.3f, 0f), new Vector3(0.6f, 0.4f, halfZ * 2f + 1.4f), timber);
+
+            // ---- Interior fill light per story (so rooms read cozy, not cave-dark) ----
+            for (int s = 0; s < stories; s++)
+            {
+                var fl = new GameObject($"Fill{s}"); fl.transform.SetParent(container);
+                fl.transform.position = c + new Vector3(0f, s * wallH + wallH * 0.75f, 0f);
+                var L = fl.AddComponent<Light>();
+                L.type = LightType.Point; L.color = new Color(1f, 0.86f, 0.62f);
+                L.range = Mathf.Max(halfX, halfZ) * 2.4f; L.intensity = 1.25f; L.shadows = LightShadows.None;
+            }
+
+            // ---- Furnish + NPCs per story ----
+            for (int s = 0; s < stories; s++)
+                FurnishStory(container, type, s, c, halfX, halfZ, s * wallH, doorSide, groundLayer,
+                    s == 0 ? npcName : null, s == 0 ? npcStock : null);
+
+            // ---- Catalog: the building as a mapped object (footprint via height stand-in) ----
+            RecordDetail($"building_{type}", c.x, c.z, doorSide * 90f, top);
+        }
+
+        /// <summary>Furnish one story of a town building with themed Meshy furniture (cube fallback
+        /// until the mesh exists) + intentful NPCs on the ground floor.</summary>
+        private static void FurnishStory(Transform container, string type, int story, Vector3 c,
+            float halfX, float halfZ, float floorY, int doorSide, int groundLayer, string npcName, string[] npcStock)
+        {
+            float fy = floorY + 0.13f;
+            void Place(string mesh, float lx, float lz, float yaw, float h, Vector3 fbSize, Color fbCol, bool collide = false)
+            {
+                Vector3 wp = c + new Vector3(lx, fy, lz);
+                if (HasMesh(mesh))
+                    PlaceMeshyProp(container, mesh, wp, yaw, h, groundLayer, collide ? PropCollision.FitBox : PropCollision.None);
+                else
+                {
+                    var o = Cube($"{mesh}_fb", wp + Vector3.up * (fbSize.y * 0.5f), fbSize, Mat($"Furn_{mesh}", fbCol, 0.08f), container);
+                    o.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                    o.isStatic = true;
+                    var bc = o.GetComponent<BoxCollider>();
+                    if (!collide) { if (bc) Object.DestroyImmediate(bc); } else if (groundLayer >= 0) o.layer = groundLayer;
+                }
+                RecordDetail(mesh, wp.x, wp.z, yaw, h);
+            }
+            Color wood = new Color(0.35f, 0.24f, 0.14f), cloth = new Color(0.5f, 0.3f, 0.28f);
+            bool ground = story == 0;
+            // Keep the door approach (doorSide wall) clear; anchor furniture toward the far/back.
+            float back = doorSide == 1 ? -(halfZ - 2f) : (halfZ - 2f);   // opposite the door in Z (most doors face -Z)
+
+            if (type == "inn")
+            {
+                if (ground)
+                {
+                    Place("Fireplace", halfX - 1.4f, back, doorSide == 1 ? 0f : 180f, 2.6f, new Vector3(1.4f, 2f, 1.2f), new Color(0.32f, 0.3f, 0.3f), true);
+                    Place("Table", 0f, 0f, 0f, 1.5f, new Vector3(1.6f, 0.9f, 1.6f), wood);
+                    Place("Chair", 1.3f, 0f, 90f, 1.1f, new Vector3(0.5f, 1f, 0.5f), wood);
+                    Place("Chair", -1.3f, 0f, 270f, 1.1f, new Vector3(0.5f, 1f, 0.5f), wood);
+                    Place("Table", -halfX + 2.4f, -1.5f, 0f, 1.5f, new Vector3(1.6f, 0.9f, 1.6f), wood);
+                    Place("Bench", -halfX + 2.4f, -3f, 0f, 1.6f, new Vector3(1.7f, 0.6f, 0.5f), wood);
+                    Place("Rug", 0f, 1.5f, 0f, 3f, new Vector3(2.6f, 0.05f, 1.8f), new Color(0.5f, 0.14f, 0.12f));
+                    if (npcName != null)
+                        BuildOneVendor(container, groundLayer, $"Innkeeper {npcName}", npcName, c + new Vector3(0f, floorY, back + 1.2f), doorSide == 1 ? 0f : 180f,
+                            npcStock ?? new[] { "cooked_fish", "cooked_trout", "cooked_bass" });
+                    PlaceTownsfolk(container, c + new Vector3(1.3f, floorY, 0.9f), new Color(0.4f, 0.32f, 0.5f), groundLayer);
+                }
+                else
+                {
+                    Place("Bed", -halfX + 2f, back, 90f, 2.2f, new Vector3(1.3f, 0.7f, 2.2f), cloth, true);
+                    Place("Bed", halfX - 4f, back, 90f, 2.2f, new Vector3(1.3f, 0.7f, 2.2f), cloth, true);
+                    Place("Table", 0f, 0f, 0f, 1.2f, new Vector3(1.2f, 0.9f, 1.2f), wood);
+                    Place("Rug", 0f, 0f, 0f, 2.5f, new Vector3(2.2f, 0.05f, 1.6f), new Color(0.4f, 0.2f, 0.14f));
+                }
+            }
+            else if (type == "smithy")
+            {
+                if (ground)
+                {
+                    Place("Anvil", halfX - 2f, back, doorSide == 1 ? 0f : 180f, 1.2f, new Vector3(0.9f, 1f, 0.5f), new Color(0.2f, 0.2f, 0.22f), true);
+                    Place("Fireplace", -halfX + 1.6f, back, 0f, 2.4f, new Vector3(1.4f, 2f, 1.2f), new Color(0.3f, 0.2f, 0.18f), true);
+                    Place("WoodCrate", -halfX + 2f, 0f, 20f, 1.1f, new Vector3(1f, 1f, 1f), wood, true);
+                    Place("MarketBarrel", halfX - 2f, 0f, 0f, 1.2f, new Vector3(1f, 1.2f, 1f), wood, true);
+                    PlaceTownsfolk(container, c + new Vector3(halfX - 3.4f, floorY, back), new Color(0.32f, 0.28f, 0.26f), groundLayer);
+                }
+                else Place("Bed", -halfX + 2f, back, 90f, 2.2f, new Vector3(1.3f, 0.7f, 2.2f), cloth, true);
+            }
+            else if (type == "shop")
+            {
+                if (ground)
+                {
+                    Place("Table", 0f, back * 0.5f, doorSide < 2 ? 0f : 90f, 2.4f, new Vector3(2.6f, 1f, 0.9f), wood, true);   // counter
+                    Place("Bookshelf", -halfX + 1.2f, back, 90f, 2.6f, new Vector3(0.6f, 2.4f, 1.8f), wood, true);
+                    Place("MarketBarrel", halfX - 1.8f, back, 0f, 1.2f, new Vector3(1f, 1.2f, 1f), wood, true);
+                    Place("WoodCrate", halfX - 1.8f, back - 1.6f, 30f, 1f, new Vector3(1f, 1f, 1f), wood, true);
+                    if (npcName != null)
+                        BuildOneVendor(container, groundLayer, npcName, npcName.Split(' ')[0], c + new Vector3(0f, floorY, back * 0.5f - 1.2f), doorSide == 1 ? 180f : 0f,
+                            npcStock ?? new[] { "cooked_fish", "leather_cap", "apprentice_focus" });
+                    else   // an ambient shopkeeper behind the counter (functional traders are the market stalls)
+                        PlaceTownsfolk(container, c + new Vector3(0f, floorY, back * 0.5f - 1.4f), new Color(0.4f, 0.36f, 0.3f), groundLayer);
+                }
+                else Place("Bed", -halfX + 2f, back, 90f, 2.2f, new Vector3(1.3f, 0.7f, 2.2f), cloth, true);
+            }
+            else   // "house" / residence
+            {
+                if (ground)
+                {
+                    Place("Fireplace", halfX - 1.4f, back, doorSide == 1 ? 0f : 180f, 2.4f, new Vector3(1.4f, 2f, 1.2f), new Color(0.32f, 0.3f, 0.3f), true);
+                    Place("Table", 0f, 0f, 0f, 1.4f, new Vector3(1.5f, 0.9f, 1.5f), wood);
+                    Place("Chair", 1.2f, 0f, 90f, 1.1f, new Vector3(0.5f, 1f, 0.5f), wood);
+                    Place("Chair", -1.2f, 0f, 270f, 1.1f, new Vector3(0.5f, 1f, 0.5f), wood);
+                    Place("Cauldron", halfX - 2.6f, back, 0f, 1.1f, new Vector3(0.8f, 0.9f, 0.8f), new Color(0.18f, 0.18f, 0.2f));
+                    Place("Rug", 0f, 0f, 0f, 2.5f, new Vector3(2f, 0.05f, 1.6f), new Color(0.42f, 0.22f, 0.16f));
+                    PlaceTownsfolk(container, c + new Vector3(-1.2f, floorY, -1.4f), new Color(0.36f, 0.34f, 0.44f), groundLayer);
+                }
+                else
+                {
+                    Place("Bed", -halfX + 2f, back, 90f, 2.2f, new Vector3(1.3f, 0.7f, 2.2f), cloth, true);
+                    Place("Bookshelf", halfX - 1.2f, back, 270f, 2.4f, new Vector3(0.6f, 2.2f, 1.6f), wood, true);
+                    Place("Rug", 0f, 0f, 0f, 2f, new Vector3(1.8f, 0.05f, 1.4f), new Color(0.4f, 0.2f, 0.14f));
+                }
+            }
         }
 
         /// <summary>

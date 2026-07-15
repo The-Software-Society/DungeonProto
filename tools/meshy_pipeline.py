@@ -353,6 +353,17 @@ PROPS = {
     "Fence": "section of a rustic wooden fence, weathered grey-brown vertical planks and two horizontal rails held between sturdy posts, medieval village boundary fence, stylized low-poly game environment prop, standalone",
     "Cobblestone": "flat square section of cobblestone street paving, rounded weathered grey stone cobbles packed tightly with dark earth in the gaps, worn medieval road, stylized low-poly game environment ground tile, flat top surface",
     "DirtShrub": "small dry scrubby roadside bush, a low sparse clump of thin brown twiggy branches with a few dry olive-green leaves, hardy weed, stylized low-poly game environment plant, standalone",
+    # ---- Interior furniture for the enterable city ----
+    "Bed": "simple medieval wooden bed frame with a straw mattress and a folded wool blanket, rustic, stylized low-poly game furniture prop, standalone",
+    "Table": "sturdy rustic wooden tavern table, thick plank top on four square legs, medieval, stylized low-poly game furniture prop, standalone",
+    "Chair": "simple rustic wooden chair with a straight slatted back, medieval, stylized low-poly game furniture prop, standalone",
+    "Bench": "long rustic wooden bench seat, medieval tavern, stylized low-poly game furniture prop, standalone",
+    "Bookshelf": "tall wooden bookshelf filled with worn leather books and rolled scrolls, medieval, stylized low-poly game furniture prop, standalone",
+    "Anvil": "blacksmith black iron anvil mounted on a thick wooden stump, medieval, stylized low-poly game prop, standalone",
+    "Fireplace": "stone fireplace hearth with a heavy wooden mantel and glowing orange embers in the grate, medieval, stylized low-poly game prop, standalone",
+    "Cauldron": "black cast-iron cooking cauldron pot hanging on an iron tripod over embers, medieval, stylized low-poly game prop, standalone",
+    "Rug": "rectangular woven wool rug with a red and gold medieval geometric pattern, flat, stylized low-poly game prop",
+    "WallLantern": "wrought-iron wall-mounted lantern with a warm glowing candle behind glass panes, medieval, stylized low-poly game prop, standalone",
 }
 
 # ---------------------------------------------------------------------------
