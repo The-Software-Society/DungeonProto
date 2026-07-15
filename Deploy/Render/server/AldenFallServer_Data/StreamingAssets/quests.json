@@ -344,6 +344,8 @@
       "Id": "q_floor_boss",
       "Name": "The Heart of the Mountain",
       "Description": "The volcano is waking, and Emberfall stands in the path of its fire. Descend into the caldera, fight through its halls, and slay the beast at its heart before the city burns.",
+      "WorldPhaseOnAccept": "Erupting",
+      "WorldPhaseOnComplete": "Cleared",
       "Objectives": [
         {
           "kind": "KillMob",
