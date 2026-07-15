@@ -79,7 +79,6 @@ namespace AldenFall.Editor
                 ScatterGroundDetail(eco, groundLayer);
                 ScatterRoadDetail(eco, groundLayer);
                 RenderCatalog(eco, groundLayer);            // instantiate everything from the catalog
-                ExportCatalog(root);                        // write JSON + validate + in-game overlay
             }
             else
                 BuildEmberfallGround(root, groundLayer);   // legacy cube tiles (rollback path)
@@ -96,6 +95,10 @@ namespace AldenFall.Editor
             BuildAldricGlade(root, groundLayer);       // player spawn + hermit mentor (N of city)
             BuildEmberfallSystems(root, groundLayer);
             BuildGlobalSafety(root, groundLayer);      // mountain ring + underfill + catch floor
+            // Export AFTER everything is placed (city buildings/furniture, camps, approach) so the
+            // JSON mapper captures ALL objects incl. the enterable buildings + interiors, not just
+            // the trees. (Was exported mid-build, before the city existed.)
+            if (_place != null) ExportCatalog(root);
         }
 
         // ---- Aldric's forest glade (player spawn) — a lush clearing N of the city ----
