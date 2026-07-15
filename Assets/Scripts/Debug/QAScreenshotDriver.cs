@@ -116,6 +116,33 @@ namespace AldenFall.DebugTools
                 yield return Capture(name);
             }
 
+            // ---- Day/night sweep: freeze the clock at each key time, shoot the
+            // lit city and the dark forest so the lighting can be eyeballed. ----
+            var cycle = World.DayNightCycle.Instance;
+            if (cycle != null)
+            {
+                // Teleporting out of the volcano can leave the ember zone stuck on; clear it
+                // so these shots show the true day/night look, not a red apocalypse wash.
+                World.EmberAtmosphere.Instance?.ForceClear();
+                var times = new (string label, float t)[]
+                {
+                    ("sunrise", 0.25f), ("noon", 0.5f), ("sunset", 0.75f), ("midnight", 0.0f),
+                };
+                cycle.SetPaused(true);
+                foreach (var (label, t) in times)
+                {
+                    cycle.SetTimeOfDay(t);
+                    Teleport(player, new Vector3(0f, 1.5f, 14f), 180f);   // city plaza (lamps)
+                    yield return new WaitForSeconds(1.6f);
+                    yield return Capture($"dn_city_{label}");
+                    Teleport(player, new Vector3(0f, 1.5f, 180f), 0f);    // dark woods
+                    yield return new WaitForSeconds(1.6f);
+                    yield return Capture($"dn_woods_{label}");
+                }
+                cycle.SetTimeOfDay(0.42f);   // back to day for the eruption sequence
+                cycle.SetPaused(false);
+            }
+
             // ---- Eruption sequence: phase flips fire the real climax cutscenes ----
             var world = World.EmberfallWorldState.Instance;
             var director = player.GetComponent<Cinematics.CutsceneDirector>();

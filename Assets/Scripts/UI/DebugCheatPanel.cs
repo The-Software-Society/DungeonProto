@@ -353,6 +353,27 @@ namespace AldenFall.UI
             }
 
             y += 58f;
+            var dn = World.DayNightCycle.Instance;
+            string clock = dn != null ? $"{dn.PhaseLabel} · t={dn.TimeOfDay:0.00}{(dn.Paused ? " · PAUSED" : "")}" : "no cycle";
+            PanelChrome.Section(contentParent, "DayNightHdr", "Day / night cycle", 0f, y, ContentWidth);
+            PanelChrome.Text(contentParent, "DayNightSub", $"jump the clock — {clock}",
+                0f, y + 18f, ContentWidth, 16f, UITheme.CaptionSize, UITheme.TextDim,
+                TextAlignmentOptions.MidlineLeft);
+            y += 42f;
+            var times = new[] { ("SUNRISE", 0.25f), ("MIDDAY", 0.5f), ("SUNSET", 0.75f), ("MIDNIGHT", 0.0f) };
+            for (int i = 0; i < times.Length; i++)
+            {
+                float captured = times[i].Item2;
+                PanelChrome.MakeButton(contentParent, $"Dn_{i}", times[i].Item1,
+                    i * 136f, y, 128f,
+                    () => { World.DayNightCycle.Instance?.SetTimeOfDay(captured); RebuildContent(); });
+            }
+            y += 42f;
+            PanelChrome.MakeButton(contentParent, "DnPause",
+                dn != null && dn.Paused ? "RESUME CLOCK" : "PAUSE CLOCK", 0f, y, 264f,
+                () => { World.DayNightCycle.Instance?.TogglePaused(); RebuildContent(); });
+
+            y += 58f;
             PanelChrome.Section(contentParent, "TpHdr", "Teleport", 0f, y, ContentWidth);
             y += 26f;
             for (int i = 0; i < Teleports.Length; i++)

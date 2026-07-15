@@ -3805,6 +3805,22 @@ namespace AldenFall.Editor
                 }
             }
 
+            // ---- DayNightCycle (singleton) — orbiting sun + moon, dawn/dusk, stars,
+            // moonlight; owns the time-based lighting and blends the eruption tint on top ----
+            var dayNightObj = new GameObject("DayNightCycle");
+            var dayNight = dayNightObj.AddComponent<World.DayNightCycle>();
+            var sunForCycle = RenderSettings.sun != null ? RenderSettings.sun.gameObject : GameObject.Find("Sun");
+            if (sunForCycle != null)
+            {
+                var sunLight = sunForCycle.GetComponent<Light>();
+                if (sunLight != null)
+                {
+                    var so = new SerializedObject(dayNight);
+                    var prop = so.FindProperty("sunLight");
+                    if (prop != null) { prop.objectReferenceValue = sunLight; so.ApplyModifiedProperties(); }
+                }
+            }
+
             // ---- EmberfallWorldState (networked scene object) ----
             // A scene GameObject with a NetworkIdentity: Mirror spawns scene network objects
             // automatically on server start (NetworkServer.SpawnObjects), so it needs NO entry

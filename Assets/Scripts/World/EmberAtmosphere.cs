@@ -52,13 +52,14 @@ namespace AldenFall.World
         [Tooltip("Fraction of the sun's calm intensity that remains at full apocalypse (dimmed + reddened).")]
         [SerializeField] private float sunDimAtFull = 0.5f;
 
-        // --- apocalypse look targets (intensity == 1) ---
-        private static readonly Color AshFogColor = new Color(0.30f, 0.11f, 0.07f);
-        private static readonly Color HellAmbient = new Color(0.34f, 0.13f, 0.09f);
-        private static readonly Color HellAmbientEquator = new Color(0.26f, 0.10f, 0.07f);
-        private static readonly Color HellAmbientGround = new Color(0.16f, 0.06f, 0.05f);
-        private static readonly Color HellSun    = new Color(1.00f, 0.42f, 0.18f);
-        private static readonly Color HellSkyTint = new Color(0.55f, 0.12f, 0.05f);
+        // --- apocalypse look targets (intensity == 1). Public so DayNightCycle can
+        // blend this palette over whatever time of day it currently is. ---
+        public static readonly Color AshFogColor = new Color(0.30f, 0.11f, 0.07f);
+        public static readonly Color HellAmbient = new Color(0.34f, 0.13f, 0.09f);
+        public static readonly Color HellAmbientEquator = new Color(0.26f, 0.10f, 0.07f);
+        public static readonly Color HellAmbientGround = new Color(0.16f, 0.06f, 0.05f);
+        public static readonly Color HellSun    = new Color(1.00f, 0.42f, 0.18f);
+        public static readonly Color HellSkyTint = new Color(0.55f, 0.12f, 0.05f);
 
         // --- calm baseline, captured on Awake so intensity 0 restores it exactly ---
         private bool baseFog;
@@ -129,6 +130,19 @@ namespace AldenFall.World
             globalIntensity = Mathf.Clamp01(t);
         }
 
+        /// <summary>
+        /// Snap the whole ember look back to calm immediately: zero the global, drop every
+        /// registered zone, and clear the smoothed value so there is no residual tint. Used
+        /// by the QA driver after teleporting out of the volcano (a teleport can skip the
+        /// zone's trigger-exit, leaving intensity stuck high).
+        /// </summary>
+        public void ForceClear()
+        {
+            globalIntensity = 0f;
+            activeZones.Clear();
+            smoothedIntensity = 0f;
+        }
+
         // ------------------------------------------------------- zone registration
 
         /// <summary>An EmberZone reports that the local player entered it. While registered
@@ -165,8 +179,16 @@ namespace AldenFall.World
                 smoothedIntensity, target, easeSpeed * Time.deltaTime);
 
             ApplyParticles(smoothedIntensity);
-            ApplyFog(smoothedIntensity);
-            ApplyLighting(smoothedIntensity);
+
+            // When a DayNightCycle owns the scene lighting, it reads our CurrentIntensity
+            // and blends the apocalypse palette over the time of day itself, so we must
+            // NOT also write fog/ambient/sun/skybox here (the two would fight). We keep
+            // driving the ember + soot particles either way.
+            if (!DayNightCycle.Active)
+            {
+                ApplyFog(smoothedIntensity);
+                ApplyLighting(smoothedIntensity);
+            }
         }
 
         // --------------------------------------------------------------- particles
@@ -342,9 +364,11 @@ namespace AldenFall.World
             baseAmbientGround = RenderSettings.ambientGroundColor;
 
             // Swap the shared skybox asset for a runtime copy we can tint freely
-            // (mutating the asset itself would persist edits in the editor).
+            // (mutating the asset itself would persist edits in the editor). Skip this
+            // entirely when a DayNightCycle is present: it owns the skybox copy, and a
+            // second copy here would leave RenderSettings.skybox pointing at the wrong one.
             var sky = RenderSettings.skybox;
-            if (sky != null && sky.HasProperty("_SkyTint") && sky.HasProperty("_Exposure"))
+            if (!DayNightCycle.Active && sky != null && sky.HasProperty("_SkyTint") && sky.HasProperty("_Exposure"))
             {
                 skyboxRuntime = new Material(sky) { name = sky.name + " (EmberAtmosphere)" };
                 RenderSettings.skybox = skyboxRuntime;
