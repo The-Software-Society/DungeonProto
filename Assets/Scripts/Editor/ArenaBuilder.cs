@@ -134,6 +134,8 @@ namespace AldenFall.Editor
             Debug.Log("Emberfall 1/7: environment lighting...");
             SetupLightingAndAtmosphere();
 
+            EnsureCullLayers();   // "Detail"/"Prop" layers must exist before props are placed + layered
+
             Debug.Log("Emberfall 2/7: arena geometry...");
             var arenaRoot = BuildArena();
 
@@ -1759,7 +1761,13 @@ namespace AldenFall.Editor
             }
             // PropCollision.None: leave the prop collider-free.
 
-            if (groundLayer >= 0) SetLayerRecursive(instance, groundLayer);
+            // Route scattered foliage/trees onto cull layers so distant scatter stops rendering while
+            // the environment vista stays. NavMesh (all-layers, physics colliders) + the player CC
+            // still see these; the camera collision mask includes "Prop" so trees still block it.
+            int cullLayer = groundLayer;
+            if (DetailPropNames.Contains(name)) { int d = LayerMask.NameToLayer("Detail"); if (d >= 0) cullLayer = d; }
+            else if (TreePropNames.Contains(name)) { int p = LayerMask.NameToLayer("Prop"); if (p >= 0) cullLayer = p; }
+            if (cullLayer >= 0) SetLayerRecursive(instance, cullLayer);
             instance.isStatic = true;
 
             return instance;
@@ -1770,6 +1778,47 @@ namespace AldenFall.Editor
                 if (instance != null) Object.DestroyImmediate(instance);
                 return null;
             }
+        }
+
+        // ---- Perf: cull-layer categorization for scattered props (see World.CameraViewDistance) ----
+        // Small foliage -> "Detail" layer (culls at a medium distance). Trees + big rocks -> "Prop"
+        // layer (culls farther, still reads as a forest). Everything else stays on its normal layer
+        // and renders to the far clip (buildings/mountains/terrain — the vista).
+        private static readonly System.Collections.Generic.HashSet<string> DetailPropNames =
+            new System.Collections.Generic.HashSet<string> { "Fern", "ForestBush", "Wildflowers", "Reeds", "DirtShrub" };
+        private static readonly System.Collections.Generic.HashSet<string> TreePropNames =
+            new System.Collections.Generic.HashSet<string> { "BirchTree", "PineTree", "MossBoulder", "BoulderCluster" };
+
+        private static void EnsureCullLayers()
+        {
+            EnsureLayer("Detail");
+            EnsureLayer("Prop");
+        }
+
+        /// <summary>Ensure a named user layer exists, adding it via SerializedObject (NEVER hand-edit
+        /// TagManager.asset — that silently wipes custom layers). Returns the layer index or -1.</summary>
+        private static int EnsureLayer(string name)
+        {
+            int existing = LayerMask.NameToLayer(name);
+            if (existing >= 0) return existing;
+            var assets = AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset");
+            if (assets == null || assets.Length == 0) return -1;
+            var so = new SerializedObject(assets[0]);
+            var layers = so.FindProperty("layers");
+            for (int i = 8; i < layers.arraySize; i++)   // 0-7 are Unity's built-in layers
+            {
+                var el = layers.GetArrayElementAtIndex(i);
+                if (string.IsNullOrEmpty(el.stringValue))
+                {
+                    el.stringValue = name;
+                    so.ApplyModifiedProperties();
+                    AssetDatabase.SaveAssets();
+                    Debug.Log($"EnsureLayer: added '{name}' at index {i}");
+                    return i;
+                }
+            }
+            Debug.LogError($"EnsureLayer: no free user-layer slot for '{name}'");
+            return -1;
         }
 
         private static void SetLayerRecursive(GameObject obj, int layer)
@@ -2344,10 +2393,10 @@ namespace AldenFall.Editor
             camObj.AddComponent<AudioListener>();
 
             cam.nearClipPlane = 0.2f;
-            // 300 culled the mountain range + volcano to a pop-in shell right around the play space
-            // (Jon: "constantly seeing it load in and out"). Push it out past the fog band (end
-            // 1900) so the distant silhouettes read from the city and just haze into atmosphere.
+            // Far clip covers the mountains/volcano vista; CameraViewDistance re-applies it from
+            // config/world.json and culls the "Detail"/"Prop" scatter layers closer (tiered LOD).
             cam.farClipPlane = 2200f;
+            camObj.AddComponent<World.CameraViewDistance>();
 
             var tpc = camObj.AddComponent<Player.ThirdPersonCamera>();
             var tpcSO = new SerializedObject(tpc);
@@ -2355,7 +2404,8 @@ namespace AldenFall.Editor
             if (collisionProp != null)
             {
                 int ground = LayerMask.NameToLayer("Ground");
-                collisionProp.intValue = (ground >= 0 ? (1 << ground) : 0) | 1; // Ground + Default
+                int prop = LayerMask.NameToLayer("Prop");   // trees moved to Prop still block the camera
+                collisionProp.intValue = (ground >= 0 ? (1 << ground) : 0) | 1 | (prop >= 0 ? (1 << prop) : 0);
                 tpcSO.ApplyModifiedProperties();
             }
 
@@ -2980,6 +3030,8 @@ namespace AldenFall.Editor
             var obj = new GameObject(name);
             obj.transform.SetParent(parent);
             obj.isStatic = true;
+            int detailLayer = LayerMask.NameToLayer("Detail");   // grass culls at the medium distance
+            if (detailLayer >= 0) obj.layer = detailLayer;
 
             var vertices = new List<Vector3>();
             var triangles = new List<int>();

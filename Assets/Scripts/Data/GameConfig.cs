@@ -76,8 +76,11 @@ namespace AldenFall.Data
         public float aiActivationDistance = 75f;
         // Camera far clip — the baked environment (buildings, mountains, terrain). Keep large: vistas.
         public float environmentDistance = 2200f;
-        // Small scene accents (shrubs, small rocks, ferns) — camera layer cull (Detail layer).
+        // Small scene accents (ferns, bushes, flowers, reeds, grass) — Detail layer camera cull.
         public float detailDistance = 440f;
+        // Scattered trees + boulders (the forest) — Prop layer camera cull. Far enough to read as a
+        // forest, near enough that the whole map's trees don't all render at once.
+        public float propDistance = 1000f;
     }
 
     /// <summary>
