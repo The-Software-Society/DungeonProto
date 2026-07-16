@@ -31,14 +31,12 @@ namespace AldenFall.Editor
                 Debug.Log("ScenePatcher: added ServerProgressState (NetworkIdentity).");
             }
 
-            if (Object.FindFirstObjectByType<World.ProgressBoard>() == null)
+            // Strip any stale CityProgressBoard: it exposed FLOOR/boss meta in the open world.
+            foreach (var stale in Object.FindObjectsByType<World.ProgressBoard>(FindObjectsSortMode.None))
             {
-                var board = new GameObject("CityProgressBoard");
-                board.transform.position = new Vector3(-18f, 2.3f, 18f);
-                board.transform.rotation = Quaternion.Euler(0f, 135f, 0f);
-                board.AddComponent<World.ProgressBoard>();
+                Object.DestroyImmediate(stale.gameObject);
                 changed = true;
-                Debug.Log("ScenePatcher: added CityProgressBoard near the tavern/plaza.");
+                Debug.Log("ScenePatcher: removed stale CityProgressBoard.");
             }
 
             if (!changed)

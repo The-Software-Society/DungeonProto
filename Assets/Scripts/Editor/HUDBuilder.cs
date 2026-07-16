@@ -396,16 +396,17 @@ namespace AldenFall.Editor
 
         // ==================== EQUIPMENT + INVENTORY PANELS ====================
         // Split into two openers (Jon: combined panel was too crowded): the
-        // EQUIPMENT panel (C, paper doll + bonuses, slides from the right, auto-opens
+        // EQUIPMENT panel (C, paper doll + bonuses, slides from the LEFT, auto-opens
         // on gear change) and the INVENTORY panel (I/B, bag grid + gold, slides from
-        // the left). One CharacterPanelUI (on the equipment panel) drives both.
+        // the RIGHT). One CharacterPanelUI (on the equipment panel) drives both.
 
         private static SlidePanel BuildEquipmentPanel(Transform root, out CharacterPanelUI charUI)
         {
-            var panel = Panel(root, "EquipmentPanel", new Vector2(1f, 0.5f), new Vector2(300, 0), new Vector2(340, 720));
+            // EQUIPMENT on the LEFT now (Jon: swap sides — inventory right, equipment left).
+            var panel = Panel(root, "EquipmentPanel", new Vector2(0f, 0.5f), new Vector2(-320, 0), new Vector2(340, 720));
             var slide = panel.gameObject.AddComponent<SlidePanel>();
-            slide.shownPos = new Vector2(-190, 0);
-            slide.hiddenPos = new Vector2(320, 0);
+            slide.shownPos = new Vector2(196, 0);
+            slide.hiddenPos = new Vector2(-330, 0);
             charUI = panel.gameObject.AddComponent<CharacterPanelUI>();
 
             Image(panel, "Shadow", S("glow_soft"), UITheme.Shadow, stretch: true, padding: -14);
@@ -470,10 +471,11 @@ namespace AldenFall.Editor
 
         private static SlidePanel BuildInventoryPanel(Transform root, CharacterPanelUI charUI)
         {
-            var panel = Panel(root, "InventoryPanel", new Vector2(0f, 0.5f), new Vector2(-320, 0), new Vector2(360, 540));
+            // INVENTORY on the RIGHT now (Jon: swap sides — inventory right, equipment left).
+            var panel = Panel(root, "InventoryPanel", new Vector2(1f, 0.5f), new Vector2(300, 0), new Vector2(360, 540));
             var slide = panel.gameObject.AddComponent<SlidePanel>();
-            slide.shownPos = new Vector2(196, 0);
-            slide.hiddenPos = new Vector2(-320, 0);
+            slide.shownPos = new Vector2(-196, 0);
+            slide.hiddenPos = new Vector2(330, 0);
 
             Image(panel, "Shadow", S("glow_soft"), UITheme.Shadow, stretch: true, padding: -14);
             Image(panel, "Bg", S("panel_r16"), UITheme.PanelBg, stretch: true);

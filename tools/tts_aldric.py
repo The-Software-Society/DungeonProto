@@ -9,14 +9,15 @@ KEY = os.environ["GOOGLE_AI_API"]
 MODEL = "gemini-2.5-pro-preview-tts"     # higher-quality TTS
 VOICE = "Charon"                          # a deep male voice; pitched down further below
 PITCH = 0.90                              # 0.90 = ~10% lower -> deeper, older, bigger
+SPEED = 1.14                              # >1 speeds up delivery (was way too slow)
 BASE = "https://generativelanguage.googleapis.com/v1beta"
 OUT = sys.argv[1] if len(sys.argv) > 1 else "."
 os.makedirs(OUT, exist_ok=True)
 
-# Delivery: ancient, weathered, deep, SLOW, mysterious. Long pauses, grave and low.
-STYLE = ("Speak as Aldric, an ancient and weathered hermit at the edge of the world. A very deep, "
-         "low, slow, gravelly voice, quiet and mysterious, weary and wise, almost grave. Take long "
-         "unhurried pauses. Never rushed. Speak barely above a murmur, with the weight of ages.")
+# Delivery: ancient, weathered, deep, mysterious, but at a NATURAL pace (not slow/dragging).
+STYLE = ("Speak as Aldric, an ancient, weathered hermit. A deep, low, gravelly, mysterious voice "
+         "with quiet gravitas, weary and wise. Calm and grounded, at a natural conversational pace, "
+         "deliberate but never slow or dragging.")
 
 # CANON (ALDENFALL_GAME_PLAN.md): NO mention of floors/worlds, NO volcano (deeper questline), do NOT
 # explain death/respawn. Aldric is surprised, unsettled, then practical. Welcome to Emberfall as a
@@ -63,7 +64,7 @@ def rate_from_mime(mime):
 def pitch_down(src_wav, dst_wav, rate):
     # asetrate lowers pitch (and slows); atempo restores duration -> deeper voice, same length.
     new_sr = int(rate * PITCH)
-    tempo = 1.0 / PITCH
+    tempo = (1.0 / PITCH) * SPEED   # restore pitch-shift duration, then speed up delivery
     filt = f"asetrate={new_sr},aresample={rate},atempo={tempo:.5f}"
     subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src_wav, "-af", filt,
                     "-ar", str(rate), "-ac", "1", "-c:a", "pcm_s16le", dst_wav], check=True)

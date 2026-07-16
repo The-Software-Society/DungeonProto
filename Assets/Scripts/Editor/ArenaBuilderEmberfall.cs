@@ -3843,12 +3843,9 @@ namespace AldenFall.Editor
             progressObj.AddComponent<Mirror.NetworkIdentity>();
             progressObj.AddComponent<World.ServerProgressState>();
 
-            // City progress board: a world-space sign near the tavern/plaza showing the
-            // server-wide Floor-1 standings (reads ServerProgressState). Purely visual.
-            var boardObj = new GameObject("CityProgressBoard");
-            boardObj.transform.position = new Vector3(-18f, 2.3f, 18f);
-            boardObj.transform.rotation = Quaternion.Euler(0f, 135f, 0f);
-            boardObj.AddComponent<World.ProgressBoard>();
+            // (Removed the CityProgressBoard sign: it exposed "FLOOR 1 / the Cinderbound Guardian"
+            // in the open world, which spoils the floor/boss meta the player must discover through
+            // story. ServerProgressState above still tracks clears headlessly.)
             // TODO (Phase-3 quest agent): wire the eruption climax —
             //   * entering the volcano / accepting the final quest -> EmberfallWorldState.Instance.BeginEruption()
             //   * cave_troll_boss (Floor Boss) death -> EmberfallWorldState.Instance.MarkDungeonCleared()

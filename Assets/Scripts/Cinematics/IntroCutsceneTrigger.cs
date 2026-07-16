@@ -25,11 +25,10 @@ namespace AldenFall.Cinematics
     [RequireComponent(typeof(CutsceneDirector))]
     public class IntroCutsceneTrigger : MonoBehaviour
     {
-        // v5: reworked intro (Veo entry video + materialise-in-front-of-Aldric + voice acting +
-        // fixed spawn). Bump replays it once for everyone whose v4 flag was already set.
-        public const string SeenKey = "cutscene_intro_seen_v5";
-
-        [SerializeField] private bool replayEveryEditorPlay = true;
+        // v6: intro v2 (black-video fix + canon dialogue + deeper voice + no weapon panel). Bump so
+        // it replays once for testers who already watched v5. BUMP THIS EVERY TIME THE INTRO CHANGES,
+        // or anyone who saw the previous version has the seen-flag set and the scene is skipped.
+        public const string SeenKey = "cutscene_intro_seen_v6";
 
         private IEnumerator Start()
         {
@@ -52,15 +51,13 @@ namespace AldenFall.Cinematics
                 if (!identity.isLocalPlayer) yield break;
             }
 
-            // QA / headless never plays the intro AND never touches the seen-flag, so the
-            // harness can't contaminate the shared PlayerPrefs store that a real build reads.
+            // QA / headless never plays the intro (it would hijack the camera during the shot tour).
             if (Application.isBatchMode) yield break;
+            if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-qashots") >= 0) yield break;
 
-#if UNITY_EDITOR
-            if (!replayEveryEditorPlay && PlayerPrefs.GetInt(SeenKey, 0) != 0) yield break;
-#else
-            if (PlayerPrefs.GetInt(SeenKey, 0) != 0) yield break;
-#endif
+            // NO once-per-machine gate: there is no account persistence yet, so every login is a
+            // FRESH account and the intro plays EVERY time (SPACE/ESC skips). When Supabase account
+            // data lands, gate this on a per-account "seen intro" flag instead of always playing.
 
             // Let the camera, HUD, and mobs settle before the director seizes the
             // camera. The director reads Camera.main in TakeControl, so make sure
@@ -92,15 +89,7 @@ namespace AldenFall.Cinematics
             // tracked the instant the player gains control, standing right in front of Aldric.
             // Idempotent (Accept -> CanAccept guard); runs whether the scene played or was skipped.
             GetComponent<Quests.QuestLog>()?.Accept("q_intro");
-
-            // Persist "seen" only when the gate was genuinely honored. In the Editor with
-            // replayEveryEditorPlay we bypassed the read, so we must NOT write, or the flag
-            // leaks into the shared store and blocks a real same-machine build.
-#if UNITY_EDITOR
-            if (replayEveryEditorPlay) yield break;
-#endif
-            PlayerPrefs.SetInt(SeenKey, 1);
-            PlayerPrefs.Save();
+            // No seen-flag persisted: every login replays the intro until per-account data exists.
         }
     }
 }

@@ -14,23 +14,14 @@ os.makedirs(OUT, exist_ok=True)
 # POV, no visible protagonist face (so it never has to match character creation).
 # Kingdom-Hearts / "Simple and Clean" register: melancholy, ethereal, emotional, with music.
 CLIPS = [
-    ("01_morning",
-     "First-person POV, no visible face or body. A quiet grey morning in an ordinary modern apartment. "
-     "The camera is the person's own eyes: looking down at a hand resting on a warm coffee mug on a small table, "
-     "then drifting up to a rain-streaked window overlooking a dull grey city skyline at dawn. "
-     "Muted desaturated colours, soft melancholy, gentle rain sounds, a slow emotional solo piano melody. "
-     "Cinematic, shallow depth of field, calm and a little lonely."),
     ("02_crossing",
-     "First-person POV, no visible face. Stepping off a curb to cross a wet city street at dusk, reflections of "
-     "traffic lights on the pavement. Suddenly bright white headlights flare and rush toward the camera, the sound "
-     "swells and then cuts to complete silence and a soft white bloom that fills the whole frame. Tasteful, no gore, "
-     "no impact shown, only light and sudden quiet. Emotional, cinematic, a single held piano note."),
-    ("03_descent",
-     "First-person POV, no visible face or body, a weightless feeling of falling gently backward through a vast dark "
-     "starry void filled with thousands of drifting glowing golden embers and soft motes of light. Far below, the "
-     "clouds part to reveal a dark green pine forest valley and a distant mountain glowing with orange lava at its peak. "
-     "The camera falls slowly toward the forest. Ethereal, dreamlike, hopeful, a swelling emotional orchestral and "
-     "ethereal female vocal-pad score, cinematic, beautiful."),
+     "First-person POV camera, no visible face or body, no hands. The viewer is standing on a wet city street at "
+     "dusk. The head turns to look down the road, and a single car is accelerating straight toward the camera, very "
+     "fast. Its two headlights grow larger and brighter extremely quickly, filling the whole frame, engine roaring, "
+     "tyres screeching on wet asphalt, a blaring car horn. At the final instant everything snaps to pure blinding "
+     "white with a single loud crash-and-glass impact sound, then abrupt total silence. NO people, NO body, NO blood, "
+     "NO injury shown, only the speeding car, the blinding headlights, the crash sound and the white-out. Cinematic, "
+     "dramatic, tense, first-person."),
 ]
 NEG = "gore, blood, injury, corpse, text, watermark, subtitles, logo, cartoon, low quality"
 
