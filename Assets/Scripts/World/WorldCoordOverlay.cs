@@ -26,9 +26,19 @@ namespace AldenFall.World
         Transform probe;
         GUIStyle style;
 
+        // Smoothed frame time -> live FPS readout (exponential moving average, unscaled).
+        float smoothDt = 1f / 60f;
+        float worstDt;          // worst frame in the current ~1s window (a "1% low" feel)
+        float worstWindow;
+
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.F3)) show = !show;
+            float dt = Time.unscaledDeltaTime;
+            smoothDt += (dt - smoothDt) * 0.08f;
+            if (dt > worstDt) worstDt = dt;
+            worstWindow += dt;
+            if (worstWindow > 1f) { worstWindow = 0f; worstDt = dt; }   // reset the worst each second
         }
 
         Vector3 ProbePos()
@@ -55,9 +65,14 @@ namespace AldenFall.World
         {
             if (!show) return;
             if (style == null)
-                style = new GUIStyle(GUI.skin.box) { fontSize = 15, alignment = TextAnchor.UpperLeft, padding = new RectOffset(10, 10, 8, 8) };
+                style = new GUIStyle(GUI.skin.box) { fontSize = 15, alignment = TextAnchor.UpperLeft, padding = new RectOffset(10, 10, 8, 8), richText = true };
             Vector3 p = ProbePos();
-            GUI.Box(new Rect(10, 10, 280, 116),
+            float fps = 1f / Mathf.Max(0.0001f, smoothDt);
+            float ms = smoothDt * 1000f;
+            float low = 1f / Mathf.Max(0.0001f, worstDt);   // worst frame this second
+            string fpsColor = fps >= 58f ? "#8CE68C" : fps >= 30f ? "#F2CC8C" : "#E68C8C";
+            GUI.Box(new Rect(10, 10, 300, 140),
+                $"<color={fpsColor}>FPS {fps:F0}</color>   {ms:F1} ms   (low {low:F0})\n" +
                 $"X {p.x:F1}   Y {p.y:F1}   Z {p.z:F1}\nZone: {ZoneAt(p.x, p.z)}\nMob: {NearestMob(p.x, p.z)}\n[F3] hide", style);
         }
 

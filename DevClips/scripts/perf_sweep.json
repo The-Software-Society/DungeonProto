@@ -1,0 +1,18 @@
+{
+  "fps": 30,
+  "settle": 5,
+  "steps": [
+    { "type": "spawn",  "pos": [-58, 1, 150], "yaw": 20 },
+    { "type": "wait",   "seconds": 1.0 },
+    { "type": "turn",   "yaw": 140, "seconds": 3.5 },
+    { "type": "turn",   "yaw": 300, "seconds": 3.5 },
+    { "type": "moveTo", "pos": [-32, 1, 116], "speed": 4.5 },
+    { "type": "turn",   "yaw": 60,  "seconds": 3.0 },
+    { "type": "turn",   "yaw": 190, "seconds": 3.0 },
+    { "type": "moveTo", "pos": [-6, 1, 70], "speed": 5.0 },
+    { "type": "moveTo", "pos": [0, 1, 20], "speed": 5.0 },
+    { "type": "turn",   "yaw": 120, "seconds": 3.5 },
+    { "type": "turn",   "yaw": 300, "seconds": 3.5 },
+    { "type": "wait",   "seconds": 1.0 }
+  ]
+}

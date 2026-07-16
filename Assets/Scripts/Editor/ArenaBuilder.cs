@@ -1770,6 +1770,10 @@ namespace AldenFall.Editor
             if (cullLayer >= 0) SetLayerRecursive(instance, cullLayer);
             instance.isStatic = true;
 
+            // Trees + boulders (the #1 GPU cost): swap the full FBX for a cheap proxy past close range
+            // (golden rule — a distant tree is ~24 tris, not ~1-2k). Near ones keep full detail.
+            if (TreePropNames.Contains(name)) AddPropLOD(instance, name);
+
             return instance;
             }
             catch (System.Exception e)
@@ -1819,6 +1823,63 @@ namespace AldenFall.Editor
             }
             Debug.LogError($"EnsureLayer: no free user-layer slot for '{name}'");
             return -1;
+        }
+
+        /// <summary>Give a scattered prop a 2-LOD group: the full FBX up close, a cheap cube proxy
+        /// (trunk + canopy for trees, one block for boulders) at mid/far range, culled when tiny.
+        /// The proxy is a world-space sibling (unscaled) so its cubes are sized in world units; it
+        /// shares a material per colour (golden rule). The full mesh keeps its trunk collider.</summary>
+        private static void AddPropLOD(GameObject prop, string name)
+        {
+            var full = prop.GetComponentsInChildren<MeshRenderer>();
+            if (full.Length == 0) return;
+            Bounds b = full[0].bounds;
+            for (int i = 1; i < full.Length; i++) b.Encapsulate(full[i].bounds);
+            if (b.size.y < 0.4f) return;   // tiny — not worth a proxy
+
+            var proxy = new GameObject(name + "_LODProxy");
+            proxy.transform.SetParent(prop.transform.parent, true);   // sibling, unscaled world space
+            proxy.transform.position = b.center;
+            proxy.layer = prop.layer;
+
+            bool tree = name == "BirchTree" || name == "PineTree";
+            if (tree)
+            {
+                Color trunk = new Color(0.34f, 0.24f, 0.15f);
+                Color canopy = name == "PineTree" ? new Color(0.15f, 0.30f, 0.17f) : new Color(0.25f, 0.42f, 0.21f);
+                AddProxyCube(proxy.transform, new Vector3(0f, -b.extents.y * 0.55f, 0f),
+                    new Vector3(b.size.x * 0.16f, b.size.y * 0.55f, b.size.z * 0.16f), trunk);
+                AddProxyCube(proxy.transform, new Vector3(0f, b.extents.y * 0.30f, 0f),
+                    new Vector3(b.size.x * 0.80f, b.size.y * 0.70f, b.size.z * 0.80f), canopy);
+            }
+            else
+            {
+                AddProxyCube(proxy.transform, Vector3.zero, b.size * 0.85f, PropFallbackColor(name));
+            }
+
+            var proxyR = proxy.GetComponentsInChildren<MeshRenderer>();
+            var lod = prop.AddComponent<LODGroup>();
+            lod.SetLODs(new[]
+            {
+                // Full FBX until the tree is only ~6% of screen height (~100m for an 8m tree), so the
+                // blocky proxy only shows FAR away where it blends into the forest mass. Below ~1% cull.
+                new LOD(0.06f, full),
+                new LOD(0.010f, proxyR),
+            });
+            lod.RecalculateBounds();
+        }
+
+        private static void AddProxyCube(Transform parent, Vector3 localOffset, Vector3 worldSize, Color color)
+        {
+            var c = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            var col = c.GetComponent<Collider>(); if (col != null) Object.DestroyImmediate(col);
+            c.transform.SetParent(parent, false);
+            c.transform.localPosition = localOffset;
+            c.transform.localScale = worldSize;
+            int r = Mathf.RoundToInt(color.r * 9), g = Mathf.RoundToInt(color.g * 9), bl = Mathf.RoundToInt(color.b * 9);
+            c.GetComponent<MeshRenderer>().sharedMaterial = Mat($"LODProxy_{r}{g}{bl}", color, smoothness: 0.02f);
+            c.isStatic = true;
+            c.layer = parent.gameObject.layer;
         }
 
         private static void SetLayerRecursive(GameObject obj, int layer)

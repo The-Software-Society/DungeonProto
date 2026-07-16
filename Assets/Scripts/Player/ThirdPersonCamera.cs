@@ -19,8 +19,10 @@ namespace AldenFall.Player
         [SerializeField] private float rotationSensitivity = 3f;
         [SerializeField] private float minVerticalAngle = -20f;
         [SerializeField] private float maxVerticalAngle = 60f;
-        [SerializeField] private float rotationSmoothTime = 0.05f;
-        [SerializeField] private float followSmoothTime = 0.045f;
+        // Low smoothing = snappy, responsive look. 0.05 read as "moving a boat" (Jon); 0.02 keeps a
+        // touch of smoothing without the input lag. Follow tightened to match.
+        [SerializeField] private float rotationSmoothTime = 0.02f;
+        [SerializeField] private float followSmoothTime = 0.03f;
 
         [Header("Collision")]
         [SerializeField] private LayerMask collisionLayers;
