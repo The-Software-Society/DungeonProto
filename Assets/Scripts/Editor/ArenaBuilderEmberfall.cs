@@ -1005,6 +1005,37 @@ namespace AldenFall.Editor
             return tex;
         }
 
+        /// <summary>One flat MeshCollider covering exactly the ground tiles that exist (walkable top
+        /// at y=0). Replaces ~1800 per-tile BoxColliders. The lake/city/river carve stays a hole (those
+        /// tiles were never added), so no fall-through and no walk-on-water. Built before the NavMesh
+        /// bake, so pathing collects it like the old tiles.</summary>
+        private static void BuildMergedGroundCollider(Transform parent, System.Collections.Generic.List<Vector2> centers, float step, int groundLayer)
+        {
+            if (centers.Count == 0) return;
+            var verts = new System.Collections.Generic.List<Vector3>(centers.Count * 4);
+            var tris = new System.Collections.Generic.List<int>(centers.Count * 6);
+            float h = step * 0.5f;
+            foreach (var c in centers)
+            {
+                int b = verts.Count;
+                verts.Add(new Vector3(c.x - h, 0f, c.y - h));
+                verts.Add(new Vector3(c.x + h, 0f, c.y - h));
+                verts.Add(new Vector3(c.x + h, 0f, c.y + h));
+                verts.Add(new Vector3(c.x - h, 0f, c.y + h));
+                tris.Add(b); tris.Add(b + 2); tris.Add(b + 1);
+                tris.Add(b); tris.Add(b + 3); tris.Add(b + 2);
+            }
+            var mesh = new Mesh { name = "GroundCollisionMesh", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32 };
+            mesh.SetVertices(verts);
+            mesh.SetTriangles(tris, 0);
+            mesh.RecalculateBounds();
+            var go = new GameObject("GroundCollider");
+            go.transform.SetParent(parent);
+            go.isStatic = true;
+            if (groundLayer >= 0) go.layer = groundLayer;
+            go.AddComponent<MeshCollider>().sharedMesh = mesh;
+        }
+
         private static void BuildEmberfallGround(Transform root, int groundLayer)
         {
             var container = Child(root, "Ground");
@@ -1017,6 +1048,9 @@ namespace AldenFall.Editor
 
             const float step = 12f;
             const float ringOuter = 250f;
+            // Collect each ground tile's footprint; collision becomes ONE merged flat MeshCollider
+            // instead of ~1800 per-tile BoxColliders (golden rule: reuse, don't multiply).
+            var tileCenters = new System.Collections.Generic.List<Vector2>();
 
             // z reaches -320 so the ember-approach ground meets the volcano entrance
             // tunnel (which starts at z=-315) with no fall-through gap.
@@ -1056,8 +1090,13 @@ namespace AldenFall.Editor
                         new Vector3(step, 0.5f, step), mat, container);
                     tile.isStatic = true;
                     if (groundLayer >= 0) tile.layer = groundLayer;
+                    var tcol = tile.GetComponent<Collider>();
+                    if (tcol != null) Object.DestroyImmediate(tcol);   // one merged collider instead
+                    tileCenters.Add(new Vector2(cx, cz));
                 }
             }
+
+            BuildMergedGroundCollider(container, tileCenters, step, groundLayer);
 
             // Grass blades across the lush ring (skip city / approach / water / far corners).
             BuildGrassBladeField(container, "EmberGrassBlades",

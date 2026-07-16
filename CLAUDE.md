@@ -4,6 +4,20 @@ Online action RPG (Unity 6000.3.2f1, URP, Mirror). Current playable world: **Emb
 Design canon lives in `ALDENFALL_GAME_PLAN.md` (game-wide) and `WORLD1_SOURCE_OF_TRUTH.md` (Emberfall).
 Ships to **itch** (desktop) + a **Render** dedicated server. Each work cluster ends in build + deploy.
 
+## GOLDEN RULE — draw one thing many times
+
+When you place **many of the same thing** (shrubs, rocks, stones, grass, trees, cobbles, fences,
+identical mobs, tiles…) the GPU must draw ONE mesh N times, not N unique objects. Concretely:
+- **Share one material per type** (not a new material per instance) — `Mat()` caches by name and sets
+  `enableInstancing`; reuse the same name. Never generate a unique material/mesh per placement.
+- **Reuse one source mesh/prefab** per type; vary only transform (position/rotation/scale) + tint.
+- **Mark static** (`isStatic = true`) so static batching / the GPU Resident Drawer can combine them.
+- The engine then instances them: Unity 6 **GPU Resident Drawer** (URP asset `GPUResidentDrawerMode`,
+  needs Forward+) draws each mesh N times + does GPU occlusion culling automatically.
+- Stream/cull by locale (interest management for networked entities; camera layer-cull for scatter) —
+  see `perf-streaming-architecture` memory. A per-type unique material or a per-instance Update() is a
+  smell; if you catch yourself writing one, batch it instead.
+
 ## The loop for every visual task
 
 1. **Build** what changed.
