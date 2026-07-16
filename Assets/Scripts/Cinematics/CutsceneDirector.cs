@@ -325,7 +325,7 @@ namespace AldenFall.Cinematics
             var go = new GameObject("CutsceneVideo");
             go.transform.SetParent(overlayRoot.transform, false);
             var raw = go.AddComponent<RawImage>();
-            raw.color = Color.black;
+            raw.color = Color.white;   // RawImage tints texture*color; black would render the video BLACK
             raw.raycastTarget = false;
             Stretch(raw.rectTransform);
             go.transform.SetAsLastSibling();   // cover the whole frame, above fade + letterbox
