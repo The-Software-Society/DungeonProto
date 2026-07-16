@@ -25,8 +25,9 @@ namespace AldenFall.Cinematics
     [RequireComponent(typeof(CutsceneDirector))]
     public class IntroCutsceneTrigger : MonoBehaviour
     {
-        // v4: bump invalidates the contaminated v3 flag so the intro plays once again.
-        public const string SeenKey = "cutscene_intro_seen_v4";
+        // v5: reworked intro (Veo entry video + materialise-in-front-of-Aldric + voice acting +
+        // fixed spawn). Bump replays it once for everyone whose v4 flag was already set.
+        public const string SeenKey = "cutscene_intro_seen_v5";
 
         [SerializeField] private bool replayEveryEditorPlay = true;
 
@@ -86,6 +87,11 @@ namespace AldenFall.Cinematics
             // Commit "seen" only after the scene (and the mandatory weapon choice) completes.
             while (director.IsPlaying)
                 yield return null;
+
+            // Lead straight into the first quest: offer q_intro (talk-to-Aldric) so it is already
+            // tracked the instant the player gains control, standing right in front of Aldric.
+            // Idempotent (Accept -> CanAccept guard); runs whether the scene played or was skipped.
+            GetComponent<Quests.QuestLog>()?.Accept("q_intro");
 
             // Persist "seen" only when the gate was genuinely honored. In the Editor with
             // replayEveryEditorPlay we bypassed the read, so we must NOT write, or the flag

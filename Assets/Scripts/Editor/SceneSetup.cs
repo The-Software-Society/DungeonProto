@@ -531,9 +531,10 @@ namespace AldenFall.Editor
 
         private static void CreatePlayer()
         {
-            // V2.5: safe spawn in Aldric's lush forest glade just NORTH of the city (0,0,90).
-            // The intro meets Aldric here; the city is a short walk south through the north gate.
-            Vector3 safeSpawnPosition = new Vector3(0, 1, 84);
+            // Spawn IN FRONT OF ALDRIC (glade centre (0,0,200), facing south). A few metres south of
+            // him so you materialise right in front of him and the intro frames you both. (Was z=84,
+            // ~118 units from Aldric, which framed an empty clearing.)
+            Vector3 safeSpawnPosition = new Vector3(0, 1, 194);
 
             // Check if player already exists - move them instead of skipping
             var existingPlayer = GameObject.FindGameObjectWithTag("Player");

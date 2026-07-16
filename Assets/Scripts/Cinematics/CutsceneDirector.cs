@@ -4,6 +4,8 @@ using System.IO;
 using Mirror;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Video;
+using UnityEngine.Networking;
 using TMPro;
 
 namespace AldenFall.Cinematics
@@ -20,6 +22,8 @@ namespace AldenFall.Cinematics
         public float seconds;    // duration (0 = instant cut)
         public float target;     // fade target alpha 0..1
         public bool blocking = true;
+        public string clip;      // video: StreamingAssets/video/<clip>; (audio uses 'voice')
+        public string voice;     // subtitle: StreamingAssets/voice/<voice>.wav played with the caption
     }
 
     [System.Serializable]
@@ -57,6 +61,8 @@ namespace AldenFall.Cinematics
         private TMP_Text subtitleText;
         private RectTransform barTop, barBottom;
         private Coroutine playRoutine;
+        private AudioSource voiceSource;
+        private readonly List<Renderer> hiddenRenderers = new List<Renderer>();
 
         private IEnumerator Start()
         {
@@ -150,6 +156,9 @@ namespace AldenFall.Cinematics
                 case "face": FaceStep(step); return null;
                 case "wait": return WaitStep(step.seconds);
                 case "choice": return ChoiceStep();
+                case "video": return VideoStep(step);
+                case "hide": HideStep(step); return null;
+                case "materialize": return MaterializeStep(step);
                 default:
                     Debug.LogWarning($"CutsceneDirector: unknown step '{step.type}'");
                     return null;
@@ -205,8 +214,34 @@ namespace AldenFall.Cinematics
 
         private IEnumerator SubtitleStep(CutsceneStep step)
         {
-            subtitleText.text = step.text ?? "";
             float shown = Mathf.Max(0.5f, step.seconds);
+
+            // Voice-acted line: load + play the clip, and hold the caption for the whole clip so the
+            // subtitle stays up while the actor speaks. Load happens before the caption shows so
+            // words and voice appear together.
+            if (!string.IsNullOrEmpty(step.voice))
+            {
+                string vpath = Path.Combine(Application.streamingAssetsPath, "voice", step.voice);
+                using (var uwr = UnityWebRequestMultimedia.GetAudioClip(FileUrl(vpath), AudioType.WAV))
+                {
+                    yield return uwr.SendWebRequest();
+                    if (uwr.result == UnityWebRequest.Result.Success)
+                    {
+                        var clip = DownloadHandlerAudioClip.GetContent(uwr);
+                        if (clip != null)
+                        {
+                            EnsureVoiceSource();
+                            voiceSource.Stop();
+                            voiceSource.clip = clip;
+                            voiceSource.Play();
+                            shown = Mathf.Max(shown, clip.length + 0.25f);
+                        }
+                    }
+                    else Debug.LogWarning($"CutsceneDirector: voice '{step.voice}' failed: {uwr.error}");
+                }
+            }
+
+            subtitleText.text = step.text ?? "";
             yield return new WaitForSeconds(shown);
             if (subtitleText != null && subtitleText.text == step.text)
                 subtitleText.text = "";
@@ -277,6 +312,162 @@ namespace AldenFall.Cinematics
                 yield return null;
         }
 
+        /// <summary>
+        /// Fullscreen video (the Veo entry cinematic). Plays StreamingAssets/video/&lt;clip&gt; on a
+        /// RawImage above the letterbox with its own audio (Direct). Holds the scene until the clip
+        /// ends. SPACE still skips the whole intro (Update -> Finish, which destroys the overlay).
+        /// </summary>
+        private IEnumerator VideoStep(CutsceneStep step)
+        {
+            if (string.IsNullOrEmpty(step.clip) || overlayRoot == null) yield break;
+            string path = Path.Combine(Application.streamingAssetsPath, "video", step.clip);
+
+            var go = new GameObject("CutsceneVideo");
+            go.transform.SetParent(overlayRoot.transform, false);
+            var raw = go.AddComponent<RawImage>();
+            raw.color = Color.black;
+            raw.raycastTarget = false;
+            Stretch(raw.rectTransform);
+            go.transform.SetAsLastSibling();   // cover the whole frame, above fade + letterbox
+
+            var rt = new RenderTexture(1920, 1080, 0);
+            var vp = go.AddComponent<VideoPlayer>();
+            vp.playOnAwake = false;
+            vp.isLooping = false;
+            vp.renderMode = VideoRenderMode.RenderTexture;
+            vp.targetTexture = rt;
+            vp.source = VideoSource.Url;
+            vp.url = FileUrl(path);
+            vp.audioOutputMode = VideoAudioOutputMode.Direct;
+            raw.texture = rt;
+
+            bool done = false;
+            vp.loopPointReached += _ => done = true;
+            vp.errorReceived += (_, msg) => { Debug.LogWarning($"CutsceneDirector: video '{step.clip}' error: {msg}"); done = true; };
+
+            bool prepared = false;
+            vp.prepareCompleted += _ => prepared = true;
+            vp.Prepare();
+            float pw = 0f;
+            while (!prepared && pw < 12f) { pw += Time.unscaledDeltaTime; yield return null; }
+
+            vp.Play();
+            // Fallback end-detection: loopPointReached can be missed if the clip is very short. The
+            // wall-clock cap guarantees we never spin forever if Prepare failed (frameCount stays 0)
+            // or the platform can't decode the file, the scene just continues to the reveal.
+            float watchdog = 0f;
+            float maxPlay = (vp.frameCount > 0 && vp.frameRate > 0.01f)
+                ? (float)vp.frameCount / (float)vp.frameRate + 2f : 40f;
+            while (!done)
+            {
+                if (vp.frameCount > 0 && vp.frame >= (long)vp.frameCount - 1) break;
+                watchdog += Time.unscaledDeltaTime;
+                if (watchdog > maxPlay) break;
+                yield return null;
+            }
+
+            vp.Stop();
+            raw.texture = null;
+            if (rt != null) { rt.Release(); Destroy(rt); }
+            Destroy(go);
+        }
+
+        /// <summary>Hide an actor's whole avatar (all renderers) so it can materialise in later.</summary>
+        private void HideStep(CutsceneStep step)
+        {
+            var actor = ResolveActor(step.actor);
+            if (actor == null) return;
+            foreach (var r in actor.GetComponentsInChildren<Renderer>(true))
+            {
+                if (r == null || !r.enabled) continue;
+                r.enabled = false;
+                hiddenRenderers.Add(r);
+            }
+        }
+
+        /// <summary>Re-show the hidden actor renderers (used by materialise + as a Finish safety net).</summary>
+        private void RevealHidden()
+        {
+            foreach (var r in hiddenRenderers)
+                if (r != null) r.enabled = true;
+            hiddenRenderers.Clear();
+        }
+
+        /// <summary>
+        /// The isekai arrival: a column of rising golden embers + a flare of light at the actor,
+        /// and partway through the burst the (hidden) avatar snaps back into being. "Particalizes
+        /// in front of Aldric."
+        /// </summary>
+        private IEnumerator MaterializeStep(CutsceneStep step)
+        {
+            var actor = ResolveActor(step.actor);
+            Vector3 pos = actor != null ? actor.transform.position : V3(step.pos, Vector3.zero);
+            float dur = Mathf.Max(0.8f, step.seconds);
+
+            var fx = new GameObject("MaterializeFx");
+            fx.transform.position = pos;
+
+            var ps = fx.AddComponent<ParticleSystem>();
+            var main = ps.main;
+            main.duration = dur; main.loop = false;
+            main.startLifetime = 1.6f; main.startSpeed = 2.6f;
+            main.startSize = 0.16f; main.startColor = new Color(1f, 0.62f, 0.24f);
+            main.maxParticles = 600; main.gravityModifier = -0.05f;
+            var em = ps.emission;
+            em.rateOverTime = 0f;
+            em.SetBursts(new[] { new ParticleSystem.Burst(0f, 260), new ParticleSystem.Burst(0.35f, 160) });
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Cone;
+            shape.angle = 14f; shape.radius = 0.85f;
+            shape.rotation = new Vector3(-90f, 0f, 0f);
+            var col = ps.colorOverLifetime; col.enabled = true;
+            var grad = new Gradient();
+            grad.SetKeys(
+                new[] { new GradientColorKey(new Color(1f, 0.85f, 0.5f), 0f), new GradientColorKey(new Color(1f, 0.45f, 0.12f), 1f) },
+                new[] { new GradientAlphaKey(0f, 0f), new GradientAlphaKey(1f, 0.15f), new GradientAlphaKey(0f, 1f) });
+            col.color = grad;
+            var psr = ps.GetComponent<ParticleSystemRenderer>();
+            psr.material = new Material(Shader.Find("Sprites/Default"));
+            psr.material.color = new Color(1f, 0.7f, 0.3f);
+            psr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+
+            var lo = new GameObject("MatFlash");
+            lo.transform.SetParent(fx.transform, false);
+            lo.transform.localPosition = Vector3.up * 1.0f;
+            var light = lo.AddComponent<Light>();
+            light.type = LightType.Point; light.color = new Color(1f, 0.72f, 0.36f);
+            light.range = 12f; light.shadows = LightShadows.None;
+
+            float t = 0f; bool revealed = false;
+            while (t < dur)
+            {
+                t += Time.deltaTime;
+                float k = t / dur;
+                light.intensity = Mathf.Lerp(7f, 0f, k) * (1f - Mathf.Abs(k - 0.15f));
+                if (!revealed && k >= 0.4f) { RevealHidden(); revealed = true; }
+                yield return null;
+            }
+            if (!revealed) RevealHidden();
+            Destroy(fx, 2f);
+        }
+
+        private void EnsureVoiceSource()
+        {
+            if (voiceSource != null) return;
+            var go = new GameObject("CutsceneVoice");
+            go.transform.SetParent(transform, false);
+            voiceSource = go.AddComponent<AudioSource>();
+            voiceSource.spatialBlend = 0f;   // 2D narration, always full volume
+            voiceSource.playOnAwake = false;
+        }
+
+        // StreamingAssets file -> URL for UnityWebRequest / VideoPlayer (desktop paths are absolute).
+        private static string FileUrl(string absolutePath)
+        {
+            if (absolutePath.Contains("://")) return absolutePath;   // already a URL (Android jar:)
+            return "file://" + absolutePath;
+        }
+
         // ==================== CONTROL / RESTORE ====================
 
         private void TakeControl(bool letterbox)
@@ -335,6 +526,10 @@ namespace AldenFall.Cinematics
 
         private void Finish()
         {
+            // Never strand the player invisible or with voice still talking if a scene is skipped mid-way.
+            RevealHidden();
+            if (voiceSource != null) { Destroy(voiceSource.gameObject); voiceSource = null; }
+
             if (overlayRoot != null) Destroy(overlayRoot);
             overlayRoot = null;
 

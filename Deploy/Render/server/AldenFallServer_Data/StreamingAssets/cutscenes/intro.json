@@ -3,50 +3,55 @@
   "letterbox": true,
   "steps": [
     { "type": "fade", "target": 1, "seconds": 0 },
+    { "type": "move", "actor": "player", "pos": [0, 1, 194], "seconds": 0 },
+    { "type": "hide", "actor": "player" },
 
-    { "type": "subtitle", "text": "Your last morning began like any other.", "seconds": 3.2, "blocking": true },
-    { "type": "subtitle", "text": "A grey window. Somewhere to be. The small weather of an ordinary life.", "seconds": 4.0, "blocking": true },
+    { "type": "video", "clip": "entry_isekai.mp4", "blocking": true },
+
+    { "type": "camera", "pos": [6.0, 3.6, 187], "lookAt": [0, 1.6, 198], "seconds": 0 },
+    { "type": "fade", "target": 0, "seconds": 2.2, "blocking": true },
+    { "type": "subtitle", "text": "You come to beneath the pines, the smoke of Emberfall still at your back.", "seconds": 3.4, "blocking": true },
+
+    { "type": "camera", "pos": [3.4, 2.0, 190], "lookAt": [0, 1.1, 194], "seconds": 3.0, "blocking": false },
+    { "type": "subtitle", "text": "A shape gathers out of the falling embers, a shape that used to be you.", "seconds": 2.6, "blocking": false },
+    { "type": "materialize", "actor": "player", "seconds": 2.6, "blocking": true },
     { "type": "wait", "seconds": 0.5 },
-    { "type": "subtitle", "text": "You do not remember the moment it ended. Only that it did.", "seconds": 3.8, "blocking": true },
-    { "type": "fade", "target": 0.12, "seconds": 0.14, "blocking": true },
-    { "type": "fade", "target": 1, "seconds": 0.4, "blocking": true },
-    { "type": "subtitle", "text": "Then light. Falling embers. A shape reassembling out of the dark, a shape that used to be you.", "seconds": 4.6, "blocking": true },
-    { "type": "subtitle", "text": "Pines overhead. The smoke of a burning mountain at your back. And a voice.", "seconds": 4.0, "blocking": true },
 
-    { "type": "camera", "pos": [14, 9, 78], "lookAt": [0, 1.4, 90], "seconds": 0 },
-    { "type": "fade", "target": 0, "seconds": 2.0, "blocking": false },
-    { "type": "subtitle", "text": "THE NORTHERN GLADE", "seconds": 3.2, "blocking": false },
-    { "type": "camera", "pos": [5.5, 3.0, 84], "lookAt": [0, 1.5, 90], "seconds": 5.0 },
-    { "type": "subtitle", "text": "You come to beneath the pines, the smoke of Emberfall still at your back.", "seconds": 4.4, "blocking": false },
-    { "type": "wait", "seconds": 0.6 },
+    { "type": "face", "actor": "Aldric", "lookAt": [0, 0, 194] },
+    { "type": "anim", "actor": "Aldric", "state": "Hit" },
+    { "type": "camera", "pos": [2.6, 1.9, 196.6], "lookAt": [0, 1.7, 200], "seconds": 4.2, "blocking": false },
+    { "type": "subtitle", "text": "Aldric:  Easy now. Easy. By the old fire, a soul, falling right out of the dark. I have not seen that in a long age.", "voice": "aldric_intro_01.wav", "seconds": 1, "blocking": true },
 
-    { "type": "face", "actor": "Aldric", "lookAt": [0, 0, 84] },
-    { "type": "camera", "pos": [-2.6, 2.2, 85.5], "lookAt": [1.6, 1.5, 90], "seconds": 3.4 },
-    { "type": "subtitle", "text": "Aldric:  Easy, now. You walked a long way just to fall down in an old man's glade.", "seconds": 4.6, "blocking": false },
+    { "type": "camera", "pos": [1.8, 1.9, 197.4], "lookAt": [0.2, 1.4, 200], "seconds": 3.2, "blocking": false },
+    { "type": "subtitle", "text": "Aldric:  Breathe. You are whole. The embers only borrowed your shape to carry you down here.", "voice": "aldric_intro_02.wav", "seconds": 1, "blocking": true },
 
-    { "type": "camera", "pos": [1.8, 1.9, 87.0], "lookAt": [0.2, 1.5, 90], "seconds": 3.6 },
-    { "type": "subtitle", "text": "Aldric:  They called me something once, down in the low country. A hero, if you believe the songs. I stopped believing them.", "seconds": 5.6, "blocking": false },
+    { "type": "camera", "pos": [-1.6, 2.3, 201.4], "lookAt": [0.4, 1.3, 194.5], "seconds": 4.2, "blocking": false },
+    { "type": "subtitle", "text": "Aldric:  You died. Did you not, in the world you came from. I can still see that last grey morning on you.", "voice": "aldric_intro_03.wav", "seconds": 1, "blocking": true },
+
+    { "type": "camera", "pos": [4.6, 2.1, 196], "lookAt": [0, 1.6, 199.5], "seconds": 4.0, "blocking": false },
+    { "type": "subtitle", "text": "Aldric:  This place is Emberfall. A world built in floors, each a trial that must be cleared before the next will open.", "voice": "aldric_intro_04.wav", "seconds": 1, "blocking": true },
+    { "type": "subtitle", "text": "Aldric:  You woke on mine. The lowest floor, and just now, the most troubled.", "voice": "aldric_intro_05.wav", "seconds": 1, "blocking": true },
+
     { "type": "anim", "actor": "Aldric", "state": "Cast" },
-    { "type": "subtitle", "text": "Aldric:  So I came up here, to the quiet, and let the trees forget my name for me.", "seconds": 4.6, "blocking": false },
+    { "type": "camera", "pos": [2.0, 1.8, 197.6], "lookAt": [0.2, 1.5, 200], "seconds": 5.0, "blocking": false },
+    { "type": "subtitle", "text": "Aldric:  Your body is new, but your hands are not empty. The skills you carry wake as you use them. Fight, and you grow. That law never breaks.", "voice": "aldric_intro_06.wav", "seconds": 1, "blocking": true },
 
-    { "type": "camera", "pos": [-1.2, 2.4, 86.0], "lookAt": [0.4, 1.5, 90], "seconds": 4.0 },
-    { "type": "subtitle", "text": "Aldric:  But the quiet's ending. South of here the mountain burns, the volcano is waking, and its embers reach for the town.", "seconds": 5.8, "blocking": false },
-    { "type": "wait", "seconds": 0.3 },
-    { "type": "subtitle", "text": "Aldric:  Someone has to go down into that fire and end it. And you have the look of someone with little left to lose.", "seconds": 5.4, "blocking": false },
+    { "type": "camera", "pos": [6.5, 3.2, 191], "lookAt": [0, 2.0, 202], "seconds": 5.0, "blocking": false },
+    { "type": "subtitle", "text": "Aldric:  South of here, the mountain burns. A sealed wound, coming open, and its embers already reach for the town below.", "voice": "aldric_intro_07.wav", "seconds": 1, "blocking": true },
+    { "type": "subtitle", "text": "Aldric:  Someone must go down into that fire and close it. And you, you have the look of one with little left to lose.", "voice": "aldric_intro_08.wav", "seconds": 1, "blocking": true },
 
-    { "type": "camera", "pos": [2.2, 1.7, 87.5], "lookAt": [0, 1.4, 90.5], "seconds": 3.8 },
-    { "type": "subtitle", "text": "Aldric:  I've three old arms left in me. A blade, a wand and focus, a bow with a hundred arrows. I'll not make you choose, take them all.", "seconds": 6.0, "blocking": false },
-    { "type": "subtitle", "text": "Aldric:  Draw whichever calls to you. Your hand knows its own skills, and the bar will change to match the weapon you hold.", "seconds": 5.8, "blocking": false },
+    { "type": "camera", "pos": [2.2, 1.7, 196.6], "lookAt": [0, 1.5, 200], "seconds": 4.4, "blocking": false },
+    { "type": "subtitle", "text": "Aldric:  I have three old arms left in me. A blade. A wand and focus. A bow and a hundred arrows. Take them all, and draw whichever calls to you.", "voice": "aldric_intro_09.wav", "seconds": 1, "blocking": true },
     { "type": "anim", "actor": "player", "state": "Idle" },
 
     { "type": "choice", "blocking": true },
 
     { "type": "wait", "seconds": 0.4 },
-    { "type": "camera", "pos": [0, 6.0, 80], "lookAt": [0, 1.4, 92], "seconds": 4.2 },
-    { "type": "subtitle", "text": "Aldric:  Good. Learn which one you are. Fish the lake, warm yourself, live a little. The mountain will still be waiting.", "seconds": 5.6, "blocking": false },
+    { "type": "camera", "pos": [0, 5.6, 187], "lookAt": [0, 1.4, 199], "seconds": 5.2, "blocking": false },
+    { "type": "subtitle", "text": "Aldric:  Come. Learn which one you are. Fish the lake, warm yourself, live a little. The mountain will still be waiting.", "voice": "aldric_intro_10.wav", "seconds": 1, "blocking": true },
 
-    { "type": "wait", "seconds": 0.9 },
-    { "type": "fade", "target": 1, "seconds": 1.2 },
-    { "type": "fade", "target": 0, "seconds": 0.8 }
+    { "type": "wait", "seconds": 0.7 },
+    { "type": "fade", "target": 1, "seconds": 1.4 },
+    { "type": "fade", "target": 0, "seconds": 1.0 }
   ]
 }

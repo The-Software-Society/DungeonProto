@@ -2380,20 +2380,23 @@ namespace AldenFall.Editor
             if (transport != null)
                 manager.transport = transport;
 
-            // Spawn in Aldric's lush forest glade just NORTH of the city (see BuildAldricGlade
-            // at ~(0,0,90)). The intro cutscene meets Aldric here; the city is a short walk south.
+            // Spawn IN FRONT OF ALDRIC. Aldric stands at the glade centre (ArenaBuilderEmberfall
+            // GladeCenter = (0,0,200), facing south). Spawns used to sit at z~82 — ~118 units away,
+            // so the intro cutscene framed an empty clearing with no Aldric in shot (read as "the
+            // intro isn't playing / spawn is wrong"). Put players a few metres south of him, facing
+            // north (+Z) so they materialise right in front of him and the intro frames them both.
             var starts = new[]
             {
-                new Vector3(0f, 0.5f, 84f),
-                new Vector3(3f, 0.5f, 82f),
-                new Vector3(-3f, 0.5f, 82f),
-                new Vector3(0f, 0.5f, 80f)
+                new Vector3(0f, 0.5f, 194f),
+                new Vector3(2.4f, 0.5f, 192.5f),
+                new Vector3(-2.4f, 0.5f, 192.5f),
+                new Vector3(0f, 0.5f, 191f)
             };
             for (int i = 0; i < starts.Length; i++)
             {
                 var startObj = new GameObject($"NetworkStart_{i + 1}");
                 startObj.transform.position = starts[i];
-                startObj.transform.rotation = Quaternion.Euler(0f, 0f, 0f); // face north toward Aldric
+                startObj.transform.rotation = Quaternion.Euler(0f, 0f, 0f); // face north (+Z) toward Aldric
                 startObj.AddComponent<Mirror.NetworkStartPosition>();
             }
 
