@@ -49,6 +49,9 @@ namespace AldenFall.UI
         private static readonly (string label, Vector3 pos)[] Teleports =
         {
             ("Glade (spawn)",   new Vector3(0f, 1.5f, 84f)),
+            ("Vista: South edge", new Vector3(0f, 1.5f, -248f)),   // look N across city+lake+valley
+            ("Vista: North edge", new Vector3(0f, 1.5f, 238f)),    // look S across forest+city+volcano
+            ("Vista: West edge",  new Vector3(-238f, 1.5f, 20f)),  // look E across the whole world
             ("City Plaza",      new Vector3(0f, 1.5f, 8f)),
             ("Ember Rest Tavern", new Vector3(-32f, 1.5f, 32f)),
             ("City Forge",      new Vector3(30f, 1.5f, -24f)),
@@ -427,6 +430,21 @@ namespace AldenFall.UI
                 PlayerPrefs.DeleteKey("starter_path_v1");
                 PlayerPrefs.Save();
                 Say("Intro will replay on next login.");
+            });
+
+            // DEV-ONLY: block the intro from replaying every login while testing (persists on this
+            // machine). Real shipped builds never toggle this, so players still get the cinematic.
+            y += UITheme.RowHeight + 8f;
+            bool skipping = PlayerPrefs.GetInt(Cinematics.IntroCutsceneTrigger.DevSkipKey, 0) != 0;
+            PanelChrome.MakeButton(contentParent, "SkipIntroToggle",
+                skipping ? "INTRO ON LOGIN: OFF (dev-skipping)" : "INTRO ON LOGIN: ON (plays each login)",
+                (ContentWidth - 420f) / 2f, y, 420f, () =>
+            {
+                bool now = PlayerPrefs.GetInt(Cinematics.IntroCutsceneTrigger.DevSkipKey, 0) != 0;
+                PlayerPrefs.SetInt(Cinematics.IntroCutsceneTrigger.DevSkipKey, now ? 0 : 1);
+                PlayerPrefs.Save();
+                Say(now ? "Intro will play on next login." : "Intro dev-skipped from next login.");
+                RebuildContent();
             });
         }
 

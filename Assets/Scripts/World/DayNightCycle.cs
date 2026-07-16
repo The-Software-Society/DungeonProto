@@ -266,17 +266,19 @@ namespace AldenFall.World
         private void ApplyFog(float dayAmount, float twilight, float ember)
         {
             RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
+            // ATMOSPHERIC PERSPECTIVE (BDO/Black Desert look): exponential-squared haze so distance
+            // fades softly instead of a hard Linear cutoff. Near stays crisp, mid builds haze, the
+            // far mountains read as soft hazy silhouettes — and it hides distant LOD transitions.
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
             Color fog = Color.Lerp(NightFog, dayFogColor, dayAmount);
             fog = Color.Lerp(fog, TwilightFog, twilight * 0.6f);
             fog = Color.Lerp(fog, EmberAtmosphere.AshFogColor, ember);
             RenderSettings.fogColor = fog;
-            // Night pulls the haze in for mood; ember pulls it in further.
-            float startDay = dayFogStart, endDay = dayFogEnd;
-            float start = Mathf.Lerp(200f, startDay, dayAmount);
-            float end = Mathf.Lerp(1100f, endDay, dayAmount);
-            RenderSettings.fogStartDistance = Mathf.Lerp(start, 60f, ember);
-            RenderSettings.fogEndDistance = Mathf.Lerp(end, 520f, ember);
+            // Density: day ~0.0011 (mountains hazy-but-visible ~700m), night denser for mood,
+            // eruption denser still. EmberAtmosphere's own dense ember fog takes over when Erupting.
+            float density = Mathf.Lerp(0.0024f, 0.0016f, dayAmount);
+            density = Mathf.Lerp(density, 0.0040f, ember);
+            RenderSettings.fogDensity = density;
         }
 
         private void ApplySkybox(float dayAmount, float ember)

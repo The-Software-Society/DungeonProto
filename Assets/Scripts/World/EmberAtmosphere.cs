@@ -274,6 +274,9 @@ namespace AldenFall.World
             // runtime-built line/trail visuals, it survives build shader stripping.
             var renderer = ps.GetComponent<ParticleSystemRenderer>();
             renderer.material = new Material(Shader.Find("Sprites/Default")) { name = psName + "Mat" };
+            // No texture on Sprites/Default = a hard opaque SQUARE (the ugly orange blocks in the sky).
+            // Give it a soft radial-falloff dot so each ember/soot mote reads as a soft glowing speck.
+            renderer.material.mainTexture = SoftDot();
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
@@ -285,6 +288,31 @@ namespace AldenFall.World
 
             ps.Play();
             return ps;
+        }
+
+        // Soft round particle sprite (white core fading to transparent edges), built once. Turns the
+        // default hard square quad into a glowing speck. Cached so all fall systems share one texture.
+        private static Texture2D _softDot;
+        private static Texture2D SoftDot()
+        {
+            if (_softDot != null) return _softDot;
+            const int S = 64;
+            var tex = new Texture2D(S, S, TextureFormat.RGBA32, true);
+            var px = new Color[S * S];
+            float c = (S - 1) * 0.5f;
+            for (int y = 0; y < S; y++)
+                for (int x = 0; x < S; x++)
+                {
+                    float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c)) / c;   // 0 centre .. 1 edge
+                    float a = Mathf.Clamp01(1f - d);
+                    a *= a;                                                             // soft falloff
+                    px[y * S + x] = new Color(1f, 1f, 1f, a);
+                }
+            tex.SetPixels(px);
+            tex.Apply(true);
+            tex.wrapMode = TextureWrapMode.Clamp;
+            _softDot = tex;
+            return tex;
         }
 
         private void ApplyParticles(float t)

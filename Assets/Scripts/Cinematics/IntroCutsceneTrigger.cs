@@ -30,6 +30,14 @@ namespace AldenFall.Cinematics
         // or anyone who saw the previous version has the seen-flag set and the scene is skipped.
         public const string SeenKey = "cutscene_intro_seen_v6";
 
+        // DEV-ONLY skip so repeated dev testing does not replay the intro every single login. Set by the
+        // `-nointro` launch flag OR a persistent toggle in the DebugCheatPanel ("Intro on login"). Real
+        // players on the shipped build never set this, so they still get the intro. See DebugCheatPanel.
+        public const string DevSkipKey = "dev_skip_intro";
+        public static bool DevSkipRequested =>
+            System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-nointro") >= 0 ||
+            PlayerPrefs.GetInt(DevSkipKey, 0) != 0;
+
         private IEnumerator Start()
         {
             // Networked avatars: only the local player watches their own intro.
@@ -54,6 +62,14 @@ namespace AldenFall.Cinematics
             // QA / headless never plays the intro (it would hijack the camera during the shot tour).
             if (Application.isBatchMode) yield break;
             if (System.Array.IndexOf(System.Environment.GetCommandLineArgs(), "-qashots") >= 0) yield break;
+
+            // DEV-ONLY skip (see DevSkipKey): still hand the player their first quest so they are not
+            // left questless, but do not seize the camera for the cinematic.
+            if (DevSkipRequested)
+            {
+                GetComponent<Quests.QuestLog>()?.Accept("q_intro");
+                yield break;
+            }
 
             // NO once-per-machine gate: there is no account persistence yet, so every login is a
             // FRESH account and the intro plays EVERY time (SPACE/ESC skips). When Supabase account

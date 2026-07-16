@@ -219,11 +219,13 @@ namespace AldenFall.Editor
             // angles (200m+, north of the lake) read as a pale flood sheet; warm haze from ~220m
             // blends that band into atmosphere and adds depth to the mountain range, while the
             // near play space (lake, city, forest) stays crisp.
+            // Atmospheric perspective: soft sky-matching haze so distance fades into the sky (the
+            // BDO/Black Desert look). DayNightCycle captures this colour as the day fog + drives an
+            // exponential-squared density per time of day.
             RenderSettings.fog = true;
-            RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.80f, 0.78f, 0.71f);
-            RenderSettings.fogStartDistance = 450f;
-            RenderSettings.fogEndDistance = 1900f;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogColor = new Color(0.74f, 0.80f, 0.86f);   // light cool haze, reads as depth
+            RenderSettings.fogDensity = 0.0011f;
         }
 
         private static void CreatePostProcessing()
@@ -1791,7 +1793,7 @@ namespace AldenFall.Editor
         private static readonly System.Collections.Generic.HashSet<string> DetailPropNames =
             new System.Collections.Generic.HashSet<string> { "Fern", "ForestBush", "Wildflowers", "Reeds", "DirtShrub" };
         private static readonly System.Collections.Generic.HashSet<string> TreePropNames =
-            new System.Collections.Generic.HashSet<string> { "BirchTree", "PineTree", "MossBoulder", "BoulderCluster" };
+            new System.Collections.Generic.HashSet<string> { "OakTree", "BirchTree", "DeadTree", "PineTree", "MossBoulder", "BoulderCluster" };
 
         private static void EnsureCullLayers()
         {
@@ -1825,61 +1827,106 @@ namespace AldenFall.Editor
             return -1;
         }
 
-        /// <summary>Give a scattered prop a 2-LOD group: the full FBX up close, a cheap cube proxy
-        /// (trunk + canopy for trees, one block for boulders) at mid/far range, culled when tiny.
-        /// The proxy is a world-space sibling (unscaled) so its cubes are sized in world units; it
-        /// shares a material per colour (golden rule). The full mesh keeps its trunk collider.</summary>
+        /// <summary>Give a scattered prop a 2-LOD group: the full FBX up close, then a REAL rendered
+        /// billboard impostor past ~115m. The impostor is a texture RENDERED FROM THE ACTUAL TREE by
+        /// TreeImpostorBaker (two-pass alpha) drawn on a single cylindrical camera-facing quad — the
+        /// BDO / New World distance technique (real geometry hazing into the fog, NOT a cube/cone/card;
+        /// see CLAUDE.md HARD RULE). One quad + one draw per far tree instead of ~1-2k tris, so a whole
+        /// forest of distant trees is nearly free. Boulders (no impostor) just cull when small.</summary>
         private static void AddPropLOD(GameObject prop, string name)
         {
             var full = prop.GetComponentsInChildren<MeshRenderer>();
             if (full.Length == 0) return;
             Bounds b = full[0].bounds;
             for (int i = 1; i < full.Length; i++) b.Encapsulate(full[i].bounds);
-            if (b.size.y < 0.4f) return;   // tiny — not worth a proxy
+            if (b.size.y < 0.4f) return;
 
-            var proxy = new GameObject(name + "_LODProxy");
-            proxy.transform.SetParent(prop.transform.parent, true);   // sibling, unscaled world space
-            proxy.transform.position = b.center;
-            proxy.layer = prop.layer;
-
-            bool tree = name == "BirchTree" || name == "PineTree";
-            if (tree)
+            var impostor = LoadImpostorMaterial(name);
+            if (impostor == null)
             {
-                Color trunk = new Color(0.34f, 0.24f, 0.15f);
-                Color canopy = name == "PineTree" ? new Color(0.15f, 0.30f, 0.17f) : new Color(0.25f, 0.42f, 0.21f);
-                AddProxyCube(proxy.transform, new Vector3(0f, -b.extents.y * 0.55f, 0f),
-                    new Vector3(b.size.x * 0.16f, b.size.y * 0.55f, b.size.z * 0.16f), trunk);
-                AddProxyCube(proxy.transform, new Vector3(0f, b.extents.y * 0.30f, 0f),
-                    new Vector3(b.size.x * 0.80f, b.size.y * 0.70f, b.size.z * 0.80f), canopy);
-            }
-            else
-            {
-                AddProxyCube(proxy.transform, Vector3.zero, b.size * 0.85f, PropFallbackColor(name));
+                // No impostor for this prop (boulders): keep the real mesh, cull when far/tiny.
+                var soloLod = prop.AddComponent<LODGroup>();
+                soloLod.SetLODs(new[] { new LOD(0.012f, full) });
+                soloLod.RecalculateBounds();
+                return;
             }
 
-            var proxyR = proxy.GetComponentsInChildren<MeshRenderer>();
+            // Build the far billboard: a unit quad (x in [-0.5,0.5], y in [0,1]) whose world width/height
+            // match the real tree. The shader keeps it upright and yaw-facing the camera; mesh rotation
+            // is irrelevant (only the base pivot + world scale matter), so parent it and size via scale.
+            var impTex = impostor.GetTexture("_BaseMap");
+            float aspect = impTex != null ? (float)impTex.width / impTex.height : 0.55f;
+            float worldH = b.size.y;
+            float worldW = worldH * aspect;
+
+            var card = new GameObject($"{name}_Impostor");
+            card.transform.SetParent(prop.transform, true);
+            card.transform.position = new Vector3(b.center.x, b.min.y, b.center.z);
+            card.transform.rotation = Quaternion.identity;
+            var ls = prop.transform.lossyScale;
+            card.transform.localScale = new Vector3(
+                worldW / Mathf.Max(0.0001f, Mathf.Abs(ls.x)),
+                worldH / Mathf.Max(0.0001f, Mathf.Abs(ls.y)),
+                1f / Mathf.Max(0.0001f, Mathf.Abs(ls.z)));
+            card.layer = prop.layer;
+            card.isStatic = true;
+            card.AddComponent<MeshFilter>().sharedMesh = ImpostorQuad();
+            var cardMR = card.AddComponent<MeshRenderer>();
+            cardMR.sharedMaterial = impostor;
+            cardMR.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            cardMR.receiveShadows = false;
+            cardMR.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
+            cardMR.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+
             var lod = prop.AddComponent<LODGroup>();
+            // LOD0 real mesh only while the tree is big on screen (~11% height, ~55m); past that the
+            // single-quad impostor takes over (one draw + ~2 tris vs ~1-2k), then cull below ~0.35%
+            // screen height. Swapping this early is the whole perf win in a dense forest -- most trees
+            // in view become impostors. Cross-fade so the swap dissolves through the fog, never pops.
+            lod.fadeMode = LODFadeMode.CrossFade;
+            lod.animateCrossFading = true;
             lod.SetLODs(new[]
             {
-                // Full FBX until the tree is only ~6% of screen height (~100m for an 8m tree), so the
-                // blocky proxy only shows FAR away where it blends into the forest mass. Below ~1% cull.
-                new LOD(0.06f, full),
-                new LOD(0.010f, proxyR),
+                new LOD(0.11f, full),
+                new LOD(0.0035f, new Renderer[] { cardMR }),
             });
             lod.RecalculateBounds();
         }
 
-        private static void AddProxyCube(Transform parent, Vector3 localOffset, Vector3 worldSize, Color color)
+        // --- Rendered tree impostors (baked by TreeImpostorBaker). One shared quad mesh + a per-species
+        //     billboard material rendered from the real FBX. See CLAUDE.md HARD RULE (real, not shapes). ---
+        private static readonly System.Collections.Generic.Dictionary<string, Material> _impostorCache =
+            new System.Collections.Generic.Dictionary<string, Material>();
+        private static Mesh _impostorQuad;
+
+        private static Material LoadImpostorMaterial(string name)
         {
-            var c = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            var col = c.GetComponent<Collider>(); if (col != null) Object.DestroyImmediate(col);
-            c.transform.SetParent(parent, false);
-            c.transform.localPosition = localOffset;
-            c.transform.localScale = worldSize;
-            int r = Mathf.RoundToInt(color.r * 9), g = Mathf.RoundToInt(color.g * 9), bl = Mathf.RoundToInt(color.b * 9);
-            c.GetComponent<MeshRenderer>().sharedMaterial = Mat($"LODProxy_{r}{g}{bl}", color, smoothness: 0.02f);
-            c.isStatic = true;
-            c.layer = parent.gameObject.layer;
+            if (_impostorCache.TryGetValue(name, out var m)) return m;
+            m = AssetDatabase.LoadAssetAtPath<Material>($"Assets/Materials/Emberfall/Impostors/{name}_impostor.mat");
+            _impostorCache[name] = m;
+            return m;
+        }
+
+        private static Mesh ImpostorQuad()
+        {
+            if (_impostorQuad != null) return _impostorQuad;
+            const string path = "Assets/Materials/Emberfall/Impostors/ImpostorQuad.mesh";
+            _impostorQuad = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+            if (_impostorQuad != null) return _impostorQuad;
+            var mesh = new Mesh { name = "ImpostorQuad" };
+            mesh.vertices = new[]
+            {
+                new Vector3(-0.5f, 0f, 0f), new Vector3(0.5f, 0f, 0f),
+                new Vector3(0.5f, 1f, 0f), new Vector3(-0.5f, 1f, 0f),
+            };
+            mesh.uv = new[] { new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), new Vector2(0, 1) };
+            mesh.triangles = new[] { 0, 2, 1, 0, 3, 2 };
+            // Generous bounds so the shader's camera-facing expansion is never frustum-culled early.
+            mesh.bounds = new Bounds(new Vector3(0f, 0.5f, 0f), new Vector3(1.6f, 1.4f, 1.6f));
+            if (AssetDatabase.IsValidFolder("Assets/Materials/Emberfall/Impostors"))
+                AssetDatabase.CreateAsset(mesh, path);
+            _impostorQuad = mesh;
+            return mesh;
         }
 
         private static void SetLayerRecursive(GameObject obj, int layer)
