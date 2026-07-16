@@ -59,6 +59,28 @@ namespace AldenFall.Data
     }
 
     /// <summary>
+    /// Tiered view/stream distances (the "world mapper" perf layer). Mirrors config/world.json.
+    /// The server is the single source of truth for positions; each CLIENT only loads/renders what
+    /// is near it. Living things (mobs, bosses, loot, other players) stream in at a natural view
+    /// distance; the baked environment (buildings, mountains) stays far so vistas read; small scene
+    /// accents cull at a medium distance. Bigger worlds tune these without a code change.
+    /// </summary>
+    [System.Serializable]
+    public class WorldConfig
+    {
+        // Networked living things (mobs/bosses/loot/other players): Mirror interest-management range.
+        // Beyond this the server does not spawn/sync them to a client, so they aren't rendered/tracked.
+        public int entityViewDistance = 190;
+        // Server idles a mob's AI (no pathing/target-scan) when no player is this close. Saves CPU on
+        // the far side of the map; keep >= mob detection range so nothing pops into aggro.
+        public float aiActivationDistance = 75f;
+        // Camera far clip — the baked environment (buildings, mountains, terrain). Keep large: vistas.
+        public float environmentDistance = 2200f;
+        // Small scene accents (shrubs, small rocks, ferns) — camera layer cull (Detail layer).
+        public float detailDistance = 440f;
+    }
+
+    /// <summary>
     /// The one place runtime tuning is loaded from. Every balance number lives in
     /// StreamingAssets/config/*.json, not in a C# const, so combat, damage, XP, and
     /// economy are edited without touching code. Read identically by the editor
@@ -73,10 +95,12 @@ namespace AldenFall.Data
         private static CombatConfig combat;
         private static ProgressionConfig progression;
         private static EconomyConfig economy;
+        private static WorldConfig world;
 
         public static CombatConfig Combat => combat ??= Load<CombatConfig>("combat.json");
         public static ProgressionConfig Progression => progression ??= Load<ProgressionConfig>("progression.json");
         public static EconomyConfig Economy => economy ??= Load<EconomyConfig>("economy.json");
+        public static WorldConfig World => world ??= Load<WorldConfig>("world.json");
 
         /// <summary>Preload at runtime start so first-frame combat does not pay the IO cost mid-fight.</summary>
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -93,6 +117,7 @@ namespace AldenFall.Data
             combat = Load<CombatConfig>("combat.json");
             progression = Load<ProgressionConfig>("progression.json");
             economy = Load<EconomyConfig>("economy.json");
+            world = Load<WorldConfig>("world.json");
         }
 
         private static T Load<T>(string file) where T : new()

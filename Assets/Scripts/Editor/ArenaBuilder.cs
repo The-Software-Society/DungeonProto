@@ -2371,6 +2371,15 @@ namespace AldenFall.Editor
             var networkRoot = new GameObject("Aldenfall_Network");
             var manager = networkRoot.AddComponent<Multiplayer.AldenNetworkManager>();
             var auth = networkRoot.AddComponent<Multiplayer.AldenPasswordAuthenticator>();
+
+            // PERF / MMO STREAMING: the server is the single source of truth for every entity's
+            // position, but each CLIENT only spawns/renders/tracks the living things (mobs, bosses,
+            // loot, other players) within a natural view distance — not the whole map at once.
+            // Distance interest management registers itself as NetworkServer.aoi in Awake. The baked
+            // environment (buildings, mountains) is NOT networked, so it stays visible far for vistas.
+            var aoi = networkRoot.AddComponent<Mirror.DistanceInterestManagement>();
+            aoi.visRange = Data.GameConfig.World.entityViewDistance;
+            aoi.rebuildInterval = 0.4f;   // responsive to foot travel, still cheap
             manager.authenticator = auth;
             manager.playerPrefab = playerPrefab;
             manager.autoCreatePlayer = true;

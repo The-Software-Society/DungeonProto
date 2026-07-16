@@ -112,6 +112,11 @@ namespace AldenFall.AI
         // Navigation jump
         private bool isTraversingLink;
 
+        // PERF: mob idles its AI when no player is near (see UpdateStateMachine).
+        private float activationDistance = -1f;
+        private float nextActivationCheck;
+        private bool active = true;
+
         // Auto-generated patrol points
         private GameObject patrolPointContainer;
         private Vector3 spawnPosition;
@@ -356,6 +361,24 @@ namespace AldenFall.AI
             {
                 if (agent != null && agent.enabled && agent.isOnNavMesh)
                     agent.isStopped = true;
+                return;
+            }
+
+            // PERF: don't simulate a mob no player is near — freeze pathing/scans in place. Interest
+            // management already keeps far mobs off clients; this saves the server the AI cost too.
+            // Rechecked twice a second, not every frame. A mob that already has a target stays active.
+            if (Time.time >= nextActivationCheck)
+            {
+                nextActivationCheck = Time.time + 0.5f;
+                if (activationDistance < 0f)
+                    activationDistance = Mathf.Max(detectionRange + 5f, Data.GameConfig.World.aiActivationDistance);
+                active = playerTarget != null ||
+                         Physics.OverlapSphere(transform.position, activationDistance, playerLayer,
+                             QueryTriggerInteraction.Ignore).Length > 0;
+            }
+            if (!active)
+            {
+                if (agent != null && agent.enabled && agent.isOnNavMesh) agent.isStopped = true;
                 return;
             }
 

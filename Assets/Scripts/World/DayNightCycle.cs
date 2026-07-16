@@ -132,6 +132,9 @@ namespace AldenFall.World
 
         public override void OnStartServer()
         {
+            // Global clock: must reach EVERY client regardless of distance, so opt out of the
+            // distance interest management (which would hide this scene object from far players).
+            netIdentity.visibility = Visibility.ForceShown;
             // Server owns the clock: anchor it now and let it run at the configured cadence.
             ServerReanchor(anchorTod, 1f / Mathf.Max(1f, cycleSeconds));
         }

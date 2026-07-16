@@ -52,6 +52,13 @@ namespace AldenFall.World
             if (Instance == this) Instance = null;
         }
 
+        public override void OnStartServer()
+        {
+            // This scene singleton's Instance must exist on EVERY client (local presentation hub), so
+            // it must never be culled by distance interest management.
+            netIdentity.visibility = Visibility.ForceShown;
+        }
+
         public override void OnStartClient()
         {
             // Seed the calm look; the local player's PlayerWorldPhase pushes its real phase in

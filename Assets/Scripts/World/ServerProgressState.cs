@@ -58,6 +58,9 @@ namespace AldenFall.World
 
         public override void OnStartServer()
         {
+            // Server-wide floor state must reach every client regardless of distance (opt out of
+            // distance interest management, which would hide this scene singleton from far players).
+            netIdentity.visibility = Visibility.ForceShown;
             AI.MobIdentity.OnAnyMobKilled += HandleMobKilled;
         }
 

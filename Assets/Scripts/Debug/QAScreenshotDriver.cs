@@ -511,7 +511,7 @@ namespace AldenFall.DebugTools
             // Phase 11: server-wide floor progress + first-clear prestige.
             var progress = World.ServerProgressState.Instance;
             Check("ServerProgressState present in scene", progress != null);
-            Check("city progress board placed in scene", FindObjectsByType<World.ProgressBoard>(FindObjectsSortMode.None).Length >= 1);
+            Check("city progress board removed (floor/boss spoiler)", FindObjectsByType<World.ProgressBoard>(FindObjectsSortMode.None).Length == 0);
             if (progress != null)
             {
                 Check("floor not cleared at start", !progress.FloorCleared && progress.BossClears == 0);
@@ -564,7 +564,7 @@ namespace AldenFall.DebugTools
                 forgeP.Close();
                 Check("forge Close() hides panel", !forgeP.IsOpen);
             }
-            Check("intro seen-key bumped (v4)", Cinematics.IntroCutsceneTrigger.SeenKey == "cutscene_intro_seen_v4");
+            Check("intro seen-key bumped (v6)", Cinematics.IntroCutsceneTrigger.SeenKey == "cutscene_intro_seen_v6");
 
             // v9 Cluster 2/3: Hitpoints rework, archery, quest window, minimap, cinematics.
             Check("Hitpoints skill renamed", Progression.SkillRegistry.Get(Progression.SkillType.Health).display == "Hitpoints");
