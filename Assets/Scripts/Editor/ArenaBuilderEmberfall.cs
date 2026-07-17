@@ -1527,6 +1527,9 @@ namespace AldenFall.Editor
                 // still lean out over the water naturally). ~8m shore buffer beyond the edge.
                 float lakeDist = Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) - LakeEdge(x, z);
                 if (lakeDist < 8f || InLakeWater(x, z) || InAnyRiver(x, z)) continue;
+                // Keep tree TRUNKS well back from the road (half-width 12m) so wide canopies don't
+                // overhang the path -- the "trees on the road" look. 20m trunk clearance = canopy clear.
+                if (Mathf.Abs(x) < 20f && z > -66f && z < 214f) continue;
                 var biome = _place.BiomeAt(x, z);
                 float radius = 4.5f + (float)rng.NextDouble() * 3.5f;          // wider footprint for big trees
                 bool dead = biome == PlaceBiome.Volcanic;
@@ -3982,17 +3985,15 @@ namespace AldenFall.Editor
                 PlaceCubePine(container, 9000 + i, x, z, h, trunkMat, leafMat, groundLayer);
             }
 
-            // A few mossy boulders for a lived-in hermit clearing.
-            var rockMat = Mat("GladeRock", new Color(0.31f, 0.33f, 0.28f), smoothness: 0.08f);
+            // A few real boulders for a lived-in hermit clearing (was sphere primitives at a fixed y that
+            // floated on the sloped glade -- now real kit rocks through the gate: snapped + slope-conformed).
             for (int i = 0; i < 5; i++)
             {
                 float a = (float)rng.NextDouble() * Mathf.PI * 2f;
                 float rad = 4f + (float)rng.NextDouble() * (GladeRadius - 9f);
-                var rock = Sphere($"GladeRock{i}",
-                    center + new Vector3(Mathf.Cos(a) * rad, 0.3f, Mathf.Sin(a) * rad),
-                    new Vector3(1.2f + (float)rng.NextDouble(), 0.8f, 1.1f + (float)rng.NextDouble()), rockMat, container);
-                rock.isStatic = true;
-                if (groundLayer >= 0) rock.layer = groundLayer;
+                PlaceMeshyProp(container, i % 2 == 0 ? "boulder_01" : "namaqualand_boulder_02",
+                    center + new Vector3(Mathf.Cos(a) * rad, 0f, Mathf.Sin(a) * rad),
+                    (float)rng.NextDouble() * 360f, 0.7f + (float)rng.NextDouble() * 0.8f, groundLayer, PropCollision.FitBox);
             }
 
             // The hermit's hearth — a warm campfire beside Aldric.

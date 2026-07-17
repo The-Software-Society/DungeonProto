@@ -24,30 +24,30 @@ Authoritative data view of the baked world. QA is a double-check of THIS.
 See ground_map.txt for the top-down ASCII layout.
 
 ## Objects
-- **tree**: 411
-- **rock**: 364
-- **plant**: 885
-- **flower**: 1013
+- **tree**: 425
+- **rock**: 365
+- **plant**: 976
+- **flower**: 1032
 - **building**: 13
 - **prop**: 93
 - **fence**: 62
-- **deadtree**: 143
+- **deadtree**: 151
 
 <details><summary>per type</summary>
 
-- flower_gazania (flower): 1013
-- fern_02 (plant): 821
-- island_tree_01 (tree): 164
-- LavaRockGround (rock): 145
-- dead_tree_trunk (deadtree): 143
-- boulder_01 (rock): 110
-- namaqualand_boulder_02 (rock): 85
-- island_tree_03 (tree): 83
-- island_tree_02 (tree): 82
-- tree_small_02 (tree): 80
-- shrub_01 (plant): 64
+- flower_gazania (flower): 1032
+- fern_02 (plant): 891
+- island_tree_01 (tree): 168
+- dead_tree_trunk (deadtree): 151
+- LavaRockGround (rock): 130
+- boulder_01 (rock): 128
+- shrub_01 (plant): 85
+- island_tree_03 (tree): 85
+- island_tree_02 (tree): 85
+- tree_small_02 (tree): 83
+- namaqualand_boulder_02 (rock): 72
 - Fence (fence): 62
-- RockCliff (rock): 24
+- RockCliff (rock): 35
 - lamp_lantern (prop): 13
 - MarketBarrel (prop): 13
 - Chair (prop): 12
@@ -55,13 +55,13 @@ See ground_map.txt for the top-down ASCII layout.
 - Table (prop): 11
 - lamp_globe (prop): 11
 - Bed (prop): 8
-- Bookshelf (prop): 5
 - building_house (building): 5
+- Bookshelf (prop): 5
 - Cauldron (prop): 5
+- Campfire (tree): 4
 - MarketStall (building): 3
 - building_shop (building): 3
 - DungeonChest (prop): 2
-- Campfire (tree): 2
 - Anvil (prop): 1
 - building_smithy (building): 1
 - building_inn (building): 1

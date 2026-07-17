@@ -1662,16 +1662,25 @@ namespace AldenFall.Editor
                         }
             return false;
         }
-        // World-space bottom of a placed prop's combined renderer bounds = its ground-contact point.
-        // This is what to compare against terrain height for floating/buried (the pivot is ambiguous:
-        // meshes pivot at base OR centre). Falls back to the transform y if it has no renderers.
+        // World-space bottom of a placed prop = its ground-contact point (for the floating/buried check).
+        // Uses the MESH bounds through each transform matrix, NOT Renderer.bounds -- the latter is stale
+        // right after a batch-mode instantiate (documented gotcha), which made floaters pass validation.
         private static float MeshBaseY(GameObject go)
         {
-            var rends = go.GetComponentsInChildren<Renderer>();
-            if (rends.Length == 0) return go.transform.position.y;
-            var b = rends[0].bounds;
-            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
-            return b.min.y;
+            bool any = false; float minY = float.MaxValue;
+            foreach (var mf in go.GetComponentsInChildren<MeshFilter>())
+            {
+                if (mf.sharedMesh == null) continue;
+                var m = mf.transform.localToWorldMatrix; var mb = mf.sharedMesh.bounds;
+                for (int c = 0; c < 8; c++)
+                {
+                    Vector3 corner = mb.center + Vector3.Scale(mb.extents, new Vector3(
+                        (c & 1) == 0 ? -1 : 1, (c & 2) == 0 ? -1 : 1, (c & 4) == 0 ? -1 : 1));
+                    float wy = m.MultiplyPoint3x4(corner).y;
+                    if (wy < minY) minY = wy; any = true;
+                }
+            }
+            return any ? minY : go.transform.position.y;
         }
 
         private static void SolidAdd(float x, float z, float r)
@@ -1875,6 +1884,30 @@ namespace AldenFall.Editor
         /// <summary>Place a curated Poly Haven tree from its pre-baked LOD prefab: scale to the requested
         /// height, yaw, anchor to the terrain, slim trunk collider, Prop cull layer, static. The prefab
         /// already owns its 3-tier LODGroup + alpha-foliage materials.</summary>
+        // Interpolated terrain surface normal at a world (x,z) -- used to slope-conform rocks/stumps.
+        private static Vector3 TerrainNormalAt(float x, float z)
+        {
+            var t = Terrain.activeTerrain;
+            if (t == null) return Vector3.up;
+            var td = t.terrainData; var o = t.transform.position;
+            float u = td.size.x > 0.001f ? Mathf.Clamp01((x - o.x) / td.size.x) : 0.5f;
+            float v = td.size.z > 0.001f ? Mathf.Clamp01((z - o.z) / td.size.z) : 0.5f;
+            return td.GetInterpolatedNormal(u, v);
+        }
+
+        // The highest-detail (LOD0) mesh on a placed prop -- the one with the most vertices. Used to cook
+        // a convex collider that fits the real shape.
+        private static Mesh LargestMesh(GameObject go)
+        {
+            Mesh best = null; int bestV = -1;
+            foreach (var mf in go.GetComponentsInChildren<MeshFilter>())
+            {
+                var m = mf.sharedMesh;
+                if (m != null && m.vertexCount > bestV) { best = m; bestV = m.vertexCount; }
+            }
+            return best;
+        }
+
         private static GameObject PlaceKitTree(Transform parent, GameObject prefab, string name,
             Vector3 pos, float yaw, float height, int groundLayer, PropCollision collision)
         {
@@ -1922,6 +1955,15 @@ namespace AldenFall.Editor
             instance.transform.localScale = instance.transform.localScale * scale;
             instance.transform.rotation = Quaternion.Euler(0f, yaw, 0f) * instance.transform.rotation;
 
+            // Slope-conform: rocks + stumps tilt to the terrain normal so they sit IN the hillside instead
+            // of flat-bottomed on a tilt (the "not angled to terrain / gap under it" look). Trees stay
+            // upright (they grow vertically even on slopes). Partial blend so steep slopes don't look weird.
+            if (kit == TreeKitImporter.KitType.Rock || kit == TreeKitImporter.KitType.Stump)
+            {
+                Vector3 n = TerrainNormalAt(pos.x, pos.z);
+                instance.transform.rotation = Quaternion.FromToRotation(Vector3.up, Vector3.Slerp(Vector3.up, n, 0.6f)) * instance.transform.rotation;
+            }
+
             b = Measure();
             Vector3 bottomCenter = new Vector3(b.center.x, b.min.y, b.center.z);
             var groundT = Terrain.activeTerrain;
@@ -1949,13 +1991,26 @@ namespace AldenFall.Editor
             }
             else if (collision == PropCollision.FitBox)
             {
-                // Rocks/boulders: a fitted box the player + camera collide with.
-                var box = instance.AddComponent<BoxCollider>();
-                box.center = instance.transform.InverseTransformPoint(b.center);
-                box.size = new Vector3(
-                    b.size.x / Mathf.Max(Mathf.Abs(lossy.x), 0.0001f),
-                    b.size.y / Mathf.Max(Mathf.Abs(lossy.y), 0.0001f),
-                    b.size.z / Mathf.Max(Mathf.Abs(lossy.z), 0.0001f));
+                // Rocks/boulders: a CONVEX MESH collider hugs the actual silhouette so the player can walk
+                // right up to (and onto) the rock. A full AABB box was the "invisible wall / big gap" bug --
+                // it collided with empty air around an irregular boulder. Fall back to a fitted box only if
+                // the mesh can't be found.
+                var lod0 = LargestMesh(instance);
+                if (lod0 != null)
+                {
+                    var mc = instance.AddComponent<MeshCollider>();
+                    mc.sharedMesh = lod0;
+                    mc.convex = true;
+                }
+                else
+                {
+                    var box = instance.AddComponent<BoxCollider>();
+                    box.center = instance.transform.InverseTransformPoint(b.center);
+                    box.size = new Vector3(
+                        b.size.x / Mathf.Max(Mathf.Abs(lossy.x), 0.0001f),
+                        b.size.y / Mathf.Max(Mathf.Abs(lossy.y), 0.0001f),
+                        b.size.z / Mathf.Max(Mathf.Abs(lossy.z), 0.0001f));
+                }
             }
             // PropCollision.None: leave collider-free (bushes/ferns/flowers).
 
