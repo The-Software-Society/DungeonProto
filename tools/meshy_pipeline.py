@@ -286,9 +286,9 @@ CHARACTERS = {
 
 PROPS = {
     # === Emberfall update: forest trees + town buildings (high visual impact) ===
-    "OakTree": "large stylized oak tree with broad leafy green canopy and thick gnarled brown trunk, full lush foliage, low-poly game environment tree",
-    "BirchTree": "tall slender stylized birch tree with white papery bark and light green leaves, low-poly game environment tree",
-    "DeadTree": "bare dead leafless stylized tree with twisted gnarled dark branches and no leaves, low-poly game environment tree",
+    "OakTree": "realistic oak tree, brown trunk, green leafy canopy",
+    "BirchTree": "very tall slender realistic birch tree, white papery bark with black markings, delicate light-green leaves, natural woodland tree, photorealistic game environment asset, clean topology",
+    "DeadTree": "tall bare dead realistic tree, twisted weathered dark branches, no leaves, cracked peeling grey bark, eerie forest, photorealistic game environment asset, clean topology",
     "ForestBush": "small round leafy green bush shrub, low-poly game environment plant",
     "MossBoulder": "large grey rock boulder covered in green moss patches, low-poly game environment prop",
     "TreeStump": "old cut tree stump with visible growth rings and gnarled roots, low-poly game environment prop",
@@ -325,7 +325,7 @@ PROPS = {
     "HairLong": "stylized long straight hair wig hairpiece flowing to shoulders, hairpiece only, no head no face, neutral light grey game character hair mesh, hollow underside, game prop",
     "HairPonytail": "stylized hair wig hairpiece with high ponytail, hairpiece only, no head no face, neutral light grey game character hair mesh, hollow underside, game prop",
     # v8: environment pass
-    "PineTree": "simple stylized low poly pine tree prop, brown trunk, green cone branches, single game environment asset",
+    "PineTree": "tall towering realistic evergreen pine conifer tree, layered dark green needle branches, textured reddish-brown bark trunk, natural forest tree, photorealistic game environment asset, clean topology",
     "GrassSquare": "simple stylized low poly square grass patch prop, flat clump of green grass blades, game environment asset",
     "DungeonPillar": "stylized ancient stone dungeon pillar with cracks, moss, carved bands, game environment prop",
     "DungeonChest": "stylized ornate dungeon treasure chest, dark wood, iron bands, ember gem lock, closed game prop",
@@ -702,7 +702,39 @@ def generate_prop(meshy: Meshy, state: State, name: str, prompt: str):
             {"mode": "refine", "preview_task_id": preview_id, "enable_pbr": False},
             f"{name} refine (no PBR)",
         )
-    download_model_urls(refine, prop_dir, name)
+
+    # REMESH to a game-ready polycount. Meshy's PBR refine re-tessellates the mesh to ~500-600k verts
+    # (the props were shipping raw refine = the whole geometry-bound perf problem). Characters already
+    # remesh after refine and keep their textures; do the same for props. Remesh re-projects the refine
+    # PBR onto the new lighter topology, so we still get textured trees at ~12k instead of 600k.
+    refine_key = f"prop:{name}:refine" if f"prop:{name}:refine" in state.data else f"prop:{name}:refine_nopbr"
+    refine_id = state.data[refine_key]["task_id"]
+    target = int(os.environ.get("MESHY_PROP_REMESH_POLY", "12000"))
+    remesh = None
+    for rp in ("/openapi/v1/remesh", "/openapi/v2/remesh"):
+        try:
+            _, remesh = run_step(
+                meshy, state, f"prop:{name}:remesh", rp, rp,
+                {"input_task_id": refine_id, "target_polycount": target,
+                 "topology": "triangle", "target_formats": ["glb", "fbx"]},
+                f"{name} remesh -> {target} polys",
+            )
+            break
+        except Exception as e:
+            state.data.pop(f"prop:{name}:remesh", None)
+            if "404" in str(e):
+                continue
+            print(f"    {name}: remesh error ({e}); keeping raw refine")
+            break
+    if remesh:
+        # Overwrite the heavy refine mesh with the remeshed game-poly one (download skips existing files).
+        for ext in ("fbx", "glb"):
+            f = prop_dir / f"{name}.{ext}"
+            if f.exists():
+                f.unlink()
+        download_model_urls(remesh, prop_dir, name)
+    else:
+        download_model_urls(refine, prop_dir, name)
 
 
 def _walk_urls(obj, prefix=""):

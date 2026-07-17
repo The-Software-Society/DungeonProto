@@ -579,7 +579,7 @@ namespace AldenFall.Editor
             // pine when an fbx hasn't downloaded yet.
             var trunkMat = Mat("TreeTrunk", new Color(0.30f, 0.21f, 0.13f), smoothness: 0.05f);
             var pineMat = Mat("PineLeaf", new Color(0.12f, 0.28f, 0.14f), smoothness: 0.08f);
-            string[] treeKit = { "OakTree", "BirchTree", "DeadTree", "PineTree" };
+            string[] treeKit = { "island_tree_01", "island_tree_03", "dead_tree_trunk", "island_tree_02" };
             int planted = 0;
             for (int attempt = 0; attempt < 950 && planted < 265; attempt++)
             {
@@ -1652,6 +1652,12 @@ namespace AldenFall.Editor
             Vector3 pos, float yaw, float height, int groundLayer,
             PropCollision collision = PropCollision.FitBox)
         {
+            // Curated Poly Haven trees: use the pre-baked LOD prefab (decimated real geometry +
+            // alpha-foliage materials, see TreeKitImporter). It already carries its own LODGroup, so
+            // we only position/scale/anchor it -- no FBX material or AddPropLOD pass.
+            var kitPrefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{TreeKitImporter.PrefabDir}/{name}.prefab");
+            if (kitPrefab != null) return PlaceKitTree(parent, kitPrefab, name, pos, yaw, height, groundLayer, collision);
+
             var asset = AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Models/Props/{name}.fbx");
             if (asset == null) return null;
 
@@ -1786,6 +1792,68 @@ namespace AldenFall.Editor
             }
         }
 
+        /// <summary>Place a curated Poly Haven tree from its pre-baked LOD prefab: scale to the requested
+        /// height, yaw, anchor to the terrain, slim trunk collider, Prop cull layer, static. The prefab
+        /// already owns its 3-tier LODGroup + alpha-foliage materials.</summary>
+        private static GameObject PlaceKitTree(Transform parent, GameObject prefab, string name,
+            Vector3 pos, float yaw, float height, int groundLayer, PropCollision collision)
+        {
+            var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+            instance.name = name;
+            instance.transform.SetParent(parent);
+
+            Bounds Measure()
+            {
+                bool first = true; Bounds w = default;
+                foreach (var mf in instance.GetComponentsInChildren<MeshFilter>())
+                {
+                    if (mf.sharedMesh == null) continue;
+                    var m = mf.transform.localToWorldMatrix; var mb = mf.sharedMesh.bounds;
+                    for (int c = 0; c < 8; c++)
+                    {
+                        Vector3 corner = mb.center + Vector3.Scale(mb.extents, new Vector3(
+                            (c & 1) == 0 ? -1 : 1, (c & 2) == 0 ? -1 : 1, (c & 4) == 0 ? -1 : 1));
+                        Vector3 wp = m.MultiplyPoint3x4(corner);
+                        if (first) { w = new Bounds(wp, Vector3.zero); first = false; } else w.Encapsulate(wp);
+                    }
+                }
+                return w;
+            }
+
+            // Scale by HEIGHT (trees read by height, not their widest span) then yaw.
+            var b = Measure();
+            float scale = b.size.y > 0.001f ? height / b.size.y : 1f;
+            instance.transform.localScale = instance.transform.localScale * scale;
+            instance.transform.rotation = Quaternion.Euler(0f, yaw, 0f) * instance.transform.rotation;
+
+            b = Measure();
+            Vector3 bottomCenter = new Vector3(b.center.x, b.min.y, b.center.z);
+            var groundT = Terrain.activeTerrain;
+            if (groundT != null && Mathf.Abs(pos.y) < 0.01f)
+                pos.y = groundT.SampleHeight(new Vector3(pos.x, 0f, pos.z)) + groundT.transform.position.y;
+            instance.transform.position += pos - bottomCenter;
+
+            // Slim trunk capsule so canopy/branches are walk-through and projectile-transparent.
+            if (collision != PropCollision.None)
+            {
+                b = Measure();
+                Vector3 lossy = instance.transform.lossyScale;
+                var cap = instance.AddComponent<CapsuleCollider>();
+                cap.direction = 1;
+                float worldTrunkH = Mathf.Max(0.6f, b.size.y * 0.4f);
+                float worldRadius = Mathf.Clamp(Mathf.Min(b.size.x, b.size.z) * 0.10f, 0.16f, 0.8f);
+                Vector3 worldCenter = new Vector3(b.center.x, b.min.y + worldTrunkH * 0.5f, b.center.z);
+                cap.center = instance.transform.InverseTransformPoint(worldCenter);
+                cap.height = worldTrunkH / Mathf.Max(Mathf.Abs(lossy.y), 0.0001f);
+                cap.radius = worldRadius / Mathf.Max(Mathf.Abs(lossy.x), 0.0001f);
+            }
+
+            int prop = LayerMask.NameToLayer("Prop");
+            if (prop >= 0) SetLayerRecursive(instance, prop);
+            instance.isStatic = true;
+            return instance;
+        }
+
         // ---- Perf: cull-layer categorization for scattered props (see World.CameraViewDistance) ----
         // Small foliage -> "Detail" layer (culls at a medium distance). Trees + big rocks -> "Prop"
         // layer (culls farther, still reads as a forest). Everything else stays on its normal layer
@@ -1827,71 +1895,86 @@ namespace AldenFall.Editor
             return -1;
         }
 
-        /// <summary>Give a scattered prop a 2-LOD group: the full FBX up close, then a REAL rendered
-        /// billboard impostor past ~115m. The impostor is a texture RENDERED FROM THE ACTUAL TREE by
-        /// TreeImpostorBaker (two-pass alpha) drawn on a single cylindrical camera-facing quad — the
-        /// BDO / New World distance technique (real geometry hazing into the fog, NOT a cube/cone/card;
-        /// see CLAUDE.md HARD RULE). One quad + one draw per far tree instead of ~1-2k tris, so a whole
-        /// forest of distant trees is nearly free. Boulders (no impostor) just cull when small.</summary>
+        /// <summary>Give a heavy prop a proper REAL-GEOMETRY LOD chain: the raw Meshy tree mesh is ~600k
+        /// verts (the root cause of the geometry-bound perf), so WorldRenderSetup.BakeDecimatedLODs
+        /// decimates each species to three tiers (~12k / 4k / 1.2k) saved as .mesh assets. Here we swap
+        /// the near mesh to the decimated LOD0 and add LOD1/LOD2 sibling renderers, then a LODGroup that
+        /// selects real geometry thinning with distance and culls when tiny. No flat card, no GPU-driven
+        /// gamble -- real polys on the standard pipeline. Boulders w/o a bake cull the real mesh.</summary>
         private static void AddPropLOD(GameObject prop, string name)
         {
-            var full = prop.GetComponentsInChildren<MeshRenderer>();
-            if (full.Length == 0) return;
-            Bounds b = full[0].bounds;
-            for (int i = 1; i < full.Length; i++) b.Encapsulate(full[i].bounds);
+            var renderers = prop.GetComponentsInChildren<MeshRenderer>();
+            if (renderers.Length == 0) return;
+            Bounds b = renderers[0].bounds;
+            for (int i = 1; i < renderers.Length; i++) b.Encapsulate(renderers[i].bounds);
             if (b.size.y < 0.4f) return;
 
-            var impostor = LoadImpostorMaterial(name);
-            if (impostor == null)
+            Mesh lod0 = LoadTreeLOD(name, 0), lod1 = LoadTreeLOD(name, 1), lod2 = LoadTreeLOD(name, 2);
+
+            // Primary mesh filter = the tree body (most verts). Its material is the shared prop material.
+            MeshFilter primary = null; int best = -1;
+            foreach (var f in prop.GetComponentsInChildren<MeshFilter>())
             {
-                // No impostor for this prop (boulders): keep the real mesh, cull when far/tiny.
-                var soloLod = prop.AddComponent<LODGroup>();
-                soloLod.SetLODs(new[] { new LOD(0.012f, full) });
-                soloLod.RecalculateBounds();
+                int v = f.sharedMesh != null ? f.sharedMesh.vertexCount : 0;
+                if (v > best) { best = v; primary = f; }
+            }
+
+            if (primary == null || lod0 == null)
+            {
+                // No decimated bake for this prop (boulders, or bake missing): real mesh, cull when tiny.
+                var solo = prop.AddComponent<LODGroup>();
+                solo.SetLODs(new[] { new LOD(0.010f, renderers) });
+                SetLodBounds(solo, prop, b);
                 return;
             }
 
-            // Build the far billboard: a unit quad (x in [-0.5,0.5], y in [0,1]) whose world width/height
-            // match the real tree. The shader keeps it upright and yaw-facing the camera; mesh rotation
-            // is irrelevant (only the base pivot + world scale matter), so parent it and size via scale.
-            var impTex = impostor.GetTexture("_BaseMap");
-            float aspect = impTex != null ? (float)impTex.width / impTex.height : 0.55f;
-            float worldH = b.size.y;
-            float worldW = worldH * aspect;
+            var primaryMR = primary.GetComponent<MeshRenderer>();
+            var mat = primaryMR != null ? primaryMR.sharedMaterial : null;
+            primary.sharedMesh = lod0;   // near tier: decimated real geometry (was ~600k)
 
-            var card = new GameObject($"{name}_Impostor");
-            card.transform.SetParent(prop.transform, true);
-            card.transform.position = new Vector3(b.center.x, b.min.y, b.center.z);
-            card.transform.rotation = Quaternion.identity;
-            var ls = prop.transform.lossyScale;
-            card.transform.localScale = new Vector3(
-                worldW / Mathf.Max(0.0001f, Mathf.Abs(ls.x)),
-                worldH / Mathf.Max(0.0001f, Mathf.Abs(ls.y)),
-                1f / Mathf.Max(0.0001f, Mathf.Abs(ls.z)));
-            card.layer = prop.layer;
-            card.isStatic = true;
-            card.AddComponent<MeshFilter>().sharedMesh = ImpostorQuad();
-            var cardMR = card.AddComponent<MeshRenderer>();
-            cardMR.sharedMaterial = impostor;
-            cardMR.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            cardMR.receiveShadows = false;
-            cardMR.lightProbeUsage = UnityEngine.Rendering.LightProbeUsage.Off;
-            cardMR.reflectionProbeUsage = UnityEngine.Rendering.ReflectionProbeUsage.Off;
+            MeshRenderer MakeTier(Mesh m, string suffix)
+            {
+                var g = new GameObject($"{name}_{suffix}");
+                g.transform.SetParent(primary.transform.parent, false);
+                g.transform.localPosition = primary.transform.localPosition;
+                g.transform.localRotation = primary.transform.localRotation;
+                g.transform.localScale = primary.transform.localScale;
+                g.layer = prop.layer;
+                g.isStatic = true;
+                g.AddComponent<MeshFilter>().sharedMesh = m;
+                var mr = g.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = mat;
+                return mr;
+            }
+            var mr1 = MakeTier(lod1 != null ? lod1 : lod0, "LOD1");
+            var mr2 = MakeTier(lod2 != null ? lod2 : (lod1 != null ? lod1 : lod0), "LOD2");
 
             var lod = prop.AddComponent<LODGroup>();
-            // LOD0 real mesh only while the tree is big on screen (~11% height, ~55m); past that the
-            // single-quad impostor takes over (one draw + ~2 tris vs ~1-2k), then cull below ~0.35%
-            // screen height. Swapping this early is the whole perf win in a dense forest -- most trees
-            // in view become impostors. Cross-fade so the swap dissolves through the fog, never pops.
             lod.fadeMode = LODFadeMode.CrossFade;
             lod.animateCrossFading = true;
+            // Real geometry the whole way, thinning with distance: LOD0 (~12k) near, LOD1 (~4k) mid,
+            // LOD2 (~1.2k) far, cull below ~1% screen height. Tune thresholds after visual QA.
             lod.SetLODs(new[]
             {
-                new LOD(0.11f, full),
-                new LOD(0.0035f, new Renderer[] { cardMR }),
+                new LOD(0.12f, renderers),
+                new LOD(0.04f, new Renderer[] { mr1 }),
+                new LOD(0.012f, new Renderer[] { mr2 }),
             });
-            lod.RecalculateBounds();
+            SetLodBounds(lod, prop, b);
         }
+
+        // Set the LODGroup size EXPLICITLY from true world bounds; RecalculateBounds() on a decimated
+        // mesh can under-report, shrinking the screen-size and wrongly culling the whole prop.
+        private static void SetLodBounds(LODGroup lod, GameObject prop, Bounds worldBounds)
+        {
+            Vector3 lossy = prop.transform.lossyScale;
+            float maxScale = Mathf.Max(Mathf.Abs(lossy.x), Mathf.Abs(lossy.y), Mathf.Abs(lossy.z), 0.0001f);
+            lod.localReferencePoint = prop.transform.InverseTransformPoint(worldBounds.center);
+            lod.size = Mathf.Max(worldBounds.size.x, worldBounds.size.y, worldBounds.size.z) / maxScale;
+        }
+
+        private static Mesh LoadTreeLOD(string name, int tier) =>
+            AssetDatabase.LoadAssetAtPath<Mesh>($"{WorldRenderSetup.TreeLodDir}/{name}_LOD{tier}.mesh");
 
         // --- Rendered tree impostors (baked by TreeImpostorBaker). One shared quad mesh + a per-species
         //     billboard material rendered from the real FBX. See CLAUDE.md HARD RULE (real, not shapes). ---

@@ -1323,17 +1323,21 @@ namespace AldenFall.Editor
             // with no overlap. Species is chosen by BIOME - alive trees in lush/meadow/dark-forest,
             // DeadTree ONLY in the volcanic soot band (Jon: no dead trees in the lush forest). The
             // trunk-footprint radius keeps trees from growing into each other.
-            string[] aliveKit = { "PineTree", "OakTree", "BirchTree", "OakTree", "PineTree", "BirchTree" };
+            // Curated Poly Haven canopy trees (real photoscans, alpha foliage, decimated LOD prefabs).
+            // Fewer + BIGGER + wider-spaced than the old dense clone field -- tall trees with real depth,
+            // like the New World / BDO reference forests (see poly-haven-forest-kit memory).
+            string[] aliveKit = { "island_tree_01", "island_tree_02", "island_tree_03", "island_tree_01", "tree_small_02" };
+            string[] deadKit = { "dead_tree_trunk", "dead_tree_trunk_02" };
             int planted = 0, alive = 0;
-            for (int attempt = 0; attempt < 16000 && planted < 1100; attempt++)
+            for (int attempt = 0; attempt < 16000 && planted < 680; attempt++)
             {
                 float x = Mathf.Lerp(-246f, 246f, (float)rng.NextDouble());
                 float z = Mathf.Lerp(-52f, 252f, (float)rng.NextDouble());
                 var biome = _place.BiomeAt(x, z);
-                float radius = 2.6f + (float)rng.NextDouble() * 1.6f;          // trunk + near-canopy footprint
+                float radius = 4.5f + (float)rng.NextDouble() * 3.5f;          // wider footprint for big trees
                 bool dead = biome == PlaceBiome.Volcanic;
-                string species = dead ? "DeadTree" : aliveKit[alive % aliveKit.Length];
-                float h = 6f + (float)rng.NextDouble() * 5f;
+                string species = dead ? deadKit[planted % deadKit.Length] : aliveKit[alive % aliveKit.Length];
+                float h = 11f + (float)rng.NextDouble() * 8f;                  // tall: 11-19m canopy
                 if (TryScatter(species, x, z, (float)rng.NextDouble() * 360f, h, radius, zn => zn == PlaceZone.Open))
                 {
                     planted++;
@@ -2758,8 +2762,8 @@ namespace AldenFall.Editor
             }
             Rock("Fall_MossL", basePos + toValley * 3f + right * (width * 0.9f), 2.5f + (float)rng.NextDouble());
             Rock("Fall_MossR", basePos + toValley * 3f - right * (width * 0.9f), 2.5f + (float)rng.NextDouble());
-            Foliage("PineTree", basePos + toValley * 4f + right * (width * 1.2f), 6f + (float)rng.NextDouble() * 3f);
-            Foliage("PineTree", basePos + toValley * 4f - right * (width * 1.2f), 6f + (float)rng.NextDouble() * 3f);
+            Foliage("island_tree_02", basePos + toValley * 4f + right * (width * 1.2f), 6f + (float)rng.NextDouble() * 3f);
+            Foliage("island_tree_02", basePos + toValley * 4f - right * (width * 1.2f), 6f + (float)rng.NextDouble() * 3f);
 
             // Cool mist glow at the base (steady, no flicker - bloom sells the spray).
             var mistObj = new GameObject("Fall_Mist");
@@ -3006,7 +3010,7 @@ namespace AldenFall.Editor
             var leafMat = Mat("DarkLeaf", new Color(0.07f, 0.16f, 0.09f), smoothness: 0.05f);
             // Dense DARK EVERGREENS (no DeadTree - dead trees belong in the volcanic band, not this
             // lush lakeside grove; they were reading as "dead trees in the green forest").
-            string[] kit = { "PineTree", "OakTree", "PineTree", "OakTree", "BirchTree" };
+            string[] kit = { "island_tree_02", "island_tree_01", "island_tree_03", "island_tree_02", "tree_small_02" };
 
             int planted = 0;
             for (int attempt = 0; attempt < 900 && planted < 150; attempt++)
@@ -3164,7 +3168,7 @@ namespace AldenFall.Editor
                 if ((float)rng.NextDouble() < t * 0.6f) continue; // thin out nearer the volcano
                 planted++;
                 float h = 5f + (float)rng.NextDouble() * 4f;
-                if (PlaceMeshyProp(container, "DeadTree", new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk) != null)
+                if (PlaceMeshyProp(container, "dead_tree_trunk", new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk) != null)
                     continue;
                 var trunk = Cube($"CharTree{planted}", new Vector3(x, h * 0.4f, z), new Vector3(0.55f, h * 0.8f, 0.55f), trunkMat, container);
                 trunk.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 8f, (float)rng.NextDouble() * 360f, (float)rng.NextDouble() * 8f);
@@ -3221,7 +3225,7 @@ namespace AldenFall.Editor
                 if ((float)rng.NextDouble() < t * 0.7f) continue;       // thin out toward the caldera
                 if (rng.NextDouble() < 0.6)
                     // Low charred scrub: a small DeadTree reads as a burnt bush (real textured mesh).
-                    PlaceMeshyProp(container, "DeadTree", new Vector3(x, 0f, z),
+                    PlaceMeshyProp(container, "dead_tree_trunk", new Vector3(x, 0f, z),
                         (float)rng.NextDouble() * 360f, 1.4f + (float)rng.NextDouble() * 1.3f, groundLayer, PropCollision.None);
                 else
                     // A squat wind-worn volcanic stone among the scrub (dark, biome-appropriate).
@@ -3772,7 +3776,7 @@ namespace AldenFall.Editor
             // A soft ring of lush trees framing the glade (trunk-only colliders).
             var trunkMat = Mat("GladeTrunk", new Color(0.32f, 0.22f, 0.14f), smoothness: 0.05f);
             var leafMat = Mat("GladeLeaf", new Color(0.16f, 0.36f, 0.18f), smoothness: 0.08f);
-            string[] kit = { "BirchTree", "PineTree", "BirchTree" };
+            string[] kit = { "island_tree_03", "island_tree_02", "island_tree_01" };
             for (int i = 0; i < 12; i++)
             {
                 float a = i / 12f * Mathf.PI * 2f + 0.3f;
