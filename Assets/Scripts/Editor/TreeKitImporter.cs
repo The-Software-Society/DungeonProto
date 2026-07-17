@@ -46,6 +46,11 @@ namespace AldenFall.Editor
         {
             "island_tree_01", "island_tree_02", "island_tree_03", "tree_small_02",
             "dead_tree_trunk", "dead_tree_trunk_02",
+            // undergrowth: bushes/ferns/flowers (alpha-cut) + rocks/stumps (opaque)
+            "shrub_01", "shrub_02", "shrub_03", "shrub_04", "fern_02",
+            "flower_gazania", "dandelion_01", "celandine_01",
+            "boulder_01", "namaqualand_boulder_02", "namaqualand_boulder_03", "namaqualand_boulder_04",
+            "rock_moss_set_01", "tree_stump_01", "tree_stump_02",
         };
         private static readonly float[] LodThresholds = { 0.10f, 0.035f, 0.010f };
         // Fraction of LEAF / BRANCH triangles kept per tier. These photoscans are disconnected geometry
@@ -159,40 +164,46 @@ namespace AldenFall.Editor
             var dir = $"{Kit}/{name}";
             if (!AssetDatabase.IsValidFolder(dir)) { Debug.LogWarning($"[TreeKit] no folder {name}"); return null; }
 
-            string leafDiff = Tex(dir, "leaves_diff", "twig_diff", "leaf_diff");
-            string leafAlpha = Tex(dir, "leaves_alpha", "twig_alpha", "leaf_alpha", "leaves_mask", "twig_mask");
-            string barkDiff = Tex(dir, "branches_diff", "bark_diff", "trunk_a_diff", "trunk_diff", "diff");
+            string leafDiff = Tex(dir, "leaves_diff", "twig_diff", "leaf_diff");       // tree leaf albedo
+            string leafAlpha = Tex(dir, "leaves_alpha", "twig_alpha", "leaf_alpha", "leaves_mask", "twig_mask", "_alpha_");
+            string barkDiff = Tex(dir, "branches_diff", "bark_diff", "trunk_a_diff", "trunk_diff");  // tree bark
+            string genDiff = Tex(dir, "_diff_", "diffuse");                            // plant/rock albedo
 
             var lit = Shader.Find("Universal Render Pipeline/Lit");
+
+            // LEAF / foliage cutout material -- built whenever there's an alpha map (tree leaves OR a whole
+            // alpha-cut plant like a shrub/fern/flower). Uses the tree-leaf albedo if present, else the
+            // general Diffuse.
             Material leaf = null;
-            if (leafDiff != null)
+            string diffForLeaf = leafDiff ?? genDiff;
+            if (leafAlpha != null && diffForLeaf != null)
             {
-                var combined = CombineDiffAlpha(name, leafDiff, leafAlpha);
+                var combined = CombineDiffAlpha(name, diffForLeaf, leafAlpha);
                 leaf = new Material(lit) { name = $"{name}_leaf" };
                 leaf.SetTexture("_BaseMap", combined);
                 leaf.SetFloat("_Smoothness", 0.12f);
-                // Alpha-clip, 2-sided (leaves seen from both faces).
                 leaf.SetFloat("_AlphaClip", 1f);
                 leaf.SetFloat("_Cutoff", 0.45f);
                 leaf.EnableKeyword("_ALPHATEST_ON");
-                leaf.SetFloat("_Cull", (float)CullMode.Off);
+                leaf.SetFloat("_Cull", (float)CullMode.Off);   // 2-sided
                 leaf.renderQueue = (int)RenderQueue.AlphaTest;
                 SaveMat(leaf, $"{dir}/{name}_leaf.mat");
             }
+
+            // OPAQUE material -- tree bark, or a rock/stump's Diffuse.
             Material bark = null;
-            if (barkDiff != null)
+            string opaqueDiff = barkDiff ?? (leafAlpha == null ? genDiff : null);
+            if (opaqueDiff != null)
             {
-                // Use the IMPORTED texture asset (not an in-memory LoadImage) so the material reference
-                // persists when the .mat is saved -- otherwise the bark shows up untextured/white.
-                var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(barkDiff);
+                var tex = AssetDatabase.LoadAssetAtPath<Texture2D>(opaqueDiff);
                 bark = new Material(lit) { name = $"{name}_bark" };
                 bark.SetTexture("_BaseMap", tex);
                 bark.SetFloat("_Smoothness", 0.05f);
                 SaveMat(bark, $"{dir}/{name}_bark.mat");
-                Debug.Log($"[TreeKit] {name} bark tex = {barkDiff}");
             }
-            else Debug.LogWarning($"[TreeKit] {name}: no bark/branch diffuse found");
-            // Dead trees / props with no diffuse (only normal+arm): flat bark colour so they still bake.
+            // Whole-plant cutout (shrub/fern/flower, no separate bark): every submesh uses the leaf cutout.
+            if (bark == null && leaf != null) bark = leaf;
+            // Dead trees / props with no diffuse at all: flat brown so they still bake.
             if (bark == null && leaf == null)
             {
                 bark = new Material(lit) { name = $"{name}_bark" };
@@ -200,9 +211,7 @@ namespace AldenFall.Editor
                 bark.SetFloat("_Smoothness", 0.05f);
                 SaveMat(bark, $"{dir}/{name}_bark.mat");
             }
-            // Single-material props: fall back to bark==leaf.
             if (leaf == null) leaf = bark;
-            if (bark == null) bark = leaf;
             return leaf == null ? null : (leaf, bark);
         }
 

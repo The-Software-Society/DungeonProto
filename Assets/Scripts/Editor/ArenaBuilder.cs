@@ -617,7 +617,7 @@ namespace AldenFall.Editor
 
             // Forest-floor dressing — bushes, mossy boulders, old stumps make the
             // ground read as a lived-in forest rather than bare tiles.
-            string[] floorKit = { "ForestBush", "MossBoulder", "TreeStump" };
+            string[] floorKit = { "shrub_01", "boulder_01", "tree_stump_01" };
             float[] floorHeights = { 1.1f, 1.4f, 0.9f };
             var floorRockMat = Mat("ForestFloorRock", new Color(0.3f, 0.32f, 0.26f), smoothness: 0.08f);
             int scattered = 0;
@@ -1833,11 +1833,11 @@ namespace AldenFall.Editor
                 pos.y = groundT.SampleHeight(new Vector3(pos.x, 0f, pos.z)) + groundT.transform.position.y;
             instance.transform.position += pos - bottomCenter;
 
-            // Slim trunk capsule so canopy/branches are walk-through and projectile-transparent.
-            if (collision != PropCollision.None)
+            b = Measure();
+            Vector3 lossy = instance.transform.lossyScale;
+            if (collision == PropCollision.Trunk)
             {
-                b = Measure();
-                Vector3 lossy = instance.transform.lossyScale;
+                // Slim trunk capsule so canopy/branches are walk-through and projectile-transparent.
                 var cap = instance.AddComponent<CapsuleCollider>();
                 cap.direction = 1;
                 float worldTrunkH = Mathf.Max(0.6f, b.size.y * 0.4f);
@@ -1847,9 +1847,21 @@ namespace AldenFall.Editor
                 cap.height = worldTrunkH / Mathf.Max(Mathf.Abs(lossy.y), 0.0001f);
                 cap.radius = worldRadius / Mathf.Max(Mathf.Abs(lossy.x), 0.0001f);
             }
+            else if (collision == PropCollision.FitBox)
+            {
+                // Rocks/boulders: a fitted box the player + camera collide with.
+                var box = instance.AddComponent<BoxCollider>();
+                box.center = instance.transform.InverseTransformPoint(b.center);
+                box.size = new Vector3(
+                    b.size.x / Mathf.Max(Mathf.Abs(lossy.x), 0.0001f),
+                    b.size.y / Mathf.Max(Mathf.Abs(lossy.y), 0.0001f),
+                    b.size.z / Mathf.Max(Mathf.Abs(lossy.z), 0.0001f));
+            }
+            // PropCollision.None: leave collider-free (bushes/ferns/flowers).
 
-            int prop = LayerMask.NameToLayer("Prop");
-            if (prop >= 0) SetLayerRecursive(instance, prop);
+            // Small props cull sooner ("Detail"); trees + boulders stay to the "Prop" distance.
+            int layer = LayerMask.NameToLayer(height < 2.5f ? "Detail" : "Prop");
+            if (layer >= 0) SetLayerRecursive(instance, layer);
             instance.isStatic = true;
             return instance;
         }

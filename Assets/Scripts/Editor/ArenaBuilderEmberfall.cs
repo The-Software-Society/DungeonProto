@@ -1177,7 +1177,7 @@ namespace AldenFall.Editor
             // so field boulders sit in the grass instead of popping as bright white granite.
             Clump(120, 4, 14f, null, (x, z) =>
             {
-                string rock = new[] { "BoulderCluster", "MossBoulder", "MossBoulder", "RockCliff" }[rng.Next(4)];
+                string rock = new[] { "namaqualand_boulder_02", "boulder_01", "boulder_01", "RockCliff" }[rng.Next(4)];
                 float rh = 1.2f + (float)rng.NextDouble() * 3.6f;
                 var g = PlaceMeshyProp(container, rock, new Vector3(x, 0f, z),
                     (float)rng.NextDouble() * 360f, rh, groundLayer, PropCollision.FitBox);
@@ -1192,7 +1192,7 @@ namespace AldenFall.Editor
             System.Func<float, float, bool> lushNotMeadow = (x, z) => lush(x, z) && !meadow(x, z);
             Clump(200, 7, 13f, lushNotMeadow, (x, z) =>
             {
-                string f = rng.NextDouble() < 0.55 ? "Fern" : "ForestBush";
+                string f = rng.NextDouble() < 0.55 ? "fern_02" : "shrub_01";
                 var g = PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
                     0.7f + (float)rng.NextDouble() * 0.9f, groundLayer, PropCollision.None);
                 Tint(g, PropFallbackColor(f), 0.12f);
@@ -1201,10 +1201,10 @@ namespace AldenFall.Editor
             Clump(150, 9, 11f, darkForest, (x, z) =>
             {
                 double roll = rng.NextDouble();
-                string f = roll < 0.5 ? "Fern" : roll < 0.85 ? "ForestBush" : "MossBoulder";
+                string f = roll < 0.5 ? "fern_02" : roll < 0.85 ? "shrub_01" : "boulder_01";
                 var g = PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
-                    0.8f + (float)rng.NextDouble() * 1.0f, groundLayer, f == "MossBoulder" ? PropCollision.FitBox : PropCollision.None);
-                if (f != "MossBoulder") Tint(g, new Color(0.10f, 0.20f, 0.10f), 0.08f);   // deep, shadowed green
+                    0.8f + (float)rng.NextDouble() * 1.0f, groundLayer, f == "boulder_01" ? PropCollision.FitBox : PropCollision.None);
+                if (f != "boulder_01") Tint(g, new Color(0.10f, 0.20f, 0.10f), 0.08f);   // deep, shadowed green
             });
             // MEADOW: colourful wildflower beds + tall-grass tussocks in the open sunlit fields
             // (dense enough that open fields read as living meadows, not bare grass).
@@ -1212,7 +1212,7 @@ namespace AldenFall.Editor
             {
                 if (rng.NextDouble() < 0.6)
                 {
-                    var g = PlaceMeshyProp(container, "Wildflowers", new Vector3(x, 0f, z),
+                    var g = PlaceMeshyProp(container, "flower_gazania", new Vector3(x, 0f, z),
                         (float)rng.NextDouble() * 360f, 0.4f + (float)rng.NextDouble() * 0.5f, groundLayer, PropCollision.None);
                     // Wildflowers span the palette: lilac / gold / white / rose, not one green.
                     Color[] palette = { new Color(0.62f, 0.40f, 0.66f), new Color(0.80f, 0.72f, 0.28f), new Color(0.86f, 0.86f, 0.80f), new Color(0.72f, 0.34f, 0.40f) };
@@ -1220,7 +1220,7 @@ namespace AldenFall.Editor
                 }
                 else   // a taller grass tussock (a fern reads as a grassy tuft when squashed wide)
                 {
-                    var g = PlaceMeshyProp(container, "Fern", new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
+                    var g = PlaceMeshyProp(container, "fern_02", new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
                         1.0f + (float)rng.NextDouble() * 0.8f, groundLayer, PropCollision.None);
                     Tint(g, new Color(0.24f, 0.40f, 0.16f), 0.10f);
                 }
@@ -1236,7 +1236,7 @@ namespace AldenFall.Editor
                 float r = 0.867f * (le + 4f) - 2f + (float)rng.NextDouble() * 7f;   // clustered right at the waterline out to the shore
                 float x = LakeCenter.x + dir.x * r, z = LakeCenter.z + dir.y * r;
                 if (InCityFootprint(x, z)) continue;
-                var g = PlaceMeshyProp(container, "Reeds", new Vector3(x, 0f, z),
+                var g = PlaceMeshyProp(container, "fern_02", new Vector3(x, 0f, z),
                     (float)rng.NextDouble() * 360f, 1.1f + (float)rng.NextDouble() * 1.3f, groundLayer, PropCollision.None);
                 if (g != null) { g.transform.position += Vector3.down * 0.35f; Tint(g, new Color(0.34f, 0.42f, 0.16f), 0.12f); }
             }
@@ -1249,7 +1249,7 @@ namespace AldenFall.Editor
         {
             var rutMat = Mat("RoadRut", new Color(0.22f, 0.16f, 0.11f));
             var mudMat = Mat("RoadMud", new Color(0.20f, 0.145f, 0.095f), smoothness: 0.14f);   // damp wet earth (subtle)
-            bool haveShrub = HasMesh("DirtShrub");
+            bool haveShrub = HasMesh("shrub_03");
             for (float z = -312f; z <= 212f; z += 2.2f)
             {
                 if (InCityFootprint(0f, z)) continue;   // city lays cobbles
@@ -1273,18 +1273,18 @@ namespace AldenFall.Editor
                 }
                 // Roadside dry shrub (real mesh when present) tucked at the road edge.
                 if (haveShrub && rng.NextDouble() < 0.16)
-                    PlaceMeshyProp(container, "DirtShrub",
+                    PlaceMeshyProp(container, "shrub_03",
                         new Vector3((rng.NextDouble() < 0.5 ? -1f : 1f) * (7f + (float)rng.NextDouble() * 3f), 0f, z),
                         (float)rng.NextDouble() * 360f, 0.6f + (float)rng.NextDouble() * 0.6f, groundLayer, PropCollision.None);
                 // Occasional EARTH-TONED stone embedded in the road (warm-dark, not white gravel).
                 if (rng.NextDouble() < 0.10)
-                    EarthTint(PlaceMeshyProp(container, rng.NextDouble() < 0.5 ? "MossBoulder" : "BoulderCluster",
+                    EarthTint(PlaceMeshyProp(container, rng.NextDouble() < 0.5 ? "boulder_01" : "namaqualand_boulder_02",
                         new Vector3((float)(rng.NextDouble() * 2 - 1) * 5f, 0f, z), (float)rng.NextDouble() * 360f,
                         0.45f + (float)rng.NextDouble() * 0.6f, groundLayer, PropCollision.FitBox));
                 // Earth-toned rocks lining the shoulders.
                 foreach (float s in new[] { -1f, 1f })
                     if (rng.NextDouble() < 0.30)
-                        EarthTint(PlaceMeshyProp(container, new[] { "MossBoulder", "BoulderCluster", "MossBoulder" }[rng.Next(3)],
+                        EarthTint(PlaceMeshyProp(container, new[] { "boulder_01", "namaqualand_boulder_02", "boulder_01" }[rng.Next(3)],
                             new Vector3(s * (7.5f + (float)rng.NextDouble() * 4f), 0f, z), (float)rng.NextDouble() * 360f,
                             1f + (float)rng.NextDouble() * 1.8f, groundLayer, PropCollision.FitBox));
             }
@@ -2626,7 +2626,7 @@ namespace AldenFall.Editor
             // REAL rock with VARIETY (Jon: "not just a massive stack of the same"): rotate through
             // four different rock meshes, random full-3D tilt, and varied scale so the cliff reads
             // as a natural jumble of boulders, not one mesh cloned. A dark cube only if all miss.
-            string[] fallRocks = { "BoulderCluster", "MossBoulder", "MossBoulder", "RockCliff" };
+            string[] fallRocks = { "namaqualand_boulder_02", "boulder_01", "boulder_01", "RockCliff" };
             int rockPick = 0;
             void Rock(string label, Vector3 pos, float size)
             {
@@ -2635,8 +2635,8 @@ namespace AldenFall.Editor
                 string mesh = fallRocks[(rockPick++ + rng.Next(2)) % fallRocks.Length];
                 float sz = size * (0.85f + (float)rng.NextDouble() * 0.4f);
                 var r = PlaceMeshyProp(container, mesh, pos, ry, sz, groundLayer, PropCollision.FitBox)
-                     ?? PlaceMeshyProp(container, "BoulderCluster", pos, ry, sz, groundLayer, PropCollision.FitBox)
-                     ?? PlaceMeshyProp(container, "MossBoulder", pos, ry, sz, groundLayer, PropCollision.FitBox);
+                     ?? PlaceMeshyProp(container, "namaqualand_boulder_02", pos, ry, sz, groundLayer, PropCollision.FitBox)
+                     ?? PlaceMeshyProp(container, "boulder_01", pos, ry, sz, groundLayer, PropCollision.FitBox);
                 if (r != null)
                 {
                     // WET, DARKER cliff rock (distinct "_Wet" material so forest boulders stay bright)
@@ -2758,7 +2758,7 @@ namespace AldenFall.Editor
             {
                 float sgn = i % 2 == 0 ? 1f : -1f;
                 Vector3 fp = basePos + toValley * ((float)rng.NextDouble() * 3f) + right * (sgn * (width * 0.7f + (float)rng.NextDouble() * 4f)) + Vector3.up * 0.2f;
-                Foliage(rng.NextDouble() < 0.6 ? "Fern" : "ForestBush", fp, 0.8f + (float)rng.NextDouble() * 0.7f);
+                Foliage(rng.NextDouble() < 0.6 ? "fern_02" : "shrub_01", fp, 0.8f + (float)rng.NextDouble() * 0.7f);
             }
             Rock("Fall_MossL", basePos + toValley * 3f + right * (width * 0.9f), 2.5f + (float)rng.NextDouble());
             Rock("Fall_MossR", basePos + toValley * 3f - right * (width * 0.9f), 2.5f + (float)rng.NextDouble());
@@ -3297,7 +3297,7 @@ namespace AldenFall.Editor
                 var pos = center + new Vector3(rx, 0f, rz);
                 float rs = 1.8f + (float)rng.NextDouble() * 1.3f;
                 // Real textured lava-rock / basalt boulder rim (glowing seams sell the molten heat).
-                var rock = PlaceMeshyProp(container, rng.NextDouble() < 0.55 ? "LavaRockGround" : "BoulderCluster",
+                var rock = PlaceMeshyProp(container, rng.NextDouble() < 0.55 ? "LavaRockGround" : "namaqualand_boulder_02",
                     pos, (float)rng.NextDouble() * 360f, rs, groundLayer, PropCollision.FitBox);
                 if (rock == null)
                 {
@@ -3579,7 +3579,7 @@ namespace AldenFall.Editor
             for (int b = 0; b < 4; b++)
             {
                 float side = (b % 2 == 0 ? -1f : 1f) * (13f + b * 2f);
-                if (PlaceMeshyProp(container, "BoulderCluster", new Vector3(side, 0f, ez + 9f - b), (float)rng.NextDouble() * 360f, 4f + (float)rng.NextDouble() * 3f, groundLayer, PropCollision.FitBox) == null)
+                if (PlaceMeshyProp(container, "namaqualand_boulder_02", new Vector3(side, 0f, ez + 9f - b), (float)rng.NextDouble() * 360f, 4f + (float)rng.NextDouble() * 3f, groundLayer, PropCollision.FitBox) == null)
                     Rock($"Mouth_Rock{b}", new Vector3(side, 3f, ez + 9f - b), Vector3.one * 6f, 0f, mouthRock);
             }
             CreateTorch(container, new Vector3(-7f, 0f, ez + 10f), 1.3f);
@@ -3978,14 +3978,18 @@ namespace AldenFall.Editor
             go.transform.position = pos;
             if (interactLayer >= 0) go.layer = interactLayer;
 
-            var trunkMat = Mat("OakTrunk", new Color(0.34f, 0.24f, 0.15f), smoothness: 0.05f);
-            var leafMat = Mat("OakLeaf", new Color(0.26f, 0.45f, 0.2f), smoothness: 0.05f);
-            var trunk = Cylinder("Trunk", pos + Vector3.up * 2.2f, new Vector3(0.7f, 2.2f, 0.7f), trunkMat, go.transform);
-            trunk.isStatic = true;
-            if (groundLayer >= 0) trunk.layer = groundLayer;
-            var canopy = Sphere("Canopy", pos + Vector3.up * 5.0f, new Vector3(4.2f, 3.4f, 4.2f), leafMat, go.transform);
-            Object.DestroyImmediate(canopy.GetComponent<SphereCollider>());
-            if (groundLayer >= 0) canopy.layer = groundLayer;
+            // Real kit tree as the choppable visual (no more cylinder+sphere lollipop). The trunk
+            // collider comes from the kit prefab; the ResourceNode drives the chop interaction.
+            var visual = PlaceMeshyProp(go.transform, "island_tree_01", pos,
+                (float)(rng.NextDouble() * 360.0), 9f, groundLayer, PropCollision.Trunk);
+            if (visual == null)
+            {
+                // Fallback only if the kit prefab is missing: a plain trunk (never the sphere canopy).
+                var trunkMat = Mat("OakTrunk", new Color(0.34f, 0.24f, 0.15f), smoothness: 0.05f);
+                var trunk = Cylinder("Trunk", pos + Vector3.up * 2.2f, new Vector3(0.7f, 2.2f, 0.7f), trunkMat, go.transform);
+                trunk.isStatic = true;
+                if (groundLayer >= 0) trunk.layer = groundLayer;
+            }
 
             var node = go.AddComponent<World.ResourceNode>();
             node.Configure("Woodcutting", "oak_log", "axe", 1, 16f, 3f, 10, 22f);
