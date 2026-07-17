@@ -1637,7 +1637,98 @@ namespace AldenFall.Editor
             None,     // no collider at all (small bushes / decor)
         }
 
+        // When TRUE, PlaceMeshyProp does not auto-record into the manifest (used while RE-instantiating
+        // objects that are ALREADY in the catalog, e.g. RenderCatalog, so trees aren't double-counted).
+        private static bool _suppressAutoRecord;
+
+        // Precise solid-overlap index for the placement gate. The coarse 2m occupancy grid misses
+        // sub-2m footprints (they fall between cells), so solids are ALSO checked here with the EXACT
+        // same predicate the validator uses ((ra+rb)*0.7) -- prevention == detection, so no overlap slips.
+        private static readonly System.Collections.Generic.Dictionary<long, System.Collections.Generic.List<(Vector2 p, float r)>> _solidHash = new();
+        private const float _solidCell = 8f;
+        private static long SolidKey(int cx, int cz) => ((long)cx << 32) ^ (uint)cz;
+        internal static void ResetSolidHash() => _solidHash.Clear();
+        private static bool SolidOverlaps(float x, float z, float r)
+        {
+            int cx = Mathf.FloorToInt(x / _solidCell), cz = Mathf.FloorToInt(z / _solidCell);
+            for (int dz = -1; dz <= 1; dz++)
+                for (int dx = -1; dx <= 1; dx++)
+                    if (_solidHash.TryGetValue(SolidKey(cx + dx, cz + dz), out var list))
+                        foreach (var q in list)
+                        {
+                            float rr = (r + q.r) * 0.7f;
+                            float ddx = x - q.p.x, ddz = z - q.p.y;
+                            if (ddx * ddx + ddz * ddz < rr * rr) return true;
+                        }
+            return false;
+        }
+        // World-space bottom of a placed prop's combined renderer bounds = its ground-contact point.
+        // This is what to compare against terrain height for floating/buried (the pivot is ambiguous:
+        // meshes pivot at base OR centre). Falls back to the transform y if it has no renderers.
+        private static float MeshBaseY(GameObject go)
+        {
+            var rends = go.GetComponentsInChildren<Renderer>();
+            if (rends.Length == 0) return go.transform.position.y;
+            var b = rends[0].bounds;
+            for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+            return b.min.y;
+        }
+
+        private static void SolidAdd(float x, float z, float r)
+        {
+            int cx = Mathf.FloorToInt(x / _solidCell), cz = Mathf.FloorToInt(z / _solidCell);
+            long k = SolidKey(cx, cz);
+            if (!_solidHash.TryGetValue(k, out var list)) { list = new System.Collections.Generic.List<(Vector2, float)>(); _solidHash[k] = list; }
+            list.Add((new Vector2(x, z), r));
+        }
+
+        /// <summary>Manifest footprint radius for a prop by category: solids reserve real ground; soft
+        /// foliage records at 0 (may nestle, excluded from overlap checks). One place decides this.</summary>
+        private static float RecordRadiusFor(string name)
+        {
+            switch (PlacementCatalog.CategoryOf(name))
+            {
+                case "tree": return 2.5f;
+                case "deadtree": return 1.8f;
+                case "rock": return 1.3f;
+                case "stump": return 0.9f;
+                case "fence": return 0.8f;
+                default: return 0f;   // plant / flower / prop = soft
+            }
+        }
+
+        /// <summary>TOTAL-CAPTURE choke + DATA-FIRST GATE: every prop instantiated in the world flows
+        /// through here. Before placing, the map is consulted -- a placement on wrong ground for its
+        /// category, or a solid whose footprint is already taken, is REJECTED (returns null; callers
+        /// already null-check). Solids reserve their footprint on success. This is what makes conflicts
+        /// PREVENTED numerically (not just detected), and records every object so the data is complete.
+        /// Skipped entirely when suppressed (re-instantiating already-validated catalog objects).</summary>
         private static GameObject PlaceMeshyProp(Transform parent, string name,
+            Vector3 pos, float yaw, float height, int groundLayer,
+            PropCollision collision = PropCollision.FitBox)
+        {
+            if (!_suppressAutoRecord && _place != null && _place.InBounds(pos.x, pos.z))
+            {
+                string cat = PlacementCatalog.CategoryOf(name);
+                float rad = RecordRadiusFor(name);
+                if (WorldManifest.ForbiddenGround(cat, _place.GroundAt(pos.x, pos.z))) return null;   // wrong ground
+                if (rad > 0.05f && (SolidOverlaps(pos.x, pos.z, rad)                                   // precise: vs same-scale solids
+                                    || !_place.CanPlace(pos.x, pos.z, rad, zn => true)))               // coarse grid: vs big reserved trees
+                    return null;                                                                        // footprint taken
+                var placed = PlaceMeshyPropRaw(parent, name, pos, yaw, height, groundLayer, collision);
+                if (placed != null)
+                {
+                    if (rad > 0.05f) { _place.Occupy(pos.x, pos.z, rad); SolidAdd(pos.x, pos.z, rad); }
+                    // Record the object's ground-CONTACT y (mesh base, not the pivot) so floating/buried
+                    // is data-visible and accurate: a center-pivot rock reads its base, not its middle.
+                    RecordDetail(name, pos.x, pos.z, yaw, height, rad, MeshBaseY(placed));
+                }
+                return placed;
+            }
+            return PlaceMeshyPropRaw(parent, name, pos, yaw, height, groundLayer, collision);
+        }
+
+        private static GameObject PlaceMeshyPropRaw(Transform parent, string name,
             Vector3 pos, float yaw, float height, int groundLayer,
             PropCollision collision = PropCollision.FitBox)
         {

@@ -111,9 +111,16 @@ namespace AldenFall.DebugTools
 
             foreach (var (name, pos, yaw) in Shots)
             {
-                Teleport(player, pos, yaw);
-                yield return new WaitForSeconds(2.2f);   // camera SmoothDamp + LODs settle
-                yield return Capture(name);
+                // Multi-directional QA: at every stop, look N/E/S/W (4x the shots) so nothing hides
+                // behind or beside the framed view. Tunnel-visioned single-angle QA missed rocks-in-fences
+                // and trees-on-road that were only visible when you spun the camera.
+                for (int q = 0; q < 4; q++)
+                {
+                    float dirYaw = yaw + q * 90f;
+                    Teleport(player, pos, dirYaw);
+                    yield return new WaitForSeconds(q == 0 ? 2.2f : 1.1f);   // first settles LODs; turns are cheap
+                    yield return Capture($"{name}_{Compass(dirYaw)}");
+                }
             }
 
             // ---- Day/night sweep: freeze the clock at each key time, shoot the
@@ -265,6 +272,16 @@ namespace AldenFall.DebugTools
                 yield return null;
             }
             yield return new WaitForSeconds(1f);
+        }
+
+        // Compass letter for a yaw (0=+z=N, 90=+x=E, 180=-z=S, 270=-x=W) — labels the 4-way QA shots.
+        private static string Compass(float yaw)
+        {
+            yaw = ((yaw % 360f) + 360f) % 360f;
+            if (yaw < 45f || yaw >= 315f) return "N";
+            if (yaw < 135f) return "E";
+            if (yaw < 225f) return "S";
+            return "W";
         }
 
         private void Teleport(GameObject player, Vector3 pos, float yaw)

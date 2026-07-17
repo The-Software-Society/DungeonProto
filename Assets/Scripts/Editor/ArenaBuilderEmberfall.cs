@@ -248,13 +248,24 @@ namespace AldenFall.Editor
         private static PlacementMap _place;
         private static PlacementCatalog _catalog;
         private static PlacementCatalog _detailCatalog;   // scattered rocks/fences/shrubs (record-only, merged at export)
+        private static WorldManifest _manifest;           // authoritative world record: ground grid + objects + barriers + buildings
+        private const float MountainRingR = 244f;         // playable edge; beyond = impassable mountain ring
 
         /// <summary>Record a directly-placed scatter prop into the detail catalog so it lands in the
         /// source-of-truth JSON + validation, WITHOUT re-instantiating it (it's already placed).</summary>
-        private static void RecordDetail(string type, float x, float z, float yaw, float h)
+        /// <summary>Ground elevation at (x,z) from the sampled terrain (0 before heights are sampled).</summary>
+        private static float GY(float x, float z) => (_place != null && _place.HasHeights) ? _place.HeightAt(x, z) : 0f;
+
+        /// <summary>Record a direct (non-TryScatter) placement into the detail catalog. `footprint` is the
+        /// solid reservation radius (0 = soft foliage that may nestle and is skipped by overlap checks).
+        /// y defaults to the terrain sample; pass the real placed y (realY) so the validator can catch
+        /// floating/buried numerically against the terrain height.</summary>
+        private static void RecordDetail(string type, float x, float z, float yaw, float h, float footprint = 0f, float realY = float.NaN)
         {
             if (_detailCatalog == null || _place == null || !_place.InBounds(x, z)) return;
-            _detailCatalog.Add(type, x, z, yaw, h, _place.ZoneAt(x, z), _place.BiomeAt(x, z));
+            float y = float.IsNaN(realY) ? GY(x, z) : realY;
+            _detailCatalog.Add(type, x, y, z, yaw, h, footprint,
+                _place.ZoneAt(x, z), _place.BiomeAt(x, z), _place.GroundAt(x, z));
         }
 
         // Camp / POI centres the scatter must keep clear (marked Camp zone in the map).
@@ -271,6 +282,8 @@ namespace AldenFall.Editor
             _place = new PlacementMap(-260f, -330f, 260f, 260f);
             _catalog = new PlacementCatalog();
             _detailCatalog = new PlacementCatalog();
+            ResetSolidHash();   // fresh placement gate for this bake
+            _suppressAutoRecord = false;
             _place.Classify((x, z) =>
             {
                 float ring = Mathf.Sqrt(x * x + z * z);
@@ -301,6 +314,21 @@ namespace AldenFall.Editor
                 else biome = PlaceBiome.Lush;
                 return (zone, biome);
             });
+
+            // Sample terrain elevation into the grid (terrain is built before this) so every recorded
+            // object carries a real ground Y and the validator can check floating/buried numerically.
+            var terrain = Terrain.activeTerrain;
+            if (terrain != null)
+            {
+                float y0 = terrain.transform.position.y;
+                _place.SampleHeights((x, z) => terrain.SampleHeight(new Vector3(x, 0f, z)) + y0);
+            }
+
+            _manifest = new WorldManifest(_place, _catalog)
+            {
+                MountainRingRadius = MountainRingR,
+                PlayerSpawn = new Vector3(0f, GY(0f, 194f), 194f),   // in front of Aldric, glade south of the lake
+            };
         }
 
         /// <summary>Record a placement into the catalog IF the map says it fits (right zones, no
@@ -310,7 +338,7 @@ namespace AldenFall.Editor
             System.Func<PlaceZone, bool> zoneOk)
         {
             if (_place == null || !_place.CanPlace(x, z, radius, zoneOk)) return false;
-            _catalog.Add(type, x, z, yaw, h, _place.ZoneAt(x, z), _place.BiomeAt(x, z));
+            _catalog.Add(type, x, GY(x, z), z, yaw, h, radius, _place.ZoneAt(x, z), _place.BiomeAt(x, z), _place.GroundAt(x, z));
             _place.Occupy(x, z, radius);
             return true;
         }
@@ -325,6 +353,25 @@ namespace AldenFall.Editor
             if (!_place.CanPlace(x, z, radius, zn => zn == PlaceZone.Open)) return false;
             _place.Occupy(x, z, radius);
             return true;
+        }
+
+        /// <summary>Reserve a SOLID prop's footprint on the shared occupancy grid so it can't land on a
+        /// tree / rock / fence that already reserved that spot (occupancy only -- the caller already chose
+        /// the zone). Returns null (skip) if the spot is taken. This is the "solve numerically" guard --
+        /// route rocks/decorative-trees through it; small foliage stays direct (undergrowth may nestle).</summary>
+        private static GameObject PlaceSolid(Transform container, string name, float x, float z, float yaw,
+            float h, float radius, int groundLayer, PropCollision collision)
+        {
+            // Solids never belong in water / on the city stone / in a wall / on the bare mountain rock;
+            // otherwise the caller already chose the zone, so this is an occupancy (no-overlap) check.
+            if (_place != null && !_place.CanPlace(x, z, radius,
+                    zn => zn != PlaceZone.Water && zn != PlaceZone.City && zn != PlaceZone.Wall && zn != PlaceZone.Mountain))
+                return null;   // footprint taken or structurally-wrong ground
+            // PlaceMeshyProp auto-records the object into the manifest; on success we also reserve the
+            // footprint so LATER solids can't overlap it (the prevention half of the data guarantee).
+            var g = PlaceMeshyProp(container, name, new Vector3(x, 0f, z), yaw, h, groundLayer, collision);
+            if (g != null && _place != null) _place.Occupy(x, z, radius);
+            return g;
         }
 
         /// <summary>Warm-dark tint on a placed rock so roadside/dirt stones sit IN the earth instead
@@ -350,6 +397,9 @@ namespace AldenFall.Editor
         /// the type + position (deterministic) so the JSON stays pure placement data.</summary>
         private static void RenderCatalog(Transform container, int groundLayer)
         {
+            _suppressAutoRecord = true;   // catalog objects are ALREADY recorded (TryScatter); don't double
+            try
+            {
             foreach (var kv in _catalog.Objects)
             {
                 var collision = CatalogCollision(kv.Key);
@@ -362,9 +412,13 @@ namespace AldenFall.Editor
                         var m = Mat($"Fol_{Mathf.RoundToInt(tint.Value.r*12)}_{Mathf.RoundToInt(tint.Value.g*12)}_{Mathf.RoundToInt(tint.Value.b*12)}", tint.Value, smoothness: 0.03f);
                         foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = m;
                     }
-                    if (go != null && it.y != 0f) go.transform.position += Vector3.up * it.y;
+                    // NOTE: do NOT add it.y here. The prop snaps ITSELF to the terrain (PlaceKitTree),
+                    // and it.y now stores the terrain height (manifest data) — re-adding it double-counts
+                    // and floats the prop by the local terrain height (the dark-forest +1.7m float bug).
                 }
             }
+            }
+            finally { _suppressAutoRecord = false; }
         }
 
         private static PropCollision CatalogCollision(string type)
@@ -495,6 +549,8 @@ namespace AldenFall.Editor
             int total = 0, inWater = 0, floating = 0, buried = 0, untextured = 0, oversize = 0;
             var byType = new System.Collections.Generic.Dictionary<string, int>();
             var offenders = new System.Collections.Generic.List<string>();
+            // Every SOLID prop (tree/rock/stump) with a footprint radius, for cross-type overlap detection.
+            var solids = new System.Collections.Generic.List<(Vector2 p, float r, string name)>();
 
             foreach (var lg in root.GetComponentsInChildren<LODGroup>(true))
             {
@@ -502,6 +558,14 @@ namespace AldenFall.Editor
                 var kit = TreeKitImporter.Classify(go.name);
                 if (kit == TreeKitImporter.KitType.Unknown) continue;   // only curated kit props
                 total++;
+                // Record solids (not small foliage -- undergrowth is meant to nestle around trees/rocks).
+                if (kit == TreeKitImporter.KitType.Tree || kit == TreeKitImporter.KitType.DeadTree
+                    || kit == TreeKitImporter.KitType.Rock || kit == TreeKitImporter.KitType.Stump)
+                {
+                    float fr = kit == TreeKitImporter.KitType.Tree ? 3.2f : kit == TreeKitImporter.KitType.DeadTree ? 2.2f
+                             : kit == TreeKitImporter.KitType.Rock ? 1.3f : 0.8f;
+                    solids.Add((new Vector2(go.transform.position.x, go.transform.position.z), fr, go.name));
+                }
                 string tk = kit.ToString();
                 byType[tk] = byType.TryGetValue(tk, out var c) ? c + 1 : 1;
 
@@ -530,6 +594,37 @@ namespace AldenFall.Editor
                 { untextured++; if (offenders.Count < 25) offenders.Add($"UNTEXTURED {go.name} mat={(mat != null ? mat.name : "null")}"); }
             }
 
+            // CROSS-TYPE OVERLAP (the "solve numerically" pass): two SOLID props whose footprints intersect
+            // -- rock-in-tree, tree-in-tree, rock-in-fence. Bucketed into a grid so it's ~O(n), not O(n^2).
+            int overlaps = 0;
+            const float cell = 8f;
+            var grid = new System.Collections.Generic.Dictionary<(int, int), System.Collections.Generic.List<int>>();
+            for (int i = 0; i < solids.Count; i++)
+            {
+                var c = ((int)Mathf.Floor(solids[i].p.x / cell), (int)Mathf.Floor(solids[i].p.y / cell));
+                if (!grid.TryGetValue(c, out var l)) { l = new System.Collections.Generic.List<int>(); grid[c] = l; }
+                l.Add(i);
+            }
+            for (int i = 0; i < solids.Count; i++)
+            {
+                var a = solids[i];
+                int cx = (int)Mathf.Floor(a.p.x / cell), cy = (int)Mathf.Floor(a.p.y / cell);
+                for (int dx = -1; dx <= 1; dx++)
+                    for (int dy = -1; dy <= 1; dy++)
+                        if (grid.TryGetValue((cx + dx, cy + dy), out var l))
+                            foreach (int j in l)
+                            {
+                                if (j <= i) continue;
+                                var b = solids[j];
+                                float mind = (a.r + b.r) * 0.7f;
+                                if ((a.p - b.p).sqrMagnitude < mind * mind)
+                                {
+                                    overlaps++;
+                                    if (offenders.Count < 25) offenders.Add($"OVERLAP {a.name} ~ {b.name} @({a.p.x:F0},{a.p.y:F0})");
+                                }
+                            }
+            }
+
             // PLACEHOLDER guard: a Unity primitive (Cube/Cylinder/Sphere...) used as SCENERY (a tree,
             // bush, foliage) is the exact "cube-tree / lollipop" regression -- flag it so it can never
             // ship again. Primitives are fine as STRUCTURE (building shells), so only foliage names count.
@@ -547,9 +642,9 @@ namespace AldenFall.Editor
             var sb = new System.Text.StringBuilder();
             foreach (var kv in byType) { if (sb.Length > 0) sb.Append(", "); sb.Append($"{kv.Key}:{kv.Value}"); }
             Debug.Log($"AUDIT kit props: {total} ({sb})");
-            Debug.Log($"AUDIT conflicts: inWater={inWater} floating={floating} buried={buried} oversize={oversize} untextured={untextured} placeholders={placeholders}");
+            Debug.Log($"AUDIT conflicts: inWater={inWater} floating={floating} buried={buried} oversize={oversize} untextured={untextured} placeholders={placeholders} solidOverlaps={overlaps}");
             foreach (var o in offenders) Debug.Log($"AUDIT {o}");
-            if (inWater + floating + oversize + untextured + placeholders == 0) Debug.Log("AUDIT CLEAN — no kit-prop conflicts");
+            if (inWater + floating + oversize + untextured + placeholders + overlaps == 0) Debug.Log("AUDIT CLEAN — no kit-prop conflicts");
         }
 
         /// <summary>Write the catalog to the source-of-truth JSON, log the validation report, and
@@ -566,6 +661,20 @@ namespace AldenFall.Editor
                 Debug.Log($"CATALOG wrote {_catalog.Count} placements -> {path}");
                 foreach (var s in _catalog.Validate(_place, CatalogFootprint)) Debug.Log($"CATALOG {s}");
                 ExportAndValidateMobs(_place);   // mobs run through the SAME map: locations + conflicts
+
+                // ---- Authoritative World Manifest: numerical conflict scan + readable data dump ----
+                // This is the data-first gate: I read WorldData/ + this count to KNOW the world is clean
+                // before QA. Ship only when WORLD CONFLICTS == 0.
+                if (_manifest != null)
+                {
+                    var conflicts = _manifest.Validate();
+                    _manifest.Dump("WorldData", conflicts);
+                    Debug.Log($"WORLD CONFLICTS: {conflicts.Count} (see WorldData/manifest.md + conflicts.json)");
+                    var byKind = new System.Collections.Generic.Dictionary<string, int>();
+                    foreach (var c in conflicts) byKind[c.kind] = (byKind.TryGetValue(c.kind, out var v) ? v : 0) + 1;
+                    foreach (var kv in byKind) Debug.Log($"WORLD CONFLICT {kv.Key}: {kv.Value}");
+                }
+
                 AuditScene(root);                // scene-TRUTH audit of the actually-placed kit props
             }
             catch (System.Exception e) { Debug.Log($"CATALOG export failed: {e.Message}"); }
@@ -1258,11 +1367,13 @@ namespace AldenFall.Editor
             {
                 string rock = new[] { "namaqualand_boulder_02", "boulder_01", "boulder_01", "RockCliff" }[rng.Next(4)];
                 float rh = 1.2f + (float)rng.NextDouble() * 3.6f;
-                var g = PlaceMeshyProp(container, rock, new Vector3(x, 0f, z),
-                    (float)rng.NextDouble() * 360f, rh, groundLayer, PropCollision.FitBox);
-                if (g != null) g.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 24f, (float)rng.NextDouble() * 360f, (float)(rng.NextDouble() - 0.5) * 24f) * g.transform.rotation;
-                EarthTint(g);
-                if (g != null) RecordDetail(rock, x, z, 0f, rh);
+                float rr = Mathf.Clamp(rh * 0.45f, 0.8f, 2.4f);   // bigger boulder reserves more ground
+                var g = PlaceSolid(container, rock, x, z, (float)rng.NextDouble() * 360f, rh, rr, groundLayer, PropCollision.FitBox);
+                if (g != null)
+                {
+                    g.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 24f, (float)rng.NextDouble() * 360f, (float)(rng.NextDouble() - 0.5) * 24f) * g.transform.rotation;
+                    EarthTint(g);
+                }
             });
             // (Removed the white PebblePatch "gravel clumps" - they read as ugly white hat-patches
             // on the dirt; damp variation is now baked into the dirt texture + road mud decals.)
@@ -1911,8 +2022,10 @@ namespace AldenFall.Editor
                 FurnishStory(container, type, s, c, halfX, halfZ, s * wallH, doorSide, groundLayer,
                     s == 0 ? npcName : null, s == 0 ? npcStock : null);
 
-            // ---- Catalog: the building as a mapped object (footprint via height stand-in) ----
+            // ---- Catalog + manifest: the building as a mapped structure (footprint + entrance) ----
             RecordDetail($"building_{type}", c.x, c.z, doorSide * 90f, top);
+            _manifest?.AddBuilding($"building_{type}", new Vector3(c.x, 0f, c.z),
+                new Vector3(halfX * 2f, top, halfZ * 2f), doorSide * 90f, 2f);
         }
 
         /// <summary>Furnish one story of a town building with themed Meshy furniture (cube fallback
@@ -1936,7 +2049,8 @@ namespace AldenFall.Editor
                     var bc = o.GetComponent<BoxCollider>();
                     if (!collide) { if (bc) Object.DestroyImmediate(bc); } else if (groundLayer >= 0) o.layer = groundLayer;
                 }
-                RecordDetail(mesh, wp.x, wp.z, yaw, h);
+                // (PlaceMeshyProp auto-records the mesh furniture into the manifest; cube fallbacks are
+                // interior dressing that doesn't need cataloguing for conflict purposes.)
             }
             Color wood = new Color(0.35f, 0.24f, 0.14f), cloth = new Color(0.5f, 0.3f, 0.28f);
             bool ground = story == 0;
@@ -2021,6 +2135,8 @@ namespace AldenFall.Editor
         /// real point light + are recorded in the placement catalog.</summary>
         private static void BuildStreetLamp(Transform container, Vector3 basePos, int variant, int groundLayer)
         {
+            // Data-first: never plant a lamp in the canal water (the coarse route can drift over it).
+            if (_place != null && _place.InBounds(basePos.x, basePos.z) && _place.GroundAt(basePos.x, basePos.z) == Ground.Water) return;
             var iron = Mat("LampIron", new Color(0.13f, 0.12f, 0.13f), smoothness: 0.25f);
             const float h = 3.6f;
             var post = Cube("Lamp_Post", basePos + Vector3.up * (h / 2f), new Vector3(0.18f, h, 0.18f), iron, container);
@@ -2222,6 +2338,7 @@ namespace AldenFall.Editor
                 var w = Cube(n, pos, size, wallMat, container);
                 w.isStatic = true;
                 if (groundLayer >= 0) w.layer = groundLayer;
+                _manifest?.AddWall(n, pos, size, 0f);   // register barrier so nothing scatters inside it
             }
 
             // Where the manmade canal (R3) crosses a given wall X, or NaN if it doesn't.

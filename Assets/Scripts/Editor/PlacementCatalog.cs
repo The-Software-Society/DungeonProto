@@ -13,13 +13,42 @@ namespace AldenFall.Editor
     /// </summary>
     public class PlacementCatalog
     {
-        public struct Item { public float x, y, z, yaw, h; public PlaceZone zone; public PlaceBiome biome; }
+        public struct Item
+        {
+            public float x, y, z, yaw, h;
+            public float footprint;      // solid radius reserved on the occupancy grid (0 = soft/nestling)
+            public PlaceZone zone; public PlaceBiome biome; public Ground ground;
+            public string category;      // tree|deadtree|rock|fence|plant|flower|prop|building|mob
+        }
         public readonly Dictionary<string, List<Item>> Objects = new();
 
+        /// <summary>Category bucket for a placement type name — used to group the per-category dumps
+        /// (trees.json, rocks.json, fences.json…) and to pick the on-wrong-ground rules for validation.</summary>
+        public static string CategoryOf(string type)
+        {
+            string n = type.ToLowerInvariant();
+            if (n.StartsWith("building_") || n.Contains("stall") || n.Contains("shell")) return "building";
+            if (n.Contains("fence") || n.Contains("rail") || n.Contains("post")) return "fence";
+            if (n.Contains("boulder") || n.Contains("rock") || n.Contains("stone") || n.Contains("namaqualand") || n.Contains("cliff")) return "rock";
+            if (n.Contains("stump") || n.Contains("root")) return "stump";
+            if (n.Contains("dead")) return "deadtree";
+            if (n.Contains("tree") || n.Contains("island") || n.Contains("fir") || n.Contains("jacaranda") || n.Contains("pine")) return "tree";
+            if (n.Contains("flower") || n.Contains("dandelion") || n.Contains("celandine") || n.Contains("gazania")) return "flower";
+            if (n.Contains("shrub") || n.Contains("fern") || n.Contains("bush") || n.Contains("grass") || n.Contains("reed") || n.Contains("tussock")) return "plant";
+            return "prop";
+        }
+
+        /// <summary>Legacy 2D add (y/footprint/ground filled from the map). Kept so existing callers
+        /// compile; new callers should pass the full record via the richer overload.</summary>
         public void Add(string type, float x, float z, float yaw, float h, PlaceZone zone, PlaceBiome biome)
+            => Add(type, x, 0f, z, yaw, h, 0f, zone, biome, PlacementMap.GroundFor(zone, biome));
+
+        public void Add(string type, float x, float y, float z, float yaw, float h, float footprint,
+            PlaceZone zone, PlaceBiome biome, Ground ground)
         {
             if (!Objects.TryGetValue(type, out var list)) { list = new List<Item>(); Objects[type] = list; }
-            list.Add(new Item { x = x, y = 0f, z = z, yaw = yaw, h = h, zone = zone, biome = biome });
+            list.Add(new Item { x = x, y = y, z = z, yaw = yaw, h = h, footprint = footprint,
+                zone = zone, biome = biome, ground = ground, category = CategoryOf(type) });
         }
 
         public int Count { get { int n = 0; foreach (var kv in Objects) n += kv.Value.Count; return n; } }
@@ -57,6 +86,8 @@ namespace AldenFall.Editor
                     sb.Append("      {\"p\":[").Append(it.x.ToString("0.##")).Append(",").Append(it.y.ToString("0.##")).Append(",").Append(it.z.ToString("0.##"))
                       .Append("],\"yaw\":").Append(it.yaw.ToString("0.#"))
                       .Append(",\"h\":").Append(it.h.ToString("0.##"))
+                      .Append(",\"r\":").Append(it.footprint.ToString("0.##"))
+                      .Append(",\"ground\":\"").Append(it.ground).Append("\"")
                       .Append(",\"zone\":\"").Append(it.zone).Append("\",\"biome\":\"").Append(it.biome).Append("\"}");
                     sb.Append(i < kv.Value.Count - 1 ? ",\n" : "\n");
                 }

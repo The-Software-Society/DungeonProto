@@ -5,6 +5,11 @@ namespace AldenFall.Editor
     public enum PlaceZone : byte { Open, Road, Water, City, Wall, Glade, Approach, Mountain, Camp }
     public enum PlaceBiome : byte { Lush, Meadow, DarkForest, Volcanic, Shore }
 
+    /// <summary>Detailed ground surface under each cell — the "what am I standing on" layer the manifest
+    /// exposes so placement decisions ("is this tree on grass or road?") are a field lookup, not a guess.
+    /// Derived from zone+biome so it stays consistent with what the terrain painter actually paints.</summary>
+    public enum Ground : byte { Grass, DirtField, DirtRoad, Cobble, CityStone, Sand, Water, Lava, Mountain, WallBase, Glade, Camp, Approach }
+
     /// <summary>
     /// Data-driven world occupancy map: ONE source of truth for what's at each (x,z) — its zone,
     /// its biome, and whether a large prop already occupies it. Placement becomes a QUERY (is this
@@ -18,7 +23,10 @@ namespace AldenFall.Editor
         public readonly int W, H;
         readonly PlaceZone[] zone;
         readonly PlaceBiome[] biome;
+        readonly Ground[] ground;   // detailed surface class per cell
+        readonly float[] height;    // terrain elevation Y per cell (sampled from the built terrain)
         readonly float[] occ;   // radius of the prop occupying this cell (0 = free)
+        bool heightsSampled;
 
         public PlacementMap(float minX, float minZ, float maxX, float maxZ)
         {
@@ -27,6 +35,8 @@ namespace AldenFall.Editor
             H = Mathf.CeilToInt((maxZ - minZ) / Cell);
             zone = new PlaceZone[W * H];
             biome = new PlaceBiome[W * H];
+            ground = new Ground[W * H];
+            height = new float[W * H];
             occ = new float[W * H];
         }
 
@@ -37,19 +47,52 @@ namespace AldenFall.Editor
         public float CellWorldZ(int cz) => OriginZ + (cz + 0.5f) * Cell;
         public bool InBounds(float x, float z) => x >= OriginX && z >= OriginZ && x < OriginX + W * Cell && z < OriginZ + H * Cell;
 
-        /// <summary>Classify every cell via the callback (called with each cell's world centre).</summary>
+        /// <summary>Classify every cell via the callback (called with each cell's world centre).
+        /// Derives the detailed <see cref="Ground"/> surface from zone+biome in the same pass.</summary>
         public void Classify(System.Func<float, float, (PlaceZone, PlaceBiome)> f)
         {
             for (int cz = 0; cz < H; cz++)
                 for (int cx = 0; cx < W; cx++)
                 {
                     var (z, b) = f(CellWorldX(cx), CellWorldZ(cz));
-                    int i = Idx(cx, cz); zone[i] = z; biome[i] = b;
+                    int i = Idx(cx, cz); zone[i] = z; biome[i] = b; ground[i] = GroundFor(z, b);
                 }
+        }
+
+        /// <summary>The detailed surface a cell paints to, from its zone + biome. Kept here so the
+        /// manifest's ground map and the terrain painter agree on "what's underfoot".</summary>
+        public static Ground GroundFor(PlaceZone z, PlaceBiome b) => z switch
+        {
+            PlaceZone.Water => Ground.Water,
+            PlaceZone.Mountain => Ground.Mountain,
+            PlaceZone.Wall => Ground.WallBase,
+            PlaceZone.City => Ground.CityStone,
+            PlaceZone.Road => Ground.DirtRoad,
+            PlaceZone.Glade => Ground.Glade,
+            PlaceZone.Camp => Ground.Camp,
+            PlaceZone.Approach => b == PlaceBiome.Volcanic ? Ground.Lava : Ground.DirtField,
+            _ => b == PlaceBiome.Volcanic ? Ground.Lava        // Open
+               : b == PlaceBiome.Shore ? Ground.Sand
+               : b == PlaceBiome.Meadow ? Ground.DirtField
+               : Ground.Grass,
+        };
+
+        /// <summary>Fill the per-cell terrain elevation by sampling the (already built) terrain.
+        /// Enables the numerical floating/buried check and a real Y on every manifest object.</summary>
+        public void SampleHeights(System.Func<float, float, float> heightAt)
+        {
+            for (int cz = 0; cz < H; cz++)
+                for (int cx = 0; cx < W; cx++)
+                    height[Idx(cx, cz)] = heightAt(CellWorldX(cx), CellWorldZ(cz));
+            heightsSampled = true;
         }
 
         public PlaceZone ZoneAt(float x, float z) => zone[Idx(Cx(x), Cz(z))];
         public PlaceBiome BiomeAt(float x, float z) => biome[Idx(Cx(x), Cz(z))];
+        public Ground GroundAt(float x, float z) => ground[Idx(Cx(x), Cz(z))];
+        public float HeightAt(float x, float z) => height[Idx(Cx(x), Cz(z))];
+        public bool HasHeights => heightsSampled;
+        public Ground[] GroundGrid => ground;
 
         /// <summary>Zone grid as bytes (row-major) for the runtime overlay to sample.</summary>
         public byte[] ZoneBytes()
