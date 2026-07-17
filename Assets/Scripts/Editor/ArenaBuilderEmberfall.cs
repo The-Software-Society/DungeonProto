@@ -331,10 +331,19 @@ namespace AldenFall.Editor
         /// of popping as bright white granite (distinct "_Earth" material, shared + cached).</summary>
         private static void EarthTint(GameObject go)
         {
-            if (go == null) return;
+            if (go == null || IsKitProp(go)) return;   // never flatten a real Poly Haven material
             var tinted = MeshyCharacterImporter.BuildTexturedMaterial(go.name + "_Earth",
                 $"Assets/Models/Props/{go.name}_baseColor", new Color(0.52f, 0.46f, 0.39f));
             if (tinted != null) foreach (var r in go.GetComponentsInChildren<Renderer>()) r.sharedMaterial = tinted;
+        }
+
+        /// <summary>A curated Poly Haven kit prop (tree/plant/rock) -- it already carries real textured
+        /// leaf/bark materials, so the flat-colour Tint/EarthTint helpers must leave it alone.</summary>
+        private static bool IsKitProp(GameObject go)
+        {
+            var r = go != null ? go.GetComponentInChildren<Renderer>() : null;
+            var n = r != null && r.sharedMaterial != null ? r.sharedMaterial.name : "";
+            return n.Contains("_leaf") || n.Contains("_bark");
         }
 
         /// <summary>Instantiate everything in the catalog. Collision + foliage tint are derived from
@@ -1166,7 +1175,7 @@ namespace AldenFall.Editor
             // Slight per-instance tint jitter so beds don't read as one flat clone.
             void Tint(GameObject go, Color baseCol, float amt)
             {
-                if (go == null) return;
+                if (go == null || IsKitProp(go)) return;   // keep the real Poly Haven texture/alpha
                 float j = (float)(rng.NextDouble() - 0.5) * amt;
                 var c = new Color(Mathf.Clamp01(baseCol.r + j * 0.5f), Mathf.Clamp01(baseCol.g + j), Mathf.Clamp01(baseCol.b + j * 0.4f));
                 var m = Mat($"Fol_{Mathf.RoundToInt(c.r * 12)}_{Mathf.RoundToInt(c.g * 12)}_{Mathf.RoundToInt(c.b * 12)}", c, smoothness: 0.03f);
@@ -1194,7 +1203,7 @@ namespace AldenFall.Editor
             {
                 string f = rng.NextDouble() < 0.55 ? "fern_02" : "shrub_01";
                 var g = PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
-                    0.7f + (float)rng.NextDouble() * 0.9f, groundLayer, PropCollision.None);
+                    0.5f + (float)rng.NextDouble() * 0.6f, groundLayer, PropCollision.None);
                 Tint(g, PropFallbackColor(f), 0.12f);
             });
             // DARK FOREST: extra-dense dark ferns + bushes + mossy boulders in the lake->city woods.
@@ -1203,7 +1212,7 @@ namespace AldenFall.Editor
                 double roll = rng.NextDouble();
                 string f = roll < 0.5 ? "fern_02" : roll < 0.85 ? "shrub_01" : "boulder_01";
                 var g = PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
-                    0.8f + (float)rng.NextDouble() * 1.0f, groundLayer, f == "boulder_01" ? PropCollision.FitBox : PropCollision.None);
+                    0.5f + (float)rng.NextDouble() * 0.7f, groundLayer, f == "boulder_01" ? PropCollision.FitBox : PropCollision.None);
                 if (f != "boulder_01") Tint(g, new Color(0.10f, 0.20f, 0.10f), 0.08f);   // deep, shadowed green
             });
             // MEADOW: colourful wildflower beds + tall-grass tussocks in the open sunlit fields
@@ -1221,7 +1230,7 @@ namespace AldenFall.Editor
                 else   // a taller grass tussock (a fern reads as a grassy tuft when squashed wide)
                 {
                     var g = PlaceMeshyProp(container, "fern_02", new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
-                        1.0f + (float)rng.NextDouble() * 0.8f, groundLayer, PropCollision.None);
+                        0.45f + (float)rng.NextDouble() * 0.4f, groundLayer, PropCollision.None);
                     Tint(g, new Color(0.24f, 0.40f, 0.16f), 0.10f);
                 }
             });
@@ -1237,8 +1246,8 @@ namespace AldenFall.Editor
                 float x = LakeCenter.x + dir.x * r, z = LakeCenter.z + dir.y * r;
                 if (InCityFootprint(x, z)) continue;
                 var g = PlaceMeshyProp(container, "fern_02", new Vector3(x, 0f, z),
-                    (float)rng.NextDouble() * 360f, 1.1f + (float)rng.NextDouble() * 1.3f, groundLayer, PropCollision.None);
-                if (g != null) { g.transform.position += Vector3.down * 0.35f; Tint(g, new Color(0.34f, 0.42f, 0.16f), 0.12f); }
+                    (float)rng.NextDouble() * 360f, 0.35f + (float)rng.NextDouble() * 0.4f, groundLayer, PropCollision.None);
+                if (g != null) { g.transform.position += Vector3.down * 0.12f; Tint(g, new Color(0.34f, 0.42f, 0.16f), 0.12f); }
             }
         }
 
@@ -1333,6 +1342,10 @@ namespace AldenFall.Editor
             {
                 float x = Mathf.Lerp(-246f, 246f, (float)rng.NextDouble());
                 float z = Mathf.Lerp(-52f, 252f, (float)rng.NextDouble());
+                // Keep trees BACK from the waterline -- no trunks in the lake/rivers (their wide canopies
+                // still lean out over the water naturally). ~8m shore buffer beyond the edge.
+                float lakeDist = Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) - LakeEdge(x, z);
+                if (lakeDist < 8f || InLakeWater(x, z) || InAnyRiver(x, z)) continue;
                 var biome = _place.BiomeAt(x, z);
                 float radius = 4.5f + (float)rng.NextDouble() * 3.5f;          // wider footprint for big trees
                 bool dead = biome == PlaceBiome.Volcanic;

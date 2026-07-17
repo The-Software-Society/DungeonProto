@@ -79,16 +79,27 @@ namespace AldenFall.Editor
                 AssignMaterials(src, mats.Value.leaf, mats.Value.bark);
                 var filters = src.GetComponentsInChildren<MeshFilter>().Where(f => f.sharedMesh != null).ToArray();
 
-                // QEM each mesh ONCE -> a base with branches maximally decimated (leaves floor at their
-                // irreducible card count). Per tier we then thin the leaf submeshes off this base.
+                // Rocks/stumps are SOLID connected meshes -- QEM decimates them cleanly per tier. Foliage
+                // (trees/plants) is disconnected leaf cards -- QEM floors, so we thin triangles instead.
+                // Deleting triangles from a rock (the old path) makes crumpled-paper geometry -- don't.
+                bool isRock = name.Contains("boulder") || name.Contains("rock") || name.Contains("stump") || name.Contains("root");
+                float[] rockQ = { 0.5f, 0.2f, 0.08f };
+
+                // Foliage base: QEM once (branches reduced, leaves floor); thinned per tier below.
+                // Rocks: keep the SOURCE mesh and QEM it per tier.
                 var baseData = new System.Collections.Generic.List<(Mesh mesh, Material[] mats, Transform t)>();
                 foreach (var mf in filters)
                 {
-                    var ms = new UnityMeshSimplifier.MeshSimplifier { PreserveBorderEdges = false, PreserveSurfaceCurvature = true };
-                    ms.Initialize(mf.sharedMesh);
-                    ms.SimplifyMesh(0.3f);   // moderate: reduces branches WITHOUT dropping the leaf-card islands
-                    var b = ms.ToMesh(); b.RecalculateBounds();
-                    baseData.Add((b, mf.GetComponent<MeshRenderer>().sharedMaterials, mf.transform));
+                    Mesh baseMesh;
+                    if (isRock) baseMesh = mf.sharedMesh;
+                    else
+                    {
+                        var ms = new UnityMeshSimplifier.MeshSimplifier { PreserveBorderEdges = false, PreserveSurfaceCurvature = true };
+                        ms.Initialize(mf.sharedMesh);
+                        ms.SimplifyMesh(0.3f);
+                        baseMesh = ms.ToMesh(); baseMesh.RecalculateBounds();
+                    }
+                    baseData.Add((baseMesh, mf.GetComponent<MeshRenderer>().sharedMaterials, mf.transform));
                 }
 
                 var root = new GameObject(name);
@@ -101,7 +112,15 @@ namespace AldenFall.Editor
                     int idx = 0;
                     foreach (var bd in baseData)
                     {
-                        var tierMesh = ThinLeaves(bd.mesh, bd.mats, LeafKeep[t], BranchKeep[t], $"{name}_LOD{t}_{idx}");
+                        Mesh tierMesh;
+                        if (isRock)
+                        {
+                            var ms = new UnityMeshSimplifier.MeshSimplifier { PreserveBorderEdges = true, PreserveSurfaceCurvature = true };
+                            ms.Initialize(bd.mesh);
+                            ms.SimplifyMesh(rockQ[t]);
+                            tierMesh = ms.ToMesh(); tierMesh.name = $"{name}_LOD{t}_{idx}"; tierMesh.RecalculateBounds();
+                        }
+                        else tierMesh = ThinLeaves(bd.mesh, bd.mats, LeafKeep[t], BranchKeep[t], $"{name}_LOD{t}_{idx}");
                         AssetDatabase.CreateAsset(tierMesh, $"{PrefabDir}/{name}_LOD{t}_{idx}.mesh");
                         var g = new GameObject($"part{idx}");
                         g.transform.SetParent(tierGO.transform, false);

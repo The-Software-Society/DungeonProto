@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &1531336163588782963
+--- !u!1 &2361033975923426539
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,9 +8,9 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 7718925273790569933}
-  - component: {fileID: 5077052704287775639}
-  - component: {fileID: 1405809375779269541}
+  - component: {fileID: 1682340746104359415}
+  - component: {fileID: 4822292483555168732}
+  - component: {fileID: 333551867426576949}
   m_Layer: 0
   m_Name: GrassTuft
   m_TagString: Untagged
@@ -18,13 +18,13 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &7718925273790569933
+--- !u!4 &1682340746104359415
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1531336163588782963}
+  m_GameObject: {fileID: 2361033975923426539}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -33,21 +33,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!33 &5077052704287775639
+--- !u!33 &4822292483555168732
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1531336163588782963}
+  m_GameObject: {fileID: 2361033975923426539}
   m_Mesh: {fileID: 4300000, guid: 7d67ef0c0f48d43dca4ecb0c8e47a8ed, type: 2}
---- !u!23 &1405809375779269541
+--- !u!23 &333551867426576949
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1531336163588782963}
+  m_GameObject: {fileID: 2361033975923426539}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 1
