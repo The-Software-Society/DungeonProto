@@ -1380,18 +1380,20 @@ namespace AldenFall.Editor
             // General lush undergrowth (ferns + bushes), tinted for variation. Skip the open
             // meadows so they read as flower fields, not a wall of ferns.
             System.Func<float, float, bool> lushNotMeadow = (x, z) => lush(x, z) && !meadow(x, z);
-            Clump(200, 7, 13f, lushNotMeadow, (x, z) =>
+            Clump(95, 5, 15f, lushNotMeadow, (x, z) =>
             {
-                string f = rng.NextDouble() < 0.55 ? "fern_02" : "shrub_01";
+                // Jon: shrubs read as filler/infestation -- keep undergrowth fern-dominant + sparser,
+                // shrubs only occasionally. (Intentional shrubs live near the water, below.)
+                string f = rng.NextDouble() < 0.88 ? "fern_02" : "shrub_01";
                 var g = PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
                     0.5f + (float)rng.NextDouble() * 0.6f, groundLayer, PropCollision.None);
                 Tint(g, PropFallbackColor(f), 0.12f);
             });
-            // DARK FOREST: extra-dense dark ferns + bushes + mossy boulders in the lake->city woods.
-            Clump(150, 9, 11f, darkForest, (x, z) =>
+            // DARK FOREST: dark ferns + the occasional bush + mossy boulders in the lake->city woods.
+            Clump(90, 7, 11f, darkForest, (x, z) =>
             {
                 double roll = rng.NextDouble();
-                string f = roll < 0.5 ? "fern_02" : roll < 0.85 ? "shrub_01" : "boulder_01";
+                string f = roll < 0.72 ? "fern_02" : roll < 0.86 ? "shrub_01" : "boulder_01";
                 var g = PlaceMeshyProp(container, f, new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f,
                     0.5f + (float)rng.NextDouble() * 0.7f, groundLayer, f == "boulder_01" ? PropCollision.FitBox : PropCollision.None);
                 if (f != "boulder_01") Tint(g, new Color(0.10f, 0.20f, 0.10f), 0.08f);   // deep, shadowed green
@@ -4267,6 +4269,22 @@ namespace AldenFall.Editor
 
         private static void BuildSealStone(string name, Vector3 pos, int groundLayer)
         {
+            // Keep the marker on dry, terrain-snapped ground -- it was a fixed y=0 cube that could stand
+            // in a river (the "random pillar in water"). Nudge out of water, then seat on the terrain.
+            if (_place != null && (InLakeWater(pos.x, pos.z) || InAnyRiver(pos.x, pos.z)))
+                for (int r = 4; r <= 30; r += 3)
+                {
+                    bool found = false;
+                    for (int a = 0; a < 12; a++)
+                    {
+                        float ang = a * Mathf.PI / 6f;
+                        float nx = pos.x + Mathf.Cos(ang) * r, nz = pos.z + Mathf.Sin(ang) * r;
+                        if (_place.InBounds(nx, nz) && !InLakeWater(nx, nz) && !InAnyRiver(nx, nz)) { pos.x = nx; pos.z = nz; found = true; break; }
+                    }
+                    if (found) break;
+                }
+            pos.y = GY(pos.x, pos.z);
+
             var go = new GameObject(name);
             go.transform.position = pos;
 

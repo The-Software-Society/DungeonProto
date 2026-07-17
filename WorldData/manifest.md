@@ -24,28 +24,27 @@ Authoritative data view of the baked world. QA is a double-check of THIS.
 See ground_map.txt for the top-down ASCII layout.
 
 ## Objects
-- **tree**: 425
-- **rock**: 365
-- **plant**: 976
-- **flower**: 1032
+- **tree**: 427
+- **rock**: 353
+- **plant**: 807
+- **flower**: 1087
 - **building**: 13
 - **prop**: 93
 - **fence**: 62
-- **deadtree**: 151
+- **deadtree**: 141
 
 <details><summary>per type</summary>
 
-- flower_gazania (flower): 1032
-- fern_02 (plant): 891
-- island_tree_01 (tree): 168
-- dead_tree_trunk (deadtree): 151
-- LavaRockGround (rock): 130
-- boulder_01 (rock): 128
-- shrub_01 (plant): 85
-- island_tree_03 (tree): 85
+- flower_gazania (flower): 1087
+- fern_02 (plant): 803
+- island_tree_01 (tree): 169
+- dead_tree_trunk (deadtree): 141
+- LavaRockGround (rock): 132
+- boulder_01 (rock): 121
+- island_tree_03 (tree): 86
 - island_tree_02 (tree): 85
 - tree_small_02 (tree): 83
-- namaqualand_boulder_02 (rock): 72
+- namaqualand_boulder_02 (rock): 65
 - Fence (fence): 62
 - RockCliff (rock): 35
 - lamp_lantern (prop): 13
@@ -56,11 +55,12 @@ See ground_map.txt for the top-down ASCII layout.
 - lamp_globe (prop): 11
 - Bed (prop): 8
 - building_house (building): 5
-- Bookshelf (prop): 5
 - Cauldron (prop): 5
+- Bookshelf (prop): 5
 - Campfire (tree): 4
-- MarketStall (building): 3
+- shrub_01 (plant): 4
 - building_shop (building): 3
+- MarketStall (building): 3
 - DungeonChest (prop): 2
 - Anvil (prop): 1
 - building_smithy (building): 1
