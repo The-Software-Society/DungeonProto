@@ -18,6 +18,42 @@ namespace AldenFall.Editor
     {
         private const string Kit = "Assets/Models/Trees";
 
+        // --- Single source of truth for what a curated asset IS. The whole class of regressions (foliage
+        //     scaled tree-huge, rocks thinned to crumpled paper, plants flat-tinted) came from code not
+        //     knowing the asset type. Classify once; drive size clamps, decimation, and collision from it. ---
+        public enum KitType { Tree, DeadTree, Plant, Flower, Rock, Stump, Unknown }
+
+        public static KitType Classify(string name)
+        {
+            string n = name.ToLower();
+            if (n.Contains("dead_tree") || n.Contains("dead_quiver")) return KitType.DeadTree;
+            if (n.Contains("tree") || n.Contains("jacaranda") || n.Contains("fir_")) return KitType.Tree;
+            if (n.Contains("stump") || n.Contains("root")) return KitType.Stump;
+            if (n.Contains("boulder") || n.Contains("rock") || n.Contains("moss_") || n.Contains("cliff")) return KitType.Rock;
+            if (n.Contains("flower") || n.Contains("dandelion") || n.Contains("celandine") || n.Contains("gazania")
+                || n.Contains("anthurium") || n.Contains("calathea")) return KitType.Flower;
+            if (n.Contains("shrub") || n.Contains("fern") || n.Contains("bush") || n.Contains("grass")) return KitType.Plant;
+            return KitType.Unknown;
+        }
+
+        /// <summary>Sane world-height clamp (metres) per asset type, so a stray scatter call can never make
+        /// a giant fern or a shrunk tree. Unknown props are left to the caller.</summary>
+        public static (float min, float max) HeightRange(KitType t)
+        {
+            switch (t)
+            {
+                case KitType.Tree: return (6f, 22f);
+                case KitType.DeadTree: return (3.5f, 16f);
+                case KitType.Rock: return (0.4f, 6f);
+                case KitType.Stump: return (0.4f, 2.5f);
+                case KitType.Plant: return (0.25f, 1.3f);
+                case KitType.Flower: return (0.2f, 0.7f);
+                default: return (0.05f, 100f);
+            }
+        }
+
+        public static bool IsRockLike(string name) { var t = Classify(name); return t == KitType.Rock || t == KitType.Stump; }
+
         [MenuItem("AldenFall/Render/Setup + render curated trees")]
         public static void SetupAndRenderCuratedTrees()
         {
@@ -82,7 +118,7 @@ namespace AldenFall.Editor
                 // Rocks/stumps are SOLID connected meshes -- QEM decimates them cleanly per tier. Foliage
                 // (trees/plants) is disconnected leaf cards -- QEM floors, so we thin triangles instead.
                 // Deleting triangles from a rock (the old path) makes crumpled-paper geometry -- don't.
-                bool isRock = name.Contains("boulder") || name.Contains("rock") || name.Contains("stump") || name.Contains("root");
+                bool isRock = IsRockLike(name);   // solid mesh -> clean QEM; foliage -> thin (see Classify)
                 float[] rockQ = { 0.5f, 0.2f, 0.08f };
 
                 // Foliage base: QEM once (branches reduced, leaves floor); thinned per tier below.

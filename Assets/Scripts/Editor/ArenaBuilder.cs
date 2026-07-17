@@ -1210,24 +1210,13 @@ namespace AldenFall.Editor
                     if (Vector2.Distance(new Vector2(x, z), c) < 14f) { nearCamp = true; break; }
                 if (nearCamp) continue;
 
+                // Real kit trees + rocks (no cube placeholders -- see CLAUDE.md HARD RULE).
                 if (rng.Next(2) == 0)
-                {
-                    float h = 4.5f + (float)rng.NextDouble() * 3f;
-                    var trunk = Cube($"Tree{i}_Trunk", new Vector3(x, h * 0.3f, z), new Vector3(0.7f, h * 0.6f, 0.7f), trunkMat, container);
-                    trunk.isStatic = true;
-                    if (groundLayer >= 0) trunk.layer = groundLayer;
-                    var leaf = Cube($"Tree{i}_Leaf", new Vector3(x, h * 0.75f, z), new Vector3(h * 0.55f, h * 0.5f, h * 0.55f), leafMat, container);
-                    leaf.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 45f, 0);
-                    leaf.isStatic = true;
-                }
+                    PlaceMeshyProp(container, new[] { "island_tree_01", "island_tree_02", "island_tree_03" }[rng.Next(3)],
+                        new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f, 7f + (float)rng.NextDouble() * 5f, groundLayer, PropCollision.Trunk);
                 else
-                {
-                    float s = 1.2f + (float)rng.NextDouble() * 2f;
-                    var rock = Cube($"Rock{i}", new Vector3(x, s * 0.3f, z), new Vector3(s, s * 0.7f, s * 0.85f), rockMat, container);
-                    rock.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 15f, (float)rng.NextDouble() * 360f, 0);
-                    rock.isStatic = true;
-                    if (groundLayer >= 0) rock.layer = groundLayer;
-                }
+                    PlaceMeshyProp(container, rng.Next(2) == 0 ? "boulder_01" : "namaqualand_boulder_02",
+                        new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f, 0.8f + (float)rng.NextDouble() * 1.6f, groundLayer, PropCollision.FitBox);
             }
 
             // Camp dressing: fire ring + tents (bandits), totem + bone pile (orcs)
@@ -1798,9 +1787,25 @@ namespace AldenFall.Editor
         private static GameObject PlaceKitTree(Transform parent, GameObject prefab, string name,
             Vector3 pos, float yaw, float height, int groundLayer, PropCollision collision)
         {
+            // HARDENING: no kit prop in the lake/rivers (systemic guard -- shore plants are placed on the
+            // shore, so anything landing in water is a scatter bug). Emberfall water helpers; fine while it
+            // is the only world.
+            if (InLakeWater(pos.x, pos.z) || InAnyRiver(pos.x, pos.z)) return null;
+
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
             instance.name = name;
             instance.transform.SetParent(parent);
+
+            // HARDENING: clamp the requested height into the asset type's sane range (a fern can never be
+            // 2.4m, a tree can never be 1m). This kills the whole "wrong size" regression class at the choke.
+            var kit = TreeKitImporter.Classify(name);
+            var (hMin, hMax) = TreeKitImporter.HeightRange(kit);
+            height = Mathf.Clamp(height, hMin, hMax);
+            // Collision defaults by type unless the caller was explicit: trees=trunk, rocks=box, plants=none.
+            if (collision == PropCollision.FitBox && (kit == TreeKitImporter.KitType.Tree || kit == TreeKitImporter.KitType.DeadTree))
+                collision = PropCollision.Trunk;
+            if (kit == TreeKitImporter.KitType.Plant || kit == TreeKitImporter.KitType.Flower)
+                collision = PropCollision.None;
 
             Bounds Measure()
             {
@@ -1832,6 +1837,10 @@ namespace AldenFall.Editor
             if (groundT != null && Mathf.Abs(pos.y) < 0.01f)
                 pos.y = groundT.SampleHeight(new Vector3(pos.x, 0f, pos.z)) + groundT.transform.position.y;
             instance.transform.position += pos - bottomCenter;
+            // Rocks/stumps have irregular bottoms; seat them a touch into the ground so they read as
+            // grounded rather than perched on a single contact point.
+            if (kit == TreeKitImporter.KitType.Rock || kit == TreeKitImporter.KitType.Stump)
+                instance.transform.position += Vector3.down * 0.12f;
 
             b = Measure();
             Vector3 lossy = instance.transform.lossyScale;

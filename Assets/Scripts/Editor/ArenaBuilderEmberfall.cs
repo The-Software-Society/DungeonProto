@@ -483,6 +483,75 @@ namespace AldenFall.Editor
 
         private static System.Collections.Generic.List<(string id, float x, float z, float r)> _mobCentres;
 
+        /// <summary>Scene-TRUTH audit: iterate the actually-placed curated kit props (each is a LODGroup
+        /// named after its asset) and flag real conflicts -- trunks in water, floating/buried, oversize for
+        /// their type, or untextured/fallback materials. Runs every headless build and prints a CATALOG
+        /// summary + the first offenders, so a regression like "giant ferns in the lake" is caught at bake
+        /// time instead of on Jon's screen. Fix the SOURCE (scatter call / classifier), not the symptom.</summary>
+        private static void AuditScene(Transform root)
+        {
+            var terrain = Terrain.activeTerrain;
+            float terrY0 = terrain != null ? terrain.transform.position.y : 0f;
+            int total = 0, inWater = 0, floating = 0, buried = 0, untextured = 0, oversize = 0;
+            var byType = new System.Collections.Generic.Dictionary<string, int>();
+            var offenders = new System.Collections.Generic.List<string>();
+
+            foreach (var lg in root.GetComponentsInChildren<LODGroup>(true))
+            {
+                var go = lg.gameObject;
+                var kit = TreeKitImporter.Classify(go.name);
+                if (kit == TreeKitImporter.KitType.Unknown) continue;   // only curated kit props
+                total++;
+                string tk = kit.ToString();
+                byType[tk] = byType.TryGetValue(tk, out var c) ? c + 1 : 1;
+
+                var rends = go.GetComponentsInChildren<MeshRenderer>(true);
+                if (rends.Length == 0) continue;
+                Bounds b = rends[0].bounds;
+                for (int i = 1; i < rends.Length; i++) b.Encapsulate(rends[i].bounds);
+                Vector3 p = go.transform.position;
+
+                if (InLakeWater(p.x, p.z) || InAnyRiver(p.x, p.z))
+                { inWater++; if (offenders.Count < 25) offenders.Add($"IN-WATER {go.name} @({p.x:F0},{p.z:F0})"); }
+
+                if (terrain != null)
+                {
+                    float gy = terrain.SampleHeight(p) + terrY0;
+                    if (b.min.y > gy + 1.6f) { floating++; if (offenders.Count < 25) offenders.Add($"FLOATING {go.name} @({p.x:F0},{p.z:F0}) +{b.min.y - gy:F1}m"); }
+                    else if (b.min.y < gy - 1.2f) { buried++; if (offenders.Count < 25) offenders.Add($"BURIED {go.name} @({p.x:F0},{p.z:F0}) {b.min.y - gy:F1}m"); }
+                }
+
+                var (hMin, hMax) = TreeKitImporter.HeightRange(kit);
+                if (b.size.y > hMax * 1.35f || b.size.y < hMin * 0.5f)
+                { oversize++; if (offenders.Count < 25) offenders.Add($"OVERSIZE {go.name} {b.size.y:F1}m (range {hMin}-{hMax})"); }
+
+                var mat = rends[0].sharedMaterial;
+                if (mat == null || (mat.mainTexture == null && !mat.name.ToLower().Contains("bark")))
+                { untextured++; if (offenders.Count < 25) offenders.Add($"UNTEXTURED {go.name} mat={(mat != null ? mat.name : "null")}"); }
+            }
+
+            // PLACEHOLDER guard: a Unity primitive (Cube/Cylinder/Sphere...) used as SCENERY (a tree,
+            // bush, foliage) is the exact "cube-tree / lollipop" regression -- flag it so it can never
+            // ship again. Primitives are fine as STRUCTURE (building shells), so only foliage names count.
+            int placeholders = 0;
+            string[] prims = { "Cube", "Cylinder", "Sphere", "Capsule", "Quad", "Plane" };
+            string[] sceneryWords = { "tree", "leaf", "canopy", "trunk", "pine", "bush", "foliage", "shrub", "fern", "reed" };
+            foreach (var mf in root.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (mf.sharedMesh == null || System.Array.IndexOf(prims, mf.sharedMesh.name) < 0) continue;
+                string gn = mf.gameObject.name.ToLower();
+                foreach (var w in sceneryWords)
+                    if (gn.Contains(w)) { placeholders++; if (offenders.Count < 25) offenders.Add($"PLACEHOLDER-PRIMITIVE {mf.gameObject.name} ({mf.sharedMesh.name})"); break; }
+            }
+
+            var sb = new System.Text.StringBuilder();
+            foreach (var kv in byType) { if (sb.Length > 0) sb.Append(", "); sb.Append($"{kv.Key}:{kv.Value}"); }
+            Debug.Log($"AUDIT kit props: {total} ({sb})");
+            Debug.Log($"AUDIT conflicts: inWater={inWater} floating={floating} buried={buried} oversize={oversize} untextured={untextured} placeholders={placeholders}");
+            foreach (var o in offenders) Debug.Log($"AUDIT {o}");
+            if (inWater + floating + oversize + untextured + placeholders == 0) Debug.Log("AUDIT CLEAN — no kit-prop conflicts");
+        }
+
         /// <summary>Write the catalog to the source-of-truth JSON, log the validation report, and
         /// spawn the in-game F3 coord/zone overlay that reads the same map.</summary>
         private static void ExportCatalog(Transform root)
@@ -497,6 +566,7 @@ namespace AldenFall.Editor
                 Debug.Log($"CATALOG wrote {_catalog.Count} placements -> {path}");
                 foreach (var s in _catalog.Validate(_place, CatalogFootprint)) Debug.Log($"CATALOG {s}");
                 ExportAndValidateMobs(_place);   // mobs run through the SAME map: locations + conflicts
+                AuditScene(root);                // scene-TRUTH audit of the actually-placed kit props
             }
             catch (System.Exception e) { Debug.Log($"CATALOG export failed: {e.Message}"); }
 
@@ -1242,9 +1312,9 @@ namespace AldenFall.Editor
                 float ang = (float)rng.NextDouble() * Mathf.PI * 2f;
                 Vector2 dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
                 float le = LakeEdge(LakeCenter.x + dir.x * LakeHalf, LakeCenter.z + dir.y * LakeHalf);
-                float r = 0.867f * (le + 4f) - 2f + (float)rng.NextDouble() * 7f;   // clustered right at the waterline out to the shore
+                float r = le + 0.5f + (float)rng.NextDouble() * 7f;   // just OUTSIDE the waterline, out onto the shore
                 float x = LakeCenter.x + dir.x * r, z = LakeCenter.z + dir.y * r;
-                if (InCityFootprint(x, z)) continue;
+                if (InCityFootprint(x, z) || InLakeWater(x, z)) continue;   // never in the water
                 var g = PlaceMeshyProp(container, "fern_02", new Vector3(x, 0f, z),
                     (float)rng.NextDouble() * 360f, 0.35f + (float)rng.NextDouble() * 0.4f, groundLayer, PropCollision.None);
                 if (g != null) { g.transform.position += Vector3.down * 0.12f; Tint(g, new Color(0.34f, 0.42f, 0.16f), 0.12f); }
@@ -1382,22 +1452,15 @@ namespace AldenFall.Editor
         }
 
         /// <summary>Cheap cube-pine silhouette used when a tree fbx hasn't downloaded yet.</summary>
+        // No more cube-canopy placeholders: place a REAL curated kit tree (see CLAUDE.md HARD RULE).
+        // Kept the signature so the dark-woods / glade callers don't change; trunkMat/leafMat unused.
         private static void PlaceCubePine(Transform container, int id, float x, float z, float h,
             Material trunkMat, Material leafMat, int groundLayer)
         {
-            var trunk = Cube($"Pine{id}_Trunk", new Vector3(x, h * 0.28f, z),
-                new Vector3(0.8f, h * 0.56f, 0.8f), trunkMat, container);
-            trunk.isStatic = true;
-            if (groundLayer >= 0) trunk.layer = groundLayer;
-            var low = Cube($"Pine{id}_Low", new Vector3(x, h * 0.62f, z),
-                new Vector3(h * 0.5f, h * 0.38f, h * 0.5f), leafMat, container);
-            low.transform.rotation = Quaternion.Euler(0, (float)rng.NextDouble() * 45f, 0);
-            low.isStatic = true;
-            Object.DestroyImmediate(low.GetComponent<BoxCollider>());   // walk through canopy
-            var high = Cube($"Pine{id}_High", new Vector3(x, h * 0.92f, z),
-                new Vector3(h * 0.32f, h * 0.3f, h * 0.32f), leafMat, container);
-            high.isStatic = true;
-            Object.DestroyImmediate(high.GetComponent<BoxCollider>());  // walk through canopy
+            // Vary the species by id so groves aren't clones; clamp handled inside PlaceKitTree.
+            string[] kit = { "island_tree_02", "island_tree_01", "island_tree_03", "tree_small_02" };
+            PlaceMeshyProp(container, kit[id % kit.Length], new Vector3(x, 0f, z),
+                (float)rng.NextDouble() * 360f, Mathf.Max(7f, h), groundLayer, PropCollision.Trunk);
         }
 
         // ==================== CITY ====================
@@ -1559,9 +1622,9 @@ namespace AldenFall.Editor
                 var box = Cube("PlazaPlanter", pos + Vector3.up * 0.35f, new Vector3(1.4f, 0.7f, 1.4f), planterMat, container);
                 box.isStatic = true;
                 if (groundLayer >= 0) box.layer = groundLayer;
-                var shrub = Cube("PlazaShrub", pos + Vector3.up * 1.05f, new Vector3(1.05f, 0.8f, 1.05f), shrubMat, container);
-                shrub.isStatic = true;
-                Object.DestroyImmediate(shrub.GetComponent<BoxCollider>());
+                // Real potted shrub sitting on the planter (was a cube). Elevated y skips the terrain snap.
+                PlaceMeshyProp(container, "shrub_01", new Vector3(pos.x, 0.7f, pos.z),
+                    (float)rng.NextDouble() * 360f, 0.9f, groundLayer, PropCollision.None);
             }
             // Hand cart by Market Row.
             var cartMat = Mat("PlazaCart", new Color(0.4f, 0.29f, 0.17f), smoothness: 0.08f);
