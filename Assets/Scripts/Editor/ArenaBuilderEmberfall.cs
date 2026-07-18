@@ -927,7 +927,7 @@ namespace AldenFall.Editor
             // and read as a manicured lawn); warmer earthy dirt + rock to match the photoscan rocks.
             // Muted olive to MATCH the grass blades above (was a brighter green -> "green ground under
             // dead grass"). Reads as shaded earth/undergrowth beneath the blades, same hue family.
-            var grassLayer = MakeTerrainLayer("TL_Grass", new Color(0.19f, 0.30f, 0.15f), 0.04f);
+            var grassLayer = MakeTerrainLayer("TL_Grass", new Color(0.22f, 0.27f, 0.16f), 0.04f);   // DE-NEON: G pulled toward R, lower value (was a glowing green ground)
             var sandLayer = MakeTerrainLayer("TL_Sand", new Color(0.42f, 0.36f, 0.26f), 0.03f);   // muddier: bright sand washed pale at distance
             var sootLayer = MakeTerrainLayer("TL_Soot", new Color(0.115f, 0.09f, 0.08f), 0.04f);
             var dirtLayer = MakeTerrainLayer("TL_Dirt", new Color(0.38f, 0.29f, 0.18f), 0.04f);
@@ -1215,8 +1215,8 @@ namespace AldenFall.Editor
             // Muted NATURAL olive-green (alive, not neon, not dead-khaki). G moderately above R (green
             // reads) but desaturated so it sits with the photoscans. Coherent with the terrain grass splat
             // below (both muted olive) so it isn't "green ground with dead grass on top".
-            Color dark = tuftDark ?? new Color(0.20f, 0.30f, 0.14f);
-            Color light = tuftLight ?? new Color(0.37f, 0.58f, 0.27f);   // greener/alive (G clearly>R) but still desaturated (was neon 0.62 G)
+            Color dark = tuftDark ?? new Color(0.20f, 0.27f, 0.14f);
+            Color light = tuftLight ?? new Color(0.33f, 0.45f, 0.24f);   // green + alive but LOWER value/sat so it doesn't glow neon; matches the splat below
             string prefabPath = $"{MaterialDir}/{id}.prefab";
             // Always rebuild so the up-normal + alpha-grass-texture fixes take effect on regen.
             AssetDatabase.DeleteAsset(prefabPath);
