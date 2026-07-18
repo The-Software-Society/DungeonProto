@@ -1018,8 +1018,10 @@ namespace AldenFall.Editor
             {
                 prototype = tuftPrefab,
                 renderMode = DetailRenderMode.VertexLit,
-                healthyColor = new Color(0.26f, 0.42f, 0.17f),   // deeper, less uniform bright green
-                dryColor = new Color(0.46f, 0.44f, 0.22f),       // wider dry range for variation
+                // MUTED OLIVE/SAGE, not kelly-green: the bright saturated grass clashed hard with the
+                // desaturated photoscan trees/rocks. R pulled up toward G (desaturate) + warmed toward khaki.
+                healthyColor = new Color(0.34f, 0.38f, 0.19f),   // muted olive
+                dryColor = new Color(0.52f, 0.46f, 0.26f),       // warm khaki dry blades
                 minWidth = 0.7f, maxWidth = 1.4f,
                 minHeight = 0.4f, maxHeight = 0.85f,             // shorter so scattered foliage reads above it
                 noiseSeed = 42,
@@ -1204,8 +1206,11 @@ namespace AldenFall.Editor
             // Baked vertex colours + material tint define the look. Terrain MESH details ignore
             // the DetailPrototype healthy/dry colours, so a charred variant needs its OWN prefab
             // with dark vertex colours (not just a dark tint on the shared green one).
-            Color dark = tuftDark ?? new Color(0.16f, 0.3f, 0.12f);
-            Color light = tuftLight ?? new Color(0.4f, 0.62f, 0.24f);
+            // MUTED OLIVE/SAGE (these vertex colours ARE the rendered grass -- mesh details ignore the
+            // DetailPrototype tint). Was a saturated kelly-green (0.4,0.62,0.24) that clashed hard with
+            // the desaturated photoscan trees/rocks. Desaturated (R up toward G) + warmed toward khaki.
+            Color dark = tuftDark ?? new Color(0.20f, 0.25f, 0.11f);
+            Color light = tuftLight ?? new Color(0.45f, 0.50f, 0.26f);
             string prefabPath = $"{MaterialDir}/{id}.prefab";
             // Always rebuild so the up-normal + alpha-grass-texture fixes take effect on regen.
             AssetDatabase.DeleteAsset(prefabPath);
