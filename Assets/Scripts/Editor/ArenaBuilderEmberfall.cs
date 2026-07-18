@@ -256,6 +256,10 @@ namespace AldenFall.Editor
         /// <summary>Ground elevation at (x,z) from the sampled terrain (0 before heights are sampled).</summary>
         private static float GY(float x, float z) => (_place != null && _place.HasHeights) ? _place.HeightAt(x, z) : 0f;
 
+        /// <summary>True when (x,z) is clear of the main road's canopy buffer -- trees keep 20m off the
+        /// 12m-half road so their wide canopies don't overhang the path (applies to EVERY tree scatter).</summary>
+        private static bool OffRoad(float x, float z) => !(Mathf.Abs(x) < 20f && z > -72f && z < 220f);
+
         /// <summary>Record a direct (non-TryScatter) placement into the detail catalog. `footprint` is the
         /// solid reservation radius (0 = soft foliage that may nestle and is skipped by overlap checks).
         /// y defaults to the terrain sample; pass the real placed y (realY) so the validator can catch
@@ -329,6 +333,9 @@ namespace AldenFall.Editor
                 MountainRingRadius = MountainRingR,
                 PlayerSpawn = new Vector3(0f, GY(0f, 194f), 194f),   // in front of Aldric, glade south of the lake
             };
+
+            // Let shared spawn code (CreateCamp) keep mob camps out of the lake/rivers.
+            WaterTest = (x, z) => InLakeWater(x, z) || InAnyRiver(x, z);
         }
 
         /// <summary>Record a placement into the catalog IF the map says it fits (right zones, no
@@ -647,6 +654,108 @@ namespace AldenFall.Editor
             if (inWater + floating + oversize + untextured + placeholders + overlaps == 0) Debug.Log("AUDIT CLEAN — no kit-prop conflicts");
         }
 
+        /// <summary>COMPREHENSIVE scene-truth audit of EVERY mesh object in the world (not just kit props).
+        /// Groups objects by name-pattern and flags, per group: primitive-as-scenery, floating, buried,
+        /// underwater, and fat colliders (invisible walls). Writes an uncapped report to WorldData/
+        /// world_audit.txt so problems are FOUND from the data, not from screenshots. Fix the source.</summary>
+        private static void DumpWorldAudit(Transform root)
+        {
+            var terrain = Terrain.activeTerrain;
+            float y0 = terrain != null ? terrain.transform.position.y : 0f;
+            var prims = new System.Collections.Generic.HashSet<string> { "Cube", "Cylinder", "Sphere", "Capsule", "Quad", "Plane" };
+            // Structural things that are SUPPOSED to be off the terrain surface (buildings, walls, water,
+            // mountains, dungeon, bridges) -- excluded from floating/buried so the report shows real junk.
+            string[] structural = { "wall", "floor", "roof", "gable", "building", "shell", "bldg", "tav_", "city",
+                "dungeon", "volcano", "mountain", "peak", "foothill", "berm", "bridge", "canal", "rail", "plaza",
+                "tile", "road", "cobble", "step", "stair", "fountain", "gate", "pillar", "beam", "timber", "window",
+                "door", "chimney", "banner", "sign", "lamp", "torch", "furn", "bed", "table", "chair", "shelf",
+                "barrel", "crate", "anvil", "cauldron", "rug", "waterfall", "foam", "water", "lava", "crater",
+                "plume", "spike", "cart", "well", "fish", "star", "moon", "sky", "cloud", "impostor", "billboard",
+                // structural continued: river/canal surfaces, dungeon+volcano rooms, decals, corners, windows
+                "river", "surf", "culvert", "ceiling", "seal", "mouth", "arch", "jamb", "lintel", "brow", "block",
+                "vol_", "volember", "corner", "ridge", "lin#", "win", "w#", "rut", "mud", "ash", "vein", "soot",
+                "corr", "hall", "chamber", "ante", "entry", "boss", "outer", "pinch", "void", "lake_", "fall_",
+                "char", "orc", "camp", "cage", "tent", "bone", "totem", "spear", "firestone", "lip", "crate",
+                "mountainridge", "chest" };
+
+            var byPrefix = new System.Collections.Generic.Dictionary<string, int[]>();   // [count, prim, float, bury, water, fatCol]
+            var sample = new System.Collections.Generic.Dictionary<string, string>();
+            var meshName = new System.Collections.Generic.Dictionary<string, string>();
+
+            float BaseY(GameObject go)
+            {
+                bool any = false; float m = float.MaxValue;
+                foreach (var mf in go.GetComponentsInChildren<MeshFilter>())
+                {
+                    if (mf.sharedMesh == null) continue;
+                    var mtx = mf.transform.localToWorldMatrix; var mb = mf.sharedMesh.bounds;
+                    for (int c = 0; c < 8; c++)
+                    {
+                        Vector3 cr = mb.center + Vector3.Scale(mb.extents, new Vector3((c & 1) == 0 ? -1 : 1, (c & 2) == 0 ? -1 : 1, (c & 4) == 0 ? -1 : 1));
+                        float wy = mtx.MultiplyPoint3x4(cr).y; if (wy < m) m = wy; any = true;
+                    }
+                }
+                return any ? m : go.transform.position.y;
+            }
+
+            foreach (var mf in root.GetComponentsInChildren<MeshFilter>(true))
+            {
+                var go = mf.gameObject; var mesh = mf.sharedMesh;
+                if (mesh == null) continue;
+                if (go.GetComponentInParent<LODGroup>() != null) continue;   // kit props: AuditScene owns them
+                Vector3 p = go.transform.position;
+                string prefix = System.Text.RegularExpressions.Regex.Replace(go.name, @"\d+", "#").Replace("(Clone)", "");
+                bool isPrim = prims.Contains(mesh.name);
+                string lname = prefix.ToLowerInvariant();   // digit-runs are '#', so "w#_#"/"lin#" match
+                bool isStruct = false; foreach (var s in structural) if (lname.Contains(s)) { isStruct = true; break; }
+
+                if (!byPrefix.TryGetValue(prefix, out var st)) { st = new int[6]; byPrefix[prefix] = st; sample[prefix] = $"({p.x:0},{p.z:0})"; meshName[prefix] = mesh.name; }
+                st[0]++;
+                if (isPrim && !isStruct) st[1]++;
+
+                if (!isStruct && terrain != null)
+                {
+                    float baseY = BaseY(go), gy = terrain.SampleHeight(p) + y0;
+                    if (baseY > gy + 1.5f) st[2]++;
+                    else if (baseY < gy - 1.2f) st[3]++;
+                }
+                if (!isStruct && _place != null && _place.InBounds(p.x, p.z) && (InLakeWater(p.x, p.z) || InAnyRiver(p.x, p.z))) st[4]++;
+
+                // Fat collider: a BoxCollider whose XZ footprint is much larger than the mesh (invisible
+                // wall). Skip structural (mountains/crates/buildings legitimately have big box colliders).
+                var box = isStruct ? null : go.GetComponent<BoxCollider>();
+                if (box != null)
+                {
+                    Vector3 cs = Vector3.Scale(box.size, go.transform.lossyScale);
+                    Vector3 ms = Vector3.Scale(mesh.bounds.size, go.transform.lossyScale);
+                    if (ms.x > 0.01f && ms.z > 0.01f && (cs.x > ms.x * 1.7f || cs.z > ms.z * 1.7f)) st[5]++;
+                }
+            }
+
+            var lines = new System.Collections.Generic.List<(int severity, string line)>();
+            int tPrim = 0, tFloat = 0, tBury = 0, tWater = 0, tFat = 0;
+            foreach (var kv in byPrefix)
+            {
+                var s = kv.Value; int issues = s[1] + s[2] + s[3] + s[4] + s[5];
+                tPrim += s[1]; tFloat += s[2]; tBury += s[3]; tWater += s[4]; tFat += s[5];
+                if (issues == 0) continue;
+                var tags = new System.Collections.Generic.List<string>();
+                if (s[1] > 0) tags.Add($"PRIM:{s[1]}"); if (s[2] > 0) tags.Add($"float:{s[2]}"); if (s[3] > 0) tags.Add($"bury:{s[3]}");
+                if (s[4] > 0) tags.Add($"water:{s[4]}"); if (s[5] > 0) tags.Add($"fatCol:{s[5]}");
+                lines.Add((issues, $"{kv.Key,-26} x{s[0],-4} [{meshName[kv.Key]}]  {string.Join(" ", tags)}  e.g.{sample[kv.Key]}"));
+            }
+            lines.Sort((a, b) => b.severity.CompareTo(a.severity));
+
+            var sb = new System.Text.StringBuilder();
+            sb.Append("# World object audit (scene-truth, every mesh). Groups by name-pattern.\n");
+            sb.Append($"# PRIM=primitive-as-scenery  float/bury=off terrain  water=in lake/river  fatCol=collider>>mesh (invisible wall)\n");
+            sb.Append($"TOTALS: primScenery={tPrim} floating={tFloat} buried={tBury} underwater={tWater} fatColliders={tFat}\n\n");
+            foreach (var l in lines) sb.Append(l.line).Append('\n');
+            System.IO.Directory.CreateDirectory("WorldData");
+            System.IO.File.WriteAllText("WorldData/world_audit.txt", sb.ToString());
+            Debug.Log($"WORLD AUDIT: primScenery={tPrim} floating={tFloat} buried={tBury} underwater={tWater} fatColliders={tFat} (WorldData/world_audit.txt)");
+        }
+
         /// <summary>Write the catalog to the source-of-truth JSON, log the validation report, and
         /// spawn the in-game F3 coord/zone overlay that reads the same map.</summary>
         private static void ExportCatalog(Transform root)
@@ -676,6 +785,7 @@ namespace AldenFall.Editor
                 }
 
                 AuditScene(root);                // scene-TRUTH audit of the actually-placed kit props
+                DumpWorldAudit(root);            // COMPREHENSIVE audit of EVERY mesh (finds junk from data)
             }
             catch (System.Exception e) { Debug.Log($"CATALOG export failed: {e.Message}"); }
 
@@ -1365,7 +1475,7 @@ namespace AldenFall.Editor
             // so field boulders sit in the grass instead of popping as bright white granite.
             Clump(120, 4, 14f, null, (x, z) =>
             {
-                string rock = new[] { "namaqualand_boulder_02", "boulder_01", "boulder_01", "RockCliff" }[rng.Next(4)];
+                string rock = new[] { "namaqualand_boulder_02", "boulder_01", "boulder_01", "namaqualand_boulder_02" }[rng.Next(4)];
                 float rh = 1.2f + (float)rng.NextDouble() * 3.6f;
                 float rr = Mathf.Clamp(rh * 0.45f, 0.8f, 2.4f);   // bigger boulder reserves more ground
                 var g = PlaceSolid(container, rock, x, z, (float)rng.NextDouble() * 360f, rh, rr, groundLayer, PropCollision.FitBox);
@@ -2824,7 +2934,7 @@ namespace AldenFall.Editor
             // REAL rock with VARIETY (Jon: "not just a massive stack of the same"): rotate through
             // four different rock meshes, random full-3D tilt, and varied scale so the cliff reads
             // as a natural jumble of boulders, not one mesh cloned. A dark cube only if all miss.
-            string[] fallRocks = { "namaqualand_boulder_02", "boulder_01", "boulder_01", "RockCliff" };
+            string[] fallRocks = { "namaqualand_boulder_02", "boulder_01", "boulder_01", "namaqualand_boulder_02" };
             int rockPick = 0;
             void Rock(string label, Vector3 pos, float size)
             {
@@ -3171,21 +3281,9 @@ namespace AldenFall.Editor
             fireSO.FindProperty("radius").floatValue = 3.5f;
             fireSO.ApplyModifiedProperties();
 
-            if (PlaceMeshyProp(fireObj.transform, "Campfire", fireObj.transform.position, rng.Next(0, 360), 0.9f, groundLayer) == null)
-            {
-                var stoneMat = SceneSetup.GetOrCreateMaterialAsset(new Color(0.35f, 0.33f, 0.31f), "CampfireStoneMaterial");
-                for (int i = 0; i < 6; i++)
-                {
-                    float a = i * Mathf.PI * 2f / 6f;
-                    var stone = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                    stone.name = $"Stone{i}";
-                    stone.transform.SetParent(fireObj.transform);
-                    stone.transform.localPosition = new Vector3(Mathf.Cos(a) * 0.55f, 0.1f, Mathf.Sin(a) * 0.55f);
-                    stone.transform.localScale = Vector3.one * 0.28f;
-                    Object.DestroyImmediate(stone.GetComponent<SphereCollider>());
-                    stone.GetComponent<MeshRenderer>().sharedMaterial = stoneMat;
-                }
-            }
+            // Real campfire mesh if present; otherwise just the fire light (no Sphere-primitive stone
+            // ring -- it read as a cluster of grey balls). A charred log ring can come with a real asset.
+            PlaceMeshyProp(fireObj.transform, "Campfire", fireObj.transform.position, rng.Next(0, 360), 0.9f, groundLayer);
             var lightObj = new GameObject("FireLight");
             lightObj.transform.SetParent(fireObj.transform);
             lightObj.transform.localPosition = Vector3.up * 0.8f;
@@ -3220,27 +3318,17 @@ namespace AldenFall.Editor
                 if (Mathf.Abs(x - LakeCenter.x) < LakeHalf + 8f && Mathf.Abs(z - LakeCenter.z) < LakeHalf + 8f) continue;
                 float h = 7f + (float)rng.NextDouble() * 6f;
                 // Respect the placement map: no trees in the road/water/city, none on catalog trees.
-                if (!MapClear(x, z, 2.7f)) continue;
+                if (!MapClear(x, z, 2.7f) || !OffRoad(x, z)) continue;
                 planted++;
-                if (PlaceMeshyProp(container, kit[planted % kit.Length], new Vector3(x, 0f, z),
-                        (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk) != null) continue;
-                PlaceCubePine(container, 5000 + planted, x, z, h, trunkMat, leafMat, groundLayer);
+                // Real tree only. If the gate rejects it (wrong ground / overlap / taken) it is SKIPPED,
+                // never replaced with a cube (HARD RULE). Fewer trees > fake cube trees.
+                PlaceMeshyProp(container, kit[planted % kit.Length], new Vector3(x, 0f, z),
+                    (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk);
             }
 
-            // Dim, cold light + a couple of glowing-mushroom waypoints in the gloom.
-            var shroomMat = Mat("DarkShroom", new Color(0.4f, 0.75f, 0.85f), smoothness: 0.3f,
-                emission: new Color(0.2f, 0.55f, 0.7f) * 2f);
-            for (int i = 0; i < 6; i++)
-            {
-                float x = c.x + ((float)rng.NextDouble() * 2f - 1f) * 45f;
-                float z = c.z + ((float)rng.NextDouble() * 2f - 1f) * 40f;
-                for (int m = 0; m < 3; m++)
-                {
-                    var cap = Sphere($"DarkShroom{i}_{m}", new Vector3(x + m * 0.5f - 0.5f, 0.22f + m * 0.06f, z),
-                        Vector3.one * (0.35f + m * 0.12f), shroomMat, container);
-                    Object.DestroyImmediate(cap.GetComponent<SphereCollider>());
-                }
-            }
+            // (Removed the DarkShroom "glowing mushroom" waypoints: they were cyan-emissive SPHERE
+            // primitives at a fixed y that floated on the slope and read as random blue balls. The dark
+            // woods keeps its gloom from the dim ambient + real trees; no floating orbs.)
 
             // Hidden treasure deep in the gloom (guarded by the new acolyte pair at
             // (-20,210) in monsters.json) — exploration should pay.
@@ -3366,18 +3454,9 @@ namespace AldenFall.Editor
                 if ((float)rng.NextDouble() < t * 0.6f) continue; // thin out nearer the volcano
                 planted++;
                 float h = 5f + (float)rng.NextDouble() * 4f;
-                if (PlaceMeshyProp(container, "dead_tree_trunk", new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk) != null)
-                    continue;
-                var trunk = Cube($"CharTree{planted}", new Vector3(x, h * 0.4f, z), new Vector3(0.55f, h * 0.8f, 0.55f), trunkMat, container);
-                trunk.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 8f, (float)rng.NextDouble() * 360f, (float)rng.NextDouble() * 8f);
-                trunk.isStatic = true;
-                if (groundLayer >= 0) trunk.layer = groundLayer;
-                if (t < 0.5f)
-                {
-                    var leaf = Cube($"CharTree{planted}_Leaf", new Vector3(x, h * 0.85f, z), new Vector3(h * 0.4f, h * 0.35f, h * 0.4f), deadLeaf, container);
-                    leaf.isStatic = true;
-                    Object.DestroyImmediate(leaf.GetComponent<BoxCollider>());  // canopy walk-through
-                }
+                // Real charred tree only; if the gate rejects it, SKIP -- no cube-trunk/cube-leaf fake
+                // (that was the "CharTree cube" the audit flagged, a HARD-RULE violation).
+                PlaceMeshyProp(container, "dead_tree_trunk", new Vector3(x, 0f, z), (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk);
             }
 
             // ---- Scorched ground debris: REAL textured volcanic rock (glowing lava-rock chunks +
@@ -3981,10 +4060,11 @@ namespace AldenFall.Editor
                 float rad = GladeRadius - 1f + (float)rng.NextDouble() * 3f;
                 float x = center.x + Mathf.Cos(a) * rad;
                 float z = center.z + Mathf.Sin(a) * rad;
+                if (!OffRoad(x, z)) continue;   // don't ring trees across the road that enters the glade
                 float h = 7f + (float)rng.NextDouble() * 4f;
-                if (PlaceMeshyProp(container, kit[i % kit.Length], new Vector3(x, 0f, z),
-                        (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk) != null) continue;
-                PlaceCubePine(container, 9000 + i, x, z, h, trunkMat, leafMat, groundLayer);
+                // Real tree only; gate-rejected -> skipped, never a cube (HARD RULE).
+                PlaceMeshyProp(container, kit[i % kit.Length], new Vector3(x, 0f, z),
+                    (float)rng.NextDouble() * 360f, h, groundLayer, PropCollision.Trunk);
             }
 
             // A few real boulders for a lived-in hermit clearing (was sphere primitives at a fixed y that
@@ -4002,18 +4082,8 @@ namespace AldenFall.Editor
             var fireObj = new GameObject("GladeHearth");
             fireObj.transform.SetParent(container);
             fireObj.transform.position = center + new Vector3(-3.5f, 0f, 2.5f);
-            if (PlaceMeshyProp(fireObj.transform, "Campfire", fireObj.transform.position, rng.Next(0, 360), 0.9f, groundLayer) == null)
-            {
-                var stoneMat = Mat("GladeFireStone", new Color(0.35f, 0.33f, 0.31f), smoothness: 0.1f);
-                for (int i = 0; i < 6; i++)
-                {
-                    float ang = i * Mathf.PI / 3f;
-                    var s = Sphere($"GladeStone{i}",
-                        fireObj.transform.position + new Vector3(Mathf.Cos(ang) * 0.55f, 0.1f, Mathf.Sin(ang) * 0.55f),
-                        Vector3.one * 0.28f, stoneMat, container);
-                    Object.DestroyImmediate(s.GetComponent<SphereCollider>());
-                }
-            }
+            // Real campfire mesh if present; no Sphere-primitive stone ring fallback (read as grey balls).
+            PlaceMeshyProp(fireObj.transform, "Campfire", fireObj.transform.position, rng.Next(0, 360), 0.9f, groundLayer);
             var lo = new GameObject("GladeFireLight");
             lo.transform.SetParent(fireObj.transform);
             lo.transform.localPosition = Vector3.up * 0.8f;
@@ -4148,6 +4218,7 @@ namespace AldenFall.Editor
         private static void BuildOreNode(Transform parent, Vector3 pos, string item, string label, int level,
             Material rockMat, Material oreMat, int interactLayer, int groundLayer)
         {
+            pos.y = GY(pos.x, pos.z);   // seat the ore node on the terrain (was fixed y=0 -> float/bury)
             var go = new GameObject($"OreNode_{label}");
             go.transform.SetParent(parent);
             go.transform.position = pos;
@@ -4169,6 +4240,7 @@ namespace AldenFall.Editor
 
         private static void BuildTreeNode(Transform parent, Vector3 pos, int interactLayer, int groundLayer)
         {
+            pos.y = GY(pos.x, pos.z);   // seat the gather node on the terrain (was fixed y=0)
             var go = new GameObject("TreeNode_Oak");
             go.transform.SetParent(parent);
             go.transform.position = pos;

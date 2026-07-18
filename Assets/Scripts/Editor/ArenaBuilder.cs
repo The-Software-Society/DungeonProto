@@ -1834,12 +1834,25 @@ namespace AldenFall.Editor
             Vector3 lossy = instance.transform.lossyScale;
             if (collision == PropCollision.FitBox)
             {
-                var box = instance.AddComponent<BoxCollider>();
-                box.center = instance.transform.InverseTransformPoint(bounds.center);
-                box.size = new Vector3(
-                    bounds.size.x / Mathf.Max(Mathf.Abs(lossy.x), 0.0001f),
-                    bounds.size.y / Mathf.Max(Mathf.Abs(lossy.y), 0.0001f),
-                    bounds.size.z / Mathf.Max(Mathf.Abs(lossy.z), 0.0001f));
+                // Rock-shaped Meshy props (e.g. LavaRockGround) get a CONVEX mesh collider that hugs the
+                // silhouette -- an AABB box around an irregular rock is the "invisible wall / big gap" bug.
+                // Boxy props (crates, barrels) keep the cheap fitted box.
+                var lod0 = PlacementCatalog.CategoryOf(name) == "rock" ? LargestMesh(instance) : null;
+                if (lod0 != null)
+                {
+                    var mc = instance.AddComponent<MeshCollider>();
+                    mc.sharedMesh = lod0;
+                    mc.convex = true;
+                }
+                else
+                {
+                    var box = instance.AddComponent<BoxCollider>();
+                    box.center = instance.transform.InverseTransformPoint(bounds.center);
+                    box.size = new Vector3(
+                        bounds.size.x / Mathf.Max(Mathf.Abs(lossy.x), 0.0001f),
+                        bounds.size.y / Mathf.Max(Mathf.Abs(lossy.y), 0.0001f),
+                        bounds.size.z / Mathf.Max(Mathf.Abs(lossy.z), 0.0001f));
+                }
             }
             else if (collision == PropCollision.Trunk)
             {
@@ -1961,7 +1974,10 @@ namespace AldenFall.Editor
             if (kit == TreeKitImporter.KitType.Rock || kit == TreeKitImporter.KitType.Stump)
             {
                 Vector3 n = TerrainNormalAt(pos.x, pos.z);
-                instance.transform.rotation = Quaternion.FromToRotation(Vector3.up, Vector3.Slerp(Vector3.up, n, 0.6f)) * instance.transform.rotation;
+                Vector3 target = Vector3.Slerp(Vector3.up, n, 0.35f);
+                float ang = Vector3.Angle(Vector3.up, target);
+                if (ang > 22f) target = Vector3.Slerp(Vector3.up, target, 22f / ang);   // never lay a boulder flat
+                instance.transform.rotation = Quaternion.FromToRotation(Vector3.up, target) * instance.transform.rotation;
             }
 
             b = Measure();
@@ -3345,9 +3361,27 @@ namespace AldenFall.Editor
             so.ApplyModifiedProperties();
         }
 
+        // Set by the world builder (Emberfall) so shared spawn code can keep camps out of lakes/rivers
+        // without knowing world-specific water geometry. Returns true if (x,z) is water.
+        internal static System.Func<float, float, bool> WaterTest;
+
         private static void CreateCamp(string name, GameObject prefab, Vector3 pos, int population, float radius, float respawnDelay)
         {
             pos = GroundSpawn(pos);
+            // Keep the camp (and thus its roam ring) out of the water -- mobs were spawning on the
+            // underwater lakebed NavMesh. Spiral out to the nearest dry ground, then re-snap.
+            if (WaterTest != null && WaterTest(pos.x, pos.z))
+                for (int r = 5; r <= 45; r += 4)
+                {
+                    bool found = false;
+                    for (int a = 0; a < 12; a++)
+                    {
+                        float ang = a * Mathf.PI / 6f;
+                        float nx = pos.x + Mathf.Cos(ang) * r, nz = pos.z + Mathf.Sin(ang) * r;
+                        if (!WaterTest(nx, nz)) { pos = GroundSpawn(new Vector3(nx, pos.y, nz)); found = true; break; }
+                    }
+                    if (found) break;
+                }
             var campObj = new GameObject(name);
             campObj.transform.position = pos;
             var camp = campObj.AddComponent<AI.MobCamp>();

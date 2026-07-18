@@ -24,29 +24,28 @@ Authoritative data view of the baked world. QA is a double-check of THIS.
 See ground_map.txt for the top-down ASCII layout.
 
 ## Objects
-- **tree**: 427
-- **rock**: 353
+- **tree**: 420
+- **rock**: 359
 - **plant**: 807
 - **flower**: 1087
 - **building**: 13
 - **prop**: 93
 - **fence**: 62
-- **deadtree**: 141
+- **deadtree**: 147
 
 <details><summary>per type</summary>
 
 - flower_gazania (flower): 1087
 - fern_02 (plant): 803
-- island_tree_01 (tree): 169
-- dead_tree_trunk (deadtree): 141
-- LavaRockGround (rock): 132
+- island_tree_01 (tree): 167
+- dead_tree_trunk (deadtree): 147
+- LavaRockGround (rock): 135
 - boulder_01 (rock): 121
-- island_tree_03 (tree): 86
-- island_tree_02 (tree): 85
+- namaqualand_boulder_02 (rock): 103
 - tree_small_02 (tree): 83
-- namaqualand_boulder_02 (rock): 65
+- island_tree_03 (tree): 83
+- island_tree_02 (tree): 83
 - Fence (fence): 62
-- RockCliff (rock): 35
 - lamp_lantern (prop): 13
 - MarketBarrel (prop): 13
 - Chair (prop): 12
@@ -55,8 +54,8 @@ See ground_map.txt for the top-down ASCII layout.
 - lamp_globe (prop): 11
 - Bed (prop): 8
 - building_house (building): 5
-- Cauldron (prop): 5
 - Bookshelf (prop): 5
+- Cauldron (prop): 5
 - Campfire (tree): 4
 - shrub_01 (plant): 4
 - building_shop (building): 3
