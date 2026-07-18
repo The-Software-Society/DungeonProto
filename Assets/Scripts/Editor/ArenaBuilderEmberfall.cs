@@ -1206,11 +1206,12 @@ namespace AldenFall.Editor
             // Baked vertex colours + material tint define the look. Terrain MESH details ignore
             // the DetailPrototype healthy/dry colours, so a charred variant needs its OWN prefab
             // with dark vertex colours (not just a dark tint on the shared green one).
-            // MUTED OLIVE/SAGE (these vertex colours ARE the rendered grass -- mesh details ignore the
-            // DetailPrototype tint). Was a saturated kelly-green (0.4,0.62,0.24) that clashed hard with
-            // the desaturated photoscan trees/rocks. Desaturated (R up toward G) + warmed toward khaki.
-            Color dark = tuftDark ?? new Color(0.20f, 0.25f, 0.11f);
-            Color light = tuftLight ?? new Color(0.45f, 0.50f, 0.26f);
+            // MUTED OLIVE/SAGE. The blade TEXTURE is now near-neutral grey (grass_tuft_desat.png), so
+            // these vertex colours actually define the hue (the old grass_tuft_alpha.png was itself a
+            // saturated green (55,96,33) that NO tint could desaturate -- multiply only darkens). R kept
+            // close to G (desaturated) + a touch warm = a natural dry-olive that sits with the photoscans.
+            Color dark = tuftDark ?? new Color(0.28f, 0.30f, 0.16f);
+            Color light = tuftLight ?? new Color(0.55f, 0.55f, 0.34f);
             string prefabPath = $"{MaterialDir}/{id}.prefab";
             // Always rebuild so the up-normal + alpha-grass-texture fixes take effect on regen.
             AssetDatabase.DeleteAsset(prefabPath);
@@ -1251,7 +1252,7 @@ namespace AldenFall.Editor
 
             // Alpha-cut grass-blade texture (double-sided) so each quad reads as a fuzzy tuft,
             // not a solid green card. Falls back to a solid material if the texture is missing.
-            var grassTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Ground/grass_tuft_alpha.png");
+            var grassTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Ground/grass_tuft_desat.png");
             Color tint = matTint ?? Color.white;
             Material mat;
             if (useGrassTex && grassTex != null)
