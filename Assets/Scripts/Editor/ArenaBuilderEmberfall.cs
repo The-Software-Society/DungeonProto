@@ -923,11 +923,13 @@ namespace AldenFall.Editor
             data.SetHeights(0, 0, heights);
 
             // ---- Splat layers (procedural textures — no external assets needed) ----
-            var grassLayer = MakeTerrainLayer("TL_Grass", new Color(0.16f, 0.3f, 0.12f), 0.05f);
-            var sandLayer = MakeTerrainLayer("TL_Sand", new Color(0.40f, 0.35f, 0.27f), 0.03f);   // muddier: bright sand washed pale at distance
+            // Warmer OLIVE grass (was a cold flat green that clashed with the warm Poly Haven foliage
+            // and read as a manicured lawn); warmer earthy dirt + rock to match the photoscan rocks.
+            var grassLayer = MakeTerrainLayer("TL_Grass", new Color(0.20f, 0.31f, 0.13f), 0.04f);
+            var sandLayer = MakeTerrainLayer("TL_Sand", new Color(0.42f, 0.36f, 0.26f), 0.03f);   // muddier: bright sand washed pale at distance
             var sootLayer = MakeTerrainLayer("TL_Soot", new Color(0.115f, 0.09f, 0.08f), 0.04f);
-            var dirtLayer = MakeTerrainLayer("TL_Dirt", new Color(0.36f, 0.28f, 0.19f), 0.04f);
-            var rockLayer = MakeTerrainLayer("TL_Rock", new Color(0.3f, 0.28f, 0.29f), 0.02f);
+            var dirtLayer = MakeTerrainLayer("TL_Dirt", new Color(0.38f, 0.29f, 0.18f), 0.04f);
+            var rockLayer = MakeTerrainLayer("TL_Rock", new Color(0.34f, 0.30f, 0.27f), 0.02f);   // warmer grey-brown, matches namaqualand
             var cobbleLayer = MakeTerrainLayer("TL_Cobble", new Color(0.42f, 0.41f, 0.39f), 0.03f);
             data.terrainLayers = new[] { grassLayer, sandLayer, sootLayer, dirtLayer, rockLayer, cobbleLayer };
 
@@ -3653,6 +3655,14 @@ namespace AldenFall.Editor
                 if (mtnMat == null) { mtnMat = new Material(hbShader); AssetDatabase.CreateAsset(mtnMat, mp); }
                 else if (mtnMat.shader != hbShader) mtnMat.shader = hbShader;
                 mtnMat.SetTexture("_RockTex", rockTex);
+                // Snow only on the very tips (peaks reach y~130-210): was Y=105 -> whole upper half white.
+                // More green/rock below + warmer rock tone to match the Poly Haven asset palette.
+                mtnMat.SetFloat("_RockTop", 185f);
+                mtnMat.SetFloat("_GreenTop", 42f);
+                mtnMat.SetFloat("_Band", 24f);
+                mtnMat.SetColor("_RockColor", new Color(0.40f, 0.35f, 0.30f, 1f));
+                mtnMat.SetColor("_GreenColor", new Color(0.21f, 0.29f, 0.15f, 1f));
+                mtnMat.SetColor("_DirtColor", new Color(0.34f, 0.27f, 0.19f, 1f));
                 EditorUtility.SetDirty(mtnMat);
             }
             void SkinMtn(GameObject go, int idx)
