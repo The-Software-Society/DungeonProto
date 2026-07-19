@@ -25,9 +25,9 @@ See ground_map.txt for the top-down ASCII layout.
 
 ## Objects
 - **tree**: 4311
-- **deadtree**: 399
+- **deadtree**: 398
 - **plant**: 5952
-- **rock**: 592
+- **rock**: 584
 - **building**: 18
 - **prop**: 362
 - **fence**: 190
@@ -40,10 +40,10 @@ See ground_map.txt for the top-down ASCII layout.
 - island_tree_02 (tree): 863
 - island_tree_03 (tree): 862
 - tree_small_02 (tree): 858
-- dead_tree_trunk (deadtree): 284
-- namaqualand_boulder_02 (rock): 255
+- dead_tree_trunk (deadtree): 283
+- namaqualand_boulder_02 (rock): 260
 - Fence (fence): 190
-- LavaRockGround (rock): 180
+- LavaRockGround (rock): 167
 - boulder_01 (rock): 157
 - shrub_03 (plant): 133
 - dead_tree_trunk_02 (deadtree): 115

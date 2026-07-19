@@ -890,6 +890,10 @@ namespace AldenFall.Editor
                 if (!byPrefix.TryGetValue(prefix, out var st)) { st = new int[6]; byPrefix[prefix] = st; sample[prefix] = $"({p.x:0},{p.z:0})"; meshName[prefix] = mesh.name; }
                 st[0]++;
                 if (isPrim && !isStruct) st[1]++;
+                // The structural exemption shields water/foam VFX QUADS (legit surfaces), but a
+                // SPHERE under a water/foam/waterfall name is never legit -- that was the "3 white
+                // balls" foam-blob regression. Flag it even though the name is structural.
+                else if (mesh.name == "Sphere" && (lname.Contains("foam") || lname.Contains("water") || lname.Contains("fall_"))) st[1]++;
 
                 if (!isStruct && terrain != null)
                 {
@@ -3238,14 +3242,19 @@ namespace AldenFall.Editor
             var m = AssetDatabase.LoadAssetAtPath<Material>(mp);
             if (m == null) { m = new Material(shader); AssetDatabase.CreateAsset(m, mp); }
             else if (m.shader != shader) m.shader = shader;
-            m.SetColor("_ShallowColor", new Color(0.26f, 0.50f, 0.55f, 0.6f));
-            m.SetColor("_DeepColor", new Color(0.09f, 0.26f, 0.36f, 0.85f));
-            m.SetColor("_FresnelTint", new Color(0.42f, 0.58f, 0.68f, 1f));
-            m.SetFloat("_RippleSpeed", 0.5f);
-            m.SetFloat("_RippleStrength", 0.10f);
-            m.SetFloat("_WaveHeight", 0.05f);
-            m.SetFloat("_Sheen", 0.10f);
-            m.SetFloat("_Opacity", 0.72f);
+            m.SetColor("_ShallowColor", new Color(0.31f, 0.55f, 0.54f, 1f));
+            m.SetColor("_DeepColor", new Color(0.05f, 0.22f, 0.33f, 1f));
+            m.SetColor("_FresnelTint", new Color(0.46f, 0.60f, 0.70f, 1f));
+            m.SetColor("_FoamColor", new Color(0.92f, 0.96f, 0.97f, 1f));
+            m.SetFloat("_ShoreDepth", 2.2f);
+            m.SetFloat("_ShoreAlpha", 0.25f);
+            m.SetFloat("_DeepAlpha", 0.93f);
+            m.SetFloat("_FoamWidth", 0.55f);
+            m.SetFloat("_RippleSpeed", 0.55f);
+            m.SetFloat("_RippleStrength", 0.14f);
+            m.SetFloat("_WaveHeight", 0.07f);
+            m.SetFloat("_Sparkle", 0.35f);
+            m.SetVector("_FlowDir", new Vector4(0.7f, 0.7f, 0.04f, 0f));
             m.renderQueue = 3000;
             EditorUtility.SetDirty(m);
             return m;
@@ -3267,10 +3276,14 @@ namespace AldenFall.Editor
             {
                 float ang = i / (float)seg * Mathf.PI * 2f;
                 Vector2 dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
-                // Terrain waterline solves to lakeR ~= 0.867*(edge+4); inset 2.5m so a thin sand
-                // ring always separates water from grass (no water lapping onto raised rim).
+                // Terrain waterline solves to lakeR ~= 0.867*(edge+4). With TRUE depth-fade water
+                // the rim now OVERHANGS the waterline by ~2m: the shader's depth fade + foam band
+                // dissolve the overlap into a soft foamy shoreline (the old 2.5m INSET was for the
+                // flat-alpha shader and left a hard dark edge floating short of the sand).
                 float edge = LakeEdge(LakeCenter.x + dir.x * 50f, LakeCenter.z + dir.y * 50f);
-                float rWater = Mathf.Max(4f, 0.867f * (edge + 4f) - 2.5f);
+                // +0.5m: enough overhang for the foam band to touch the sand, small enough not to
+                // reach over a beach ridge and flood the dip behind it.
+                float rWater = Mathf.Max(4f, 0.867f * (edge + 4f) + 0.5f);
                 verts[i + 1] = new Vector3(dir.x * rWater, 0f, dir.y * rWater);
                 uvs[i + 1] = new Vector2(0.5f + dir.x * 0.5f, 0.5f + dir.y * 0.5f);
             }
@@ -3312,16 +3325,34 @@ namespace AldenFall.Editor
             Vector3 toValley = -intoMtn;                // downstream, where the plunge pool sits
             Vector3 right = rot * Vector3.right;
 
-            // Foam blob (a bubble of crashing spray) - a sphere primitive, collider stripped.
-            GameObject Foam(string n, Vector3 pos, float d)
+            // Animated froth on a FLAT quad (AldenFall/FoamPatch: scrolling procedural churn with a
+            // soft elliptical edge). Replaces the old white SPHERE blobs, which read as "3 balls of
+            // white" at distance and violated the no-primitive-scenery rule.
+            var foamPatchShader = Shader.Find("AldenFall/FoamPatch");
+            Material FoamMatFor(float stretch, float density)
             {
-                var s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                s.name = n; s.transform.SetParent(container); s.transform.position = pos;
-                s.transform.localScale = Vector3.one * d;
-                s.GetComponent<Renderer>().sharedMaterial = foamMat;
-                Object.DestroyImmediate(s.GetComponent<Collider>());
-                s.isStatic = true; if (groundLayer >= 0) s.layer = groundLayer;
-                return s;
+                if (foamPatchShader == null) return foamMat;
+                string fp = $"{MaterialDir}/FoamPatch_{stretch:F1}_{density:F2}.mat";
+                var fm = AssetDatabase.LoadAssetAtPath<Material>(fp);
+                if (fm == null) { fm = new Material(foamPatchShader); AssetDatabase.CreateAsset(fm, fp); }
+                else if (fm.shader != foamPatchShader) fm.shader = foamPatchShader;
+                fm.SetFloat("_Stretch", stretch);
+                fm.SetFloat("_Density", density);
+                fm.SetFloat("_Churn", 1.1f);
+                fm.renderQueue = 3001;   // atop the water surface
+                EditorUtility.SetDirty(fm);
+                return fm;
+            }
+            GameObject FoamQuad(string n, Vector3 pos, float sizeX, float sizeZ, float yawDeg, Material fm)
+            {
+                var q = GameObject.CreatePrimitive(PrimitiveType.Quad);
+                q.name = n; q.transform.SetParent(container); q.transform.position = pos;
+                q.transform.rotation = Quaternion.Euler(90f, yawDeg, 0f);   // flat on the water
+                q.transform.localScale = new Vector3(sizeX, sizeZ, 1f);
+                q.GetComponent<Renderer>().sharedMaterial = fm;
+                Object.DestroyImmediate(q.GetComponent<Collider>());
+                q.isStatic = true; if (groundLayer >= 0) q.layer = groundLayer;
+                return q;
             }
             // A tuft of ferns/bush at the wet rocks - foliage volume around the fall.
             void Foliage(string kind, Vector3 pos, float h)
@@ -3424,32 +3455,25 @@ namespace AldenFall.Editor
             sheet2.GetComponent<Renderer>().sharedMaterial = fallSheetMat ?? fallWaterMat;
             if (groundLayer >= 0) sheet2.layer = groundLayer;
 
-            // Foam cap at the lip + a bubbling row where the water tips over.
-            for (int i = 0; i < 5; i++)
-                Foam($"Lip_Foam{i}", basePos + Vector3.up * (WaterSurfaceY + height - 0.3f) + intoMtn * (run * 0.8f)
-                    + right * ((i / 4f - 0.5f) * width * 0.8f), 0.9f + (float)rng.NextDouble() * 0.7f);
+            // Foam line where the water tips over the lip.
+            FoamQuad("Lip_Foam", basePos + Vector3.up * (WaterSurfaceY + height - 0.25f) + intoMtn * (run * 0.8f),
+                width * 0.9f, 1.1f, yaw, FoamMatFor(3.5f, 0.7f));
 
-            // CRASHING FOAM at the plunge: a dense froth of flattened overlapping blobs + a little
-            // rising spray, hugging the base where the sheet lands.
-            Vector3 plunge = basePos + toValley * 1.3f + Vector3.up * (WaterSurfaceY + 0.15f);
-            for (int i = 0; i < 26; i++)
-            {
-                float a = (float)rng.NextDouble() * Mathf.PI * 2f;
-                float r = (float)rng.NextDouble() * (width * 0.6f);
-                bool spray = (float)rng.NextDouble() < 0.22f;
-                float rise = spray ? 0.8f + (float)rng.NextDouble() * 1.8f : 0f;
-                var f = Foam($"Crash_Foam{i}", plunge + right * (Mathf.Cos(a) * r) + toValley * (Mathf.Sin(a) * r * 0.7f) + Vector3.up * rise,
-                    0.35f + (float)rng.NextDouble() * 0.8f);
-                if (!spray) f.transform.localScale = Vector3.Scale(f.transform.localScale, new Vector3(1.3f, 0.45f, 1.3f));
-            }
-            // Foam trails fanning downstream across the plunge pool.
+            // CRASHING FOAM at the plunge: two staggered churning patches hugging the impact,
+            // sitting just above the water surface.
+            Vector3 plunge = basePos + toValley * 1.3f + Vector3.up * (WaterSurfaceY + 0.08f);
+            var churn = FoamMatFor(1f, 0.62f);
+            FoamQuad("Crash_Foam0", plunge, width * 1.25f, width * 0.85f, yaw, churn);
+            FoamQuad("Crash_Foam1", plunge + toValley * (width * 0.28f) + Vector3.up * 0.04f,
+                width * 0.9f, width * 0.6f, yaw + 24f, churn);
+
+            // Foam streaks fanning downstream across the plunge pool.
+            var streak = FoamMatFor(0.22f, 0.5f);
             for (int i = 0; i < 5; i++)
             {
                 float a = (i / 5f - 0.5f) * 1.2f;
-                var trail = Cube($"Fall_Trail{i}", plunge + toValley * (2f + i * 0.4f) + right * (a * width),
-                    new Vector3(0.5f + (float)rng.NextDouble() * 0.6f, 0.08f, 3f + (float)rng.NextDouble() * 3f), foamMat, container);
-                trail.transform.rotation = rot;
-                Object.DestroyImmediate(trail.GetComponent<BoxCollider>());
+                FoamQuad($"Fall_Trail{i}", plunge + toValley * (2.2f + i * 0.5f) + right * (a * width) + Vector3.up * 0.02f,
+                    0.6f + (float)rng.NextDouble() * 0.5f, 3.2f + (float)rng.NextDouble() * 2.5f, yaw, streak);
             }
             // Just TWO wet boulders flanking the plunge base (not a ring closing off the front).
             Rock("Plunge_RkL", basePos + toValley * 1.6f - right * (width * 0.7f) + Vector3.up * 0.3f, 2.2f + (float)rng.NextDouble() * 2f);

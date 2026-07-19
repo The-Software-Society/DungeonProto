@@ -1,0 +1,17 @@
+{
+  "fps": 30,
+  "settle": 5,
+  "environmentOnly": true,
+  "steps": [
+    { "type":"spawn", "pos":[-30,3,570], "yaw":15, "pitch":-6 },
+    { "type":"moveTo", "pos":[30,3,585], "yaw":345, "pitch":-5, "speed":6 },
+    { "type":"turn", "yaw":300, "pitch":-4, "seconds":2.5 },
+    { "type":"wait", "seconds":1.0 },
+    { "type":"spawn", "pos":[-90,4,640], "yaw":40, "pitch":-8 },
+    { "type":"moveTo", "pos":[-40,4,680], "yaw":25, "pitch":-6, "speed":7 },
+    { "type":"wait", "seconds":1.2 },
+    { "type":"spawn", "pos":[0,6,760], "yaw":180, "pitch":-10 },
+    { "type":"turn", "yaw":140, "pitch":-6, "seconds":2.5 },
+    { "type":"wait", "seconds":1.5 }
+  ]
+}
