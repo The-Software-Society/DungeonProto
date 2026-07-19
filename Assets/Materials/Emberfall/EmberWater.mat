@@ -22,30 +22,44 @@ Material:
   m_LockedProperties: 
   m_SavedProperties:
     serializedVersion: 3
-    m_TexEnvs: []
+    m_TexEnvs:
+    - _FoamTex:
+        m_Texture: {fileID: 2800000, guid: 5f0dcb5968dff4d9f8446439bf3ca798, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _NormalTex:
+        m_Texture: {fileID: 2800000, guid: bf90b97d163964bfaac6cda8c8628261, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
     - _DeepAlpha: 0.93
     - _DepthFade: 3.5
+    - _DetailScale: 5.5
+    - _DetailStrength: 0.85
     - _FoamDist: 0.9
+    - _FoamScale: 7
     - _FoamWidth: 0.55
     - _Opacity: 0.72
+    - _RefractStrength: 0.35
     - _RippleScale: 0.5
     - _RippleSpeed: 0.55
     - _RippleStrength: 0.14
     - _Sheen: 0.1
     - _ShoreAlpha: 0.25
     - _ShoreDepth: 2.2
-    - _Sparkle: 0.35
+    - _Sparkle: 1.3
     - _SpecGain: 0.8
     - _SpecSharp: 200
-    - _WaveHeight: 0.07
+    - _WaveHeight: 0.06
     - _WaveScale: 0.12
     m_Colors:
-    - _DeepColor: {r: 0.05, g: 0.22, b: 0.33, a: 1}
-    - _FlowDir: {r: 0.7, g: 0.7, b: 0.04, a: 0}
-    - _FoamColor: {r: 0.92, g: 0.96, b: 0.97, a: 1}
-    - _FresnelTint: {r: 0.46, g: 0.6, b: 0.7, a: 1}
-    - _ShallowColor: {r: 0.31, g: 0.55, b: 0.54, a: 1}
+    - _Absorb: {r: 0.42, g: 0.18, b: 0.13, a: 0}
+    - _DeepColor: {r: 0.09, g: 0.27, b: 0.32, a: 1}
+    - _FlowDir: {r: 0.7, g: 0.7, b: 0.045, a: 0}
+    - _FoamColor: {r: 0.94, g: 0.97, b: 0.98, a: 1}
+    - _FoamZones: {r: 0.18, g: 0.7, b: 1.5, a: 0}
+    - _FresnelTint: {r: 0.56, g: 0.66, b: 0.72, a: 1}
+    - _ShallowColor: {r: 0.33, g: 0.58, b: 0.56, a: 1}
   m_BuildTextureStacks: []
   m_AllowLocking: 1

@@ -3242,19 +3242,22 @@ namespace AldenFall.Editor
             var m = AssetDatabase.LoadAssetAtPath<Material>(mp);
             if (m == null) { m = new Material(shader); AssetDatabase.CreateAsset(m, mp); }
             else if (m.shader != shader) m.shader = shader;
-            m.SetColor("_ShallowColor", new Color(0.31f, 0.55f, 0.54f, 1f));
-            m.SetColor("_DeepColor", new Color(0.05f, 0.22f, 0.33f, 1f));
-            m.SetColor("_FresnelTint", new Color(0.46f, 0.60f, 0.70f, 1f));
-            m.SetColor("_FoamColor", new Color(0.92f, 0.96f, 0.97f, 1f));
-            m.SetFloat("_ShoreDepth", 2.2f);
-            m.SetFloat("_ShoreAlpha", 0.25f);
-            m.SetFloat("_DeepAlpha", 0.93f);
-            m.SetFloat("_FoamWidth", 0.55f);
+            m.SetTexture("_NormalTex", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Water/WaterNormal.png"));
+            m.SetTexture("_FoamTex", AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Water/FoamMask.png"));
+            m.SetColor("_ShallowColor", new Color(0.33f, 0.58f, 0.56f, 1f));
+            m.SetColor("_DeepColor", new Color(0.09f, 0.27f, 0.32f, 1f));
+            m.SetVector("_Absorb", new Vector4(0.42f, 0.18f, 0.13f, 0f));
+            m.SetColor("_FresnelTint", new Color(0.56f, 0.66f, 0.72f, 1f));
+            m.SetColor("_FoamColor", new Color(0.94f, 0.97f, 0.98f, 1f));
+            m.SetFloat("_RefractStrength", 0.35f);
+            m.SetFloat("_DetailStrength", 0.85f);
+            m.SetFloat("_DetailScale", 5.5f);
+            m.SetFloat("_FoamScale", 7.0f);
             m.SetFloat("_RippleSpeed", 0.55f);
-            m.SetFloat("_RippleStrength", 0.14f);
-            m.SetFloat("_WaveHeight", 0.07f);
-            m.SetFloat("_Sparkle", 0.35f);
-            m.SetVector("_FlowDir", new Vector4(0.7f, 0.7f, 0.04f, 0f));
+            m.SetFloat("_WaveHeight", 0.06f);
+            m.SetFloat("_Sparkle", 1.3f);
+            m.SetVector("_FlowDir", new Vector4(0.7f, 0.7f, 0.045f, 0f));
+            m.SetVector("_FoamZones", new Vector4(0.18f, 0.7f, 1.5f, 0f));
             m.renderQueue = 3000;
             EditorUtility.SetDirty(m);
             return m;
@@ -3266,34 +3269,48 @@ namespace AldenFall.Editor
         /// Double-sided so it renders from above and while swimming under it.</summary>
         private static void BuildLakeSurfaceMesh(Transform container, Material waterMat)
         {
+            // Radial GRID (rings x segments), not a center fan: the v2 water shader displaces
+            // vertices for real swell, and a fan has no interior vertices to move. Rings are
+            // sqrt-spaced so density concentrates toward the rim where the shoreline lives.
             const int seg = 96;
+            const int rings = 10;
             var mesh = new Mesh { name = "LakeSurfaceMesh" };
-            var verts = new Vector3[seg + 2];
-            var uvs = new Vector2[seg + 2];
+            var verts = new Vector3[1 + seg * rings];
+            var uvs = new Vector2[verts.Length];
             verts[0] = Vector3.zero;
             uvs[0] = new Vector2(0.5f, 0.5f);
-            for (int i = 0; i <= seg; i++)
+            for (int i = 0; i < seg; i++)
             {
                 float ang = i / (float)seg * Mathf.PI * 2f;
                 Vector2 dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
-                // Terrain waterline solves to lakeR ~= 0.867*(edge+4). With TRUE depth-fade water
-                // the rim now OVERHANGS the waterline by ~2m: the shader's depth fade + foam band
-                // dissolve the overlap into a soft foamy shoreline (the old 2.5m INSET was for the
-                // flat-alpha shader and left a hard dark edge floating short of the sand).
+                // Terrain waterline solves to lakeR ~= 0.867*(edge+4). The rim OVERHANGS the
+                // waterline +0.5m so the shader's foam band dissolves the edge into the sand
+                // without reaching over beach ridges and flooding the dips behind them.
                 float edge = LakeEdge(LakeCenter.x + dir.x * 50f, LakeCenter.z + dir.y * 50f);
-                // +0.5m: enough overhang for the foam band to touch the sand, small enough not to
-                // reach over a beach ridge and flood the dip behind it.
                 float rWater = Mathf.Max(4f, 0.867f * (edge + 4f) + 0.5f);
-                verts[i + 1] = new Vector3(dir.x * rWater, 0f, dir.y * rWater);
-                uvs[i + 1] = new Vector2(0.5f + dir.x * 0.5f, 0.5f + dir.y * 0.5f);
+                for (int j = 0; j < rings; j++)
+                {
+                    float rt = Mathf.Sqrt((j + 1) / (float)rings);
+                    int vi = 1 + i * rings + j;
+                    verts[vi] = new Vector3(dir.x * rWater * rt, 0f, dir.y * rWater * rt);
+                    uvs[vi] = new Vector2(0.5f + dir.x * rt * 0.5f, 0.5f + dir.y * rt * 0.5f);
+                }
             }
-            var tris = new int[seg * 6];   // double-sided fan
+            var triList = new System.Collections.Generic.List<int>(seg * rings * 12);
+            void Quad(int a, int b, int c, int d)
+            {
+                triList.AddRange(new[] { a, b, c, a, c, d });       // up face
+                triList.AddRange(new[] { a, c, b, a, d, c });       // down face
+            }
             for (int i = 0; i < seg; i++)
             {
-                tris[i * 6] = 0; tris[i * 6 + 1] = i + 1; tris[i * 6 + 2] = i + 2;      // up face
-                tris[i * 6 + 3] = 0; tris[i * 6 + 4] = i + 2; tris[i * 6 + 5] = i + 1;  // down face
+                int i2 = (i + 1) % seg;
+                int v0 = 1 + i * rings, w0 = 1 + i2 * rings;
+                triList.AddRange(new[] { 0, v0, w0, 0, w0, v0 });   // center fan (both faces)
+                for (int j = 0; j < rings - 1; j++)
+                    Quad(v0 + j, v0 + j + 1, w0 + j + 1, w0 + j);
             }
-            mesh.vertices = verts; mesh.uv = uvs; mesh.triangles = tris;
+            mesh.vertices = verts; mesh.uv = uvs; mesh.triangles = triList.ToArray();
             var up = new Vector3[verts.Length];
             for (int i = 0; i < up.Length; i++) up[i] = Vector3.up;
             mesh.normals = up;
