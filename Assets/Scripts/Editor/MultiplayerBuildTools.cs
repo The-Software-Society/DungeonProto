@@ -63,7 +63,7 @@ namespace AldenFall.Editor
             }
 
             Directory.CreateDirectory(MacBuildDir);
-            TrySetMacUniversal();
+            TrySetMacNativeArm64();
             ForcePlayerSubtarget();
 
             var options = new BuildPlayerOptions
@@ -78,6 +78,28 @@ namespace AldenFall.Editor
 
             var report = BuildPipeline.BuildPlayer(options);
             LogReport("Mac desktop", report);
+        }
+
+        /// <summary>Diagnostic: same as BuildMacDesktop but a Development build (keeps type trees +
+        /// verbose serialization errors) — for chasing player-only load failures.</summary>
+        public static void BuildMacDesktopDev()
+        {
+            EnsureSceneExists();
+            EnsureStandaloneIdentity();
+            Directory.CreateDirectory(MacBuildDir);
+            TrySetMacNativeArm64();
+            ForcePlayerSubtarget();
+            var options = new BuildPlayerOptions
+            {
+                scenes = new[] { ScenePath },
+                locationPathName = $"{MacBuildDir}/AldenFall.app",
+                target = BuildTarget.StandaloneOSX,
+                targetGroup = BuildTargetGroup.Standalone,
+                subtarget = 0,
+                options = BuildOptions.Development
+            };
+            var report = BuildPipeline.BuildPlayer(options);
+            LogReport("Mac desktop (dev)", report);
         }
 
         [MenuItem("AldenFall/Multiplayer/Build Windows Desktop", priority = 111)]
@@ -148,7 +170,7 @@ namespace AldenFall.Editor
         /// friend's Mac runs it natively regardless of chip. Reflection-guarded so it never
         /// breaks the build if the OSXStandalone API shifts between Unity versions.
         /// </summary>
-        private static void TrySetMacUniversal()
+        private static void TrySetMacNativeArm64()
         {
             try
             {
@@ -162,14 +184,14 @@ namespace AldenFall.Editor
                     System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
                 if (archProp != null)
                 {
-                    var universal = System.Enum.Parse(archProp.PropertyType, "x64ARM64");
-                    archProp.SetValue(null, universal);
-                    Debug.Log("macOS build architecture set to Universal (x64 + ARM64).");
+                    var arm64 = System.Enum.Parse(archProp.PropertyType, "ARM64");
+                    archProp.SetValue(null, arm64);
+                    Debug.Log("macOS build architecture set to native ARM64.");
                 }
             }
             catch (System.Exception e)
             {
-                Debug.LogWarning($"Could not force macOS Universal architecture (non-fatal, using default): {e.Message}");
+                Debug.LogWarning($"Could not force macOS ARM64 architecture (non-fatal, using default): {e.Message}");
             }
         }
 

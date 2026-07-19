@@ -113,6 +113,7 @@ namespace AldenFall.Multiplayer
             Ensure<UI.QuestDetailPanel>();
             Ensure<UI.Minimap>();
             Ensure<Progression.PlayerProgress>();   // before PlayerSave: it reads this in Awake
+            Ensure<World.VistaProgress>();
             Ensure<Persistence.PlayerSave>();
         }
 

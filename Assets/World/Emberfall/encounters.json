@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "camps": [
+    { "id":"goblin_hollow_1", "mobId":"goblin_scrapper", "region":"west_woods", "purpose":"outer scouts", "position":[-315,0,72], "count":3, "radius":10, "respawn":18 },
+    { "id":"goblin_hollow_2", "mobId":"goblin_scrapper", "region":"west_woods", "purpose":"ravine camp", "position":[-410,0,118], "count":5, "radius":13, "respawn":22 },
+    { "id":"goblin_hollow_3", "mobId":"goblin_scrapper", "region":"west_woods", "purpose":"resource ambush", "position":[-510,0,25], "count":4, "radius":12, "respawn":22 },
+    { "id":"goblin_hollow_4", "mobId":"goblin_scrapper", "region":"west_woods", "purpose":"deep den perimeter", "position":[-570,0,145], "count":6, "radius":16, "respawn":26 },
+    { "id":"goblin_north_1", "mobId":"goblin_scrapper", "region":"north_woods", "purpose":"optional north-road patrol", "position":[-185,0,330], "count":3, "radius":10, "respawn":20 },
+
+    { "id":"bandit_road_1", "mobId":"field_bandit", "region":"east_woods", "purpose":"roadside lookout", "position":[295,0,-35], "count":3, "radius":11, "respawn":20 },
+    { "id":"bandit_quarry_1", "mobId":"field_bandit", "region":"east_woods", "purpose":"abandoned quarry camp", "position":[420,0,45], "count":5, "radius":14, "respawn":24 },
+    { "id":"bandit_river_1", "mobId":"field_bandit", "region":"east_woods", "purpose":"river crossing toll camp", "position":[525,0,125], "count":5, "radius":15, "respawn":25 },
+    { "id":"bandit_deep_1", "mobId":"field_bandit", "region":"east_woods", "purpose":"main hidden stockade", "position":[590,0,-70], "count":7, "radius":18, "respawn":30 },
+    { "id":"bandit_north_1", "mobId":"field_bandit", "region":"north_woods", "purpose":"lake-route raiders", "position":[190,0,405], "count":4, "radius":12, "respawn":23 },
+
+    { "id":"orc_south_1", "mobId":"orc_brute", "region":"south_woods", "purpose":"forest edge patrol", "position":[-115,0,-250], "count":3, "radius":11, "respawn":24 },
+    { "id":"orc_south_2", "mobId":"orc_brute", "region":"south_woods", "purpose":"old-growth war party", "position":[-255,0,-350], "count":5, "radius":15, "respawn":28 },
+    { "id":"orc_south_3", "mobId":"orc_brute", "region":"south_woods", "purpose":"ruined lumber camp", "position":[210,0,-420], "count":5, "radius":15, "respawn":28 },
+    { "id":"orc_warcamp", "mobId":"orc_brute", "region":"south_woods", "purpose":"main warcamp hidden behind western fold", "position":[-330,0,-465], "count":8, "radius":20, "respawn":35 },
+
+    { "id":"acolyte_foothill_1", "mobId":"ember_acolyte", "region":"ashen_foothills", "purpose":"first cult signs", "position":[70,0,-610], "count":3, "radius":10, "respawn":24 },
+    { "id":"acolyte_foothill_2", "mobId":"ember_acolyte", "region":"ashen_foothills", "purpose":"dead grove ritual", "position":[-130,0,-690], "count":4, "radius":13, "respawn":27 },
+    { "id":"acolyte_approach_1", "mobId":"ember_acolyte", "region":"ember_approach", "purpose":"canyon blockade", "position":[45,0,-790], "count":4, "radius":12, "respawn":26 },
+    { "id":"acolyte_approach_2", "mobId":"ember_acolyte", "region":"ember_approach", "purpose":"lava shrine", "position":[-55,0,-900], "count":5, "radius":14, "respawn":30 },
+    { "id":"acolyte_apron", "mobId":"ember_acolyte", "region":"volcano_entrance", "purpose":"entrance guardians", "position":[0,0,-985], "count":6, "radius":16, "respawn":35 },
+
+    { "id":"dungeon_ash_pack", "mobId":"ember_acolyte", "region":"volcano_dungeon", "purpose":"ash gallery", "position":[0,-10,-1115], "count":4, "radius":12, "respawn":40 },
+    { "id":"dungeon_shrine", "mobId":"ember_acolyte", "region":"volcano_dungeon", "purpose":"east shrine", "position":[78,-6,-1160], "count":4, "radius":12, "respawn":45 },
+    { "id":"dungeon_magma", "mobId":"ember_acolyte", "region":"volcano_dungeon", "purpose":"magma works", "position":[-50,-22,-1250], "count":5, "radius":14, "respawn":45 },
+    { "id":"dungeon_guard_1", "mobId":"stone_sentinel", "region":"volcano_dungeon", "purpose":"west mine guardian", "position":[-76,-13,-1155], "count":3, "radius":11, "respawn":50 },
+    { "id":"dungeon_guard_2", "mobId":"stone_sentinel", "region":"volcano_dungeon", "purpose":"guardian hall seal", "position":[0,-20,-1375], "count":4, "radius":15, "respawn":999999 },
+
+    { "id":"dire_goblin_anchor", "mobId":"dire_goblin", "region":"west_woods", "purpose":"territory elite", "kind":"spawner", "position":[-555,0,125], "count":1, "radius":0, "respawn":90 },
+    { "id":"dire_bandit_anchor", "mobId":"dire_bandit", "region":"east_woods", "purpose":"territory elite", "kind":"spawner", "position":[565,0,-45], "count":1, "radius":0, "respawn":90 },
+    { "id":"dire_orc_anchor", "mobId":"dire_orc", "region":"south_woods", "purpose":"territory elite", "kind":"spawner", "position":[-315,0,-445], "count":1, "radius":0, "respawn":100 },
+    { "id":"dire_acolyte_anchor", "mobId":"dire_acolyte", "region":"ashen_foothills", "purpose":"transition elite", "kind":"spawner", "position":[-110,0,-680], "count":1, "radius":0, "respawn":110 },
+    { "id":"dire_sentinel_anchor", "mobId":"dire_sentinel", "region":"volcano_dungeon", "purpose":"dungeon elite", "kind":"spawner", "position":[0,-20,-1362], "count":1, "radius":0, "respawn":999999 },
+    { "id":"grukmar_warcamp", "mobId":"grukmar", "region":"south_woods", "purpose":"orc warcamp boss", "kind":"spawner", "position":[-340,0,-470], "count":1, "radius":0, "respawn":999999 },
+    { "id":"floor_boss", "mobId":"cave_troll_boss", "region":"volcano_dungeon", "purpose":"floor boss", "kind":"spawner", "position":[0,0,-1480], "count":1, "radius":0, "respawn":999999 }
+  ]
+}

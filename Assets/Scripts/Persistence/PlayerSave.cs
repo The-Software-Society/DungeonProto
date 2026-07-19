@@ -29,6 +29,7 @@ namespace AldenFall.Persistence
         private Equipment equipment;
         private Quests.QuestLog quests;
         private Progression.PlayerProgress progress;
+        private World.VistaProgress vistas;
         private Multiplayer.NetworkPlayerAvatar avatar;
 
         private bool loaded;
@@ -43,6 +44,7 @@ namespace AldenFall.Persistence
             equipment = GetComponent<Equipment>();
             quests = GetComponent<Quests.QuestLog>();
             progress = GetComponent<Progression.PlayerProgress>();
+            vistas = GetComponent<World.VistaProgress>();
             avatar = GetComponent<Multiplayer.NetworkPlayerAvatar>();
         }
 
@@ -91,6 +93,7 @@ namespace AldenFall.Persistence
             var data = new PlayerSaveData { accountId = AccountId };
             if (wallet != null) data.gold = wallet.Gold;
             if (progress != null) data.floor1Cleared = progress.Floor1Cleared;
+            if (vistas != null) foreach (var id in vistas.Discovered) data.discoveredVistas.Add(id);
 
             data.skillLevels = new int[Skills.SkillCount];
             data.skillXp = new float[Skills.SkillCount];
@@ -134,6 +137,7 @@ namespace AldenFall.Persistence
 
             wallet?.SetGold(data.gold);
             progress?.Restore(data.floor1Cleared);
+            vistas?.Restore(data.discoveredVistas);
 
             if (skills != null && data.skillLevels != null)
             {

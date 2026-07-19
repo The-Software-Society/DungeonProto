@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "volcano_dungeon",
+  "visualProfile": "subterranean_volcanic_ruin",
+  "origin": [0,0,-1010],
+  "rooms": [
+    { "id":"mouth", "kind":"threshold", "purpose":"monumental exterior-to-interior transition", "center":[0,0,-18], "size":[28,14,34], "streamGroup":0 },
+    { "id":"descent", "kind":"ramp", "purpose":"first depth reveal", "center":[0,-5,-58], "size":[16,12,46], "streamGroup":0 },
+    { "id":"ash_gallery", "kind":"encounter", "purpose":"intro combat and branching orientation", "center":[0,-10,-105], "size":[62,15,42], "streamGroup":1 },
+    { "id":"west_mine", "kind":"side_wing", "purpose":"optional mining loop and resource reward", "center":[-76,-13,-145], "size":[72,14,44], "streamGroup":1 },
+    { "id":"east_shrine", "kind":"side_wing", "purpose":"lore shrine and caster encounter", "center":[78,-6,-150], "size":[66,18,48], "streamGroup":1 },
+    { "id":"collapsed_crossing", "kind":"traversal", "purpose":"vertical bridge above lava and route convergence", "center":[0,-16,-190], "size":[84,26,38], "streamGroup":2 },
+    { "id":"magma_works", "kind":"encounter", "purpose":"industrial ruin with moving-around-lava combat", "center":[-50,-22,-240], "size":[76,18,62], "streamGroup":2 },
+    { "id":"obsidian_choir", "kind":"encounter", "purpose":"tall acoustic chamber and elite pack", "center":[55,-10,-255], "size":[72,32,68], "streamGroup":2 },
+    { "id":"lower_loop", "kind":"traversal", "purpose":"loop connecting both combat wings", "center":[0,-27,-305], "size":[110,18,42], "streamGroup":3 },
+    { "id":"sealed_archive", "kind":"secret", "purpose":"hidden lore and equipment cache", "center":[-92,-25,-335], "size":[48,15,40], "streamGroup":3 },
+    { "id":"guardian_hall", "kind":"encounter", "purpose":"door-unlock guardian encounter", "center":[0,-20,-365], "size":[92,22,58], "streamGroup":3 },
+    { "id":"caldera_heart", "kind":"setpiece", "purpose":"large vertical pre-boss vista", "center":[0,-12,-425], "size":[120,50,64], "streamGroup":4 },
+    { "id":"boss_approach", "kind":"ramp", "purpose":"quiet tension corridor", "center":[0,-4,-462], "size":[18,18,34], "streamGroup":4 },
+    { "id":"boss_chamber", "kind":"boss", "purpose":"floor boss arena and summit shaft", "center":[0,0,-470], "size":[96,34,72], "streamGroup":5 }
+  ],
+  "links": [
+    { "id":"mouth_descent", "from":"mouth", "to":"descent", "kind":"ramp", "width":12, "gated":false },
+    { "id":"descent_gallery", "from":"descent", "to":"ash_gallery", "kind":"corridor", "width":12, "gated":false },
+    { "id":"gallery_west", "from":"ash_gallery", "to":"west_mine", "kind":"corridor", "width":10, "gated":false },
+    { "id":"gallery_east", "from":"ash_gallery", "to":"east_shrine", "kind":"stairs", "width":10, "gated":false },
+    { "id":"west_crossing", "from":"west_mine", "to":"collapsed_crossing", "kind":"bridge", "width":9, "gated":false },
+    { "id":"east_crossing", "from":"east_shrine", "to":"collapsed_crossing", "kind":"bridge", "width":9, "gated":false },
+    { "id":"crossing_works", "from":"collapsed_crossing", "to":"magma_works", "kind":"ramp", "width":10, "gated":false },
+    { "id":"crossing_choir", "from":"collapsed_crossing", "to":"obsidian_choir", "kind":"stairs", "width":10, "gated":false },
+    { "id":"works_loop", "from":"magma_works", "to":"lower_loop", "kind":"corridor", "width":10, "gated":false },
+    { "id":"choir_loop", "from":"obsidian_choir", "to":"lower_loop", "kind":"corridor", "width":10, "gated":false },
+    { "id":"loop_archive", "from":"lower_loop", "to":"sealed_archive", "kind":"secret_door", "width":8, "gated":true },
+    { "id":"loop_guardian", "from":"lower_loop", "to":"guardian_hall", "kind":"corridor", "width":12, "gated":false },
+    { "id":"guardian_heart", "from":"guardian_hall", "to":"caldera_heart", "kind":"sealed_door", "width":14, "gated":true },
+    { "id":"heart_approach", "from":"caldera_heart", "to":"boss_approach", "kind":"ramp", "width":12, "gated":false },
+    { "id":"approach_boss", "from":"boss_approach", "to":"boss_chamber", "kind":"boss_gate", "width":14, "gated":true }
+  ],
+  "encounters": [
+    { "id":"ash_pack", "room":"ash_gallery", "archetype":"ember_acolyte_intro", "reward":"dungeon_checkpoint_1" },
+    { "id":"mine_guard", "room":"west_mine", "archetype":"stone_sentinel_resource", "reward":"ore_cache" },
+    { "id":"shrine_casters", "room":"east_shrine", "archetype":"ember_acolyte_casters", "reward":"lore_shrine" },
+    { "id":"magma_pack", "room":"magma_works", "archetype":"hazard_melee_mix", "reward":"dungeon_checkpoint_2" },
+    { "id":"choir_elite", "room":"obsidian_choir", "archetype":"elite_acolyte_choir", "reward":"choir_cache" },
+    { "id":"guardian_seal", "room":"guardian_hall", "archetype":"stone_guardian_gate", "reward":"heart_door_unlock" },
+    { "id":"floor_boss", "room":"boss_chamber", "archetype":"cave_troll_boss", "reward":"emberfall_floor_clear" }
+  ]
+}

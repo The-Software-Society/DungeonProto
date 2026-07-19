@@ -16,6 +16,7 @@ namespace AldenFall.Persistence
 
         // Per-player world progress (which floors this player has personally cleared).
         public bool floor1Cleared;
+        public List<string> discoveredVistas = new List<string>();
 
         // Skills, indexed by SkillType value.
         public int[] skillLevels = new int[0];

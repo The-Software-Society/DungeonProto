@@ -274,10 +274,11 @@ namespace AldenFall.World
             fog = Color.Lerp(fog, TwilightFog, twilight * 0.6f);
             fog = Color.Lerp(fog, EmberAtmosphere.AshFogColor, ember);
             RenderSettings.fogColor = fog;
-            // Density: day ~0.0011 (mountains hazy-but-visible ~700m), night denser for mood,
-            // eruption denser still. EmberAtmosphere's own dense ember fog takes over when Erupting.
-            float density = Mathf.Lerp(0.0024f, 0.0016f, dayAmount);
-            density = Mathf.Lerp(density, 0.0040f, ember);
+            // Ordinary traversal is compositionally enclosed to ~140m. This density reaches roughly
+            // half extinction there, hiding unloaded chunks and repeated boundary silhouettes while
+            // the three authored summits deliberately rise above/through the haze.
+            float density = Mathf.Lerp(0.009f, 0.006f, dayAmount);
+            density = Mathf.Lerp(density, 0.012f, ember);
             RenderSettings.fogDensity = density;
         }
 

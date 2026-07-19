@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "id": "emberfall_city",
+  "districts": [
+    { "id":"civic_core", "role":"main city area and orientation anchor", "visualProfile":"emberfall_civic_stone", "center":[0,0], "size":[72,70] },
+    { "id":"market_quarter", "role":"dense commerce and covered lanes", "visualProfile":"emberfall_market", "center":[76,68], "size":[92,82] },
+    { "id":"forge_quarter", "role":"smithies, workshops and southern gate services", "visualProfile":"emberfall_forge", "center":[78,-72], "size":[95,86] },
+    { "id":"old_town", "role":"inn, homes, alleys and elevated terraces", "visualProfile":"emberfall_old_town", "center":[-76,70], "size":[94,84] },
+    { "id":"canal_ward", "role":"waterfront homes, mills, docks and bridge approaches", "visualProfile":"emberfall_canal", "center":[-82,-66], "size":[96,88] }
+  ],
+  "streets": [
+    { "id":"north_south_spine", "kind":"primary", "width":14, "points":[{"x":0,"z":-155},{"x":0,"z":-82},{"x":0,"z":0},{"x":0,"z":78},{"x":0,"z":155}] },
+    { "id":"east_west_spine", "kind":"primary", "width":13, "points":[{"x":-165,"z":0},{"x":-82,"z":0},{"x":0,"z":0},{"x":82,"z":0},{"x":165,"z":0}] },
+    { "id":"market_curve", "kind":"secondary", "width":8, "points":[{"x":8,"z":30},{"x":42,"z":42},{"x":78,"z":62},{"x":123,"z":78}] },
+    { "id":"old_town_lane", "kind":"secondary", "width":8, "points":[{"x":-10,"z":34},{"x":-48,"z":52},{"x":-86,"z":76},{"x":-128,"z":92}] },
+    { "id":"southern_ring", "kind":"secondary", "width":9, "points":[{"x":-130,"z":-72},{"x":-72,"z":-110},{"x":0,"z":-122},{"x":76,"z":-108},{"x":132,"z":-70}] },
+    { "id":"northern_ring", "kind":"secondary", "width":9, "points":[{"x":-132,"z":74},{"x":-70,"z":112},{"x":0,"z":124},{"x":72,"z":110},{"x":132,"z":72}] }
+  ],
+  "bridges": [
+    { "id":"civic_bridge", "street":"north_south_spine", "position":[0,7], "yaw":0, "width":13, "length":25 },
+    { "id":"market_bridge", "street":"market_curve", "position":[72,14], "yaw":12, "width":9, "length":24 },
+    { "id":"old_town_bridge", "street":"old_town_lane", "position":[-71,53], "yaw":-28, "width":9, "length":25 },
+    { "id":"canal_ward_bridge", "street":"southern_ring", "position":[-105,-56], "yaw":-42, "width":9, "length":23 }
+  ],
+  "buildings": [
+    { "id":"civic_hall", "asset":"TownHall", "district":"civic_core", "role":"civic landmark", "position":[0,48], "yaw":180, "width":28, "depth":20, "stories":3 },
+    { "id":"ember_rest", "asset":"TheEmberRest", "district":"old_town", "role":"inn", "position":[-62,88], "yaw":145, "width":22, "depth":18, "stories":3 },
+    { "id":"general_store", "asset":"GeneralStore", "district":"market_quarter", "role":"shop", "position":[52,76], "yaw":220, "width":20, "depth":16, "stories":2 },
+    { "id":"provisioner", "asset":"ProvisionerShop", "district":"market_quarter", "role":"shop", "position":[82,91], "yaw":205, "width":18, "depth":15, "stories":2 },
+    { "id":"covered_market", "asset":"MarketHall", "district":"market_quarter", "role":"market anchor", "position":[108,54], "yaw":255, "width":30, "depth":22, "stories":2 },
+    { "id":"forge", "asset":"TheForge", "district":"forge_quarter", "role":"smithy", "position":[66,-82], "yaw":320, "width":22, "depth":20, "stories":2 },
+    { "id":"armory", "asset":"Armory", "district":"forge_quarter", "role":"shop", "position":[98,-65], "yaw":285, "width":20, "depth":17, "stories":2 },
+    { "id":"mill", "asset":"CanalMill", "district":"canal_ward", "role":"water landmark", "position":[-116,-52], "yaw":70, "width":24, "depth":20, "stories":3 },
+    { "id":"old_town_home_1", "asset":"TownHome", "district":"old_town", "role":"house", "position":[-140,112], "yaw":130, "width":16, "depth":15, "stories":2 },
+    { "id":"old_town_home_2", "asset":"TownHome", "district":"old_town", "role":"house", "position":[-122,72], "yaw":102, "width":17, "depth":15, "stories":3 },
+    { "id":"old_town_home_3", "asset":"TownHome", "district":"old_town", "role":"house", "position":[-75,122], "yaw":168, "width":16, "depth":14, "stories":2 },
+    { "id":"canal_home_1", "asset":"TownHome", "district":"canal_ward", "role":"house", "position":[-72,-92], "yaw":35, "width":17, "depth":15, "stories":2 },
+    { "id":"canal_home_2", "asset":"TownHome", "district":"canal_ward", "role":"house", "position":[-118,-94], "yaw":60, "width":18, "depth":16, "stories":2 },
+    { "id":"forge_home_1", "asset":"TownHome", "district":"forge_quarter", "role":"house", "position":[112,-108], "yaw":310, "width":17, "depth":15, "stories":2 },
+    { "id":"market_home_1", "asset":"TownHome", "district":"market_quarter", "role":"house", "position":[128,106], "yaw":220, "width":16, "depth":14, "stories":3 }
+  ]
+}

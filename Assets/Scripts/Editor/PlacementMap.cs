@@ -107,6 +107,9 @@ namespace AldenFall.Editor
         public bool CanPlace(float x, float z, float radius, System.Func<PlaceZone, bool> zoneOk)
         {
             if (!InBounds(x, z)) return false;
+            // Always test the actual requested point. For sub-cell foliage radii, the old disc
+            // loop could contain zero cell centres and silently accept plants in water/walls.
+            if (!zoneOk(ZoneAt(x, z))) return false;
             int r = Mathf.CeilToInt(radius / Cell), ccx = Cx(x), ccz = Cz(z);
             for (int dz = -r; dz <= r; dz++)
                 for (int dx = -r; dx <= r; dx++)

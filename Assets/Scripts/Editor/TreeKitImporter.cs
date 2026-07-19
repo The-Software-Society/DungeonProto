@@ -157,12 +157,21 @@ namespace AldenFall.Editor
                             tierMesh = ms.ToMesh(); tierMesh.name = $"{name}_LOD{t}_{idx}"; tierMesh.RecalculateBounds();
                         }
                         else tierMesh = ThinLeaves(bd.mesh, bd.mats, LeafKeep[t], BranchKeep[t], $"{name}_LOD{t}_{idx}");
-                        AssetDatabase.CreateAsset(tierMesh, $"{PrefabDir}/{name}_LOD{t}_{idx}.mesh");
+                        // Terrain tree prototypes are considerably stricter than ordinary prefab
+                        // instances: a 100x FBX conversion transform left on a nested renderer can
+                        // produce missing trees or enormous stretched leaf ribbons. Bake the source
+                        // renderer's complete world transform into the mesh and keep the generated
+                        // hierarchy at identity transforms. The temporary FBX instance lives at the
+                        // origin, so localToWorldMatrix is the desired prefab-local conversion.
+                        BakeTransform(tierMesh, bd.t.localToWorldMatrix);
+                        string meshPath = $"{PrefabDir}/{name}_LOD{t}_{idx}.mesh";
+                        AssetDatabase.DeleteAsset(meshPath);
+                        AssetDatabase.CreateAsset(tierMesh, meshPath);
                         var g = new GameObject($"part{idx}");
                         g.transform.SetParent(tierGO.transform, false);
-                        g.transform.position = bd.t.position;
-                        g.transform.rotation = bd.t.rotation;
-                        g.transform.localScale = bd.t.lossyScale;
+                        g.transform.localPosition = Vector3.zero;
+                        g.transform.localRotation = Quaternion.identity;
+                        g.transform.localScale = Vector3.one;
                         g.AddComponent<MeshFilter>().sharedMesh = tierMesh;
                         g.AddComponent<MeshRenderer>().sharedMaterials = bd.mats;
                         rends.Add(g.GetComponent<MeshRenderer>());
@@ -184,6 +193,32 @@ namespace AldenFall.Editor
                 Debug.Log($"[TreeKit] baked prefab {name}");
             }
             AssetDatabase.SaveAssets();
+        }
+
+        private static void BakeTransform(Mesh mesh, Matrix4x4 matrix)
+        {
+            var vertices = mesh.vertices;
+            for (int i = 0; i < vertices.Length; i++) vertices[i] = matrix.MultiplyPoint3x4(vertices[i]);
+            mesh.vertices = vertices;
+
+            var normalMatrix = matrix.inverse.transpose;
+            var normals = mesh.normals;
+            if (normals != null && normals.Length == vertices.Length)
+            {
+                for (int i = 0; i < normals.Length; i++) normals[i] = normalMatrix.MultiplyVector(normals[i]).normalized;
+                mesh.normals = normals;
+            }
+            var tangents = mesh.tangents;
+            if (tangents != null && tangents.Length == vertices.Length)
+            {
+                for (int i = 0; i < tangents.Length; i++)
+                {
+                    Vector3 t = matrix.MultiplyVector(new Vector3(tangents[i].x, tangents[i].y, tangents[i].z)).normalized;
+                    tangents[i] = new Vector4(t.x, t.y, t.z, tangents[i].w);
+                }
+                mesh.tangents = tangents;
+            }
+            mesh.RecalculateBounds();
         }
 
         /// <summary>Return a copy of baseMesh with each LEAF submesh's quads thinned to `keep` fraction

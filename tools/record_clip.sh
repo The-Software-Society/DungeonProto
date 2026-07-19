@@ -32,7 +32,9 @@ DEST="$DEST_DIR/$NAME.mp4"
 FRAMES="$(mktemp -d)/frames"; mkdir -p "$FRAMES"
 LOG="$(mktemp).devclip.log"
 echo "Recording $CAT/$NAME (fps $FPS) ..."
-"$APP" -devclip -clip "$SCRIPT" -clipout "$FRAMES" -clipfps "$FPS" -logFile "$LOG" || true
+# Ignore macOS window-restoration state: after a prior GPU/player crash AppKit otherwise opens a
+# modal "reopen windows?" alert before Unity boots, leaving automated capture with zero frames.
+"$APP" -ApplePersistenceIgnoreState YES -devclip -clip "$SCRIPT" -clipout "$FRAMES" -clipfps "$FPS" -logFile "$LOG" || true
 COUNT=$(ls "$FRAMES"/frame_*.png 2>/dev/null | wc -l | tr -d ' ')
 if [ "$COUNT" -lt 5 ]; then echo "FAILED: only $COUNT frames. Tail of log:"; tail -20 "$LOG"; exit 1; fi
 

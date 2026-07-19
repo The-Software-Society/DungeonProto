@@ -180,8 +180,8 @@ namespace AldenFall.Editor
             var sunObj = new GameObject("Sun");
             var sun = sunObj.AddComponent<Light>();
             sun.type = LightType.Directional;
-            sun.color = new Color(1f, 0.96f, 0.87f);
-            sun.intensity = 1.5f;
+            sun.color = new Color(1f, 0.87f, 0.66f);
+            sun.intensity = 2.0f;
             sun.shadows = LightShadows.Soft;
             sun.shadowStrength = 0.75f;
             sunObj.transform.rotation = Quaternion.Euler(48f, -128f, 0f);   // high mid-morning sun
@@ -194,10 +194,10 @@ namespace AldenFall.Editor
                 var sky = new Material(skyShader);
                 sky.SetFloat("_SunSize", 0.04f);
                 sky.SetFloat("_SunSizeConvergence", 5f);
-                sky.SetFloat("_AtmosphereThickness", 1.0f);
-                sky.SetColor("_SkyTint", new Color(0.52f, 0.63f, 0.82f));
-                sky.SetColor("_GroundColor", new Color(0.42f, 0.42f, 0.39f));
-                sky.SetFloat("_Exposure", 1.3f);
+                sky.SetFloat("_AtmosphereThickness", 1.35f);
+                sky.SetColor("_SkyTint", new Color(0.28f, 0.39f, 0.42f));
+                sky.SetColor("_GroundColor", new Color(0.17f, 0.24f, 0.24f));
+                sky.SetFloat("_Exposure", 0.85f);
                 AssetDatabase.CreateAsset(sky, $"{MaterialDir}/EmberfallSkybox.mat");
                 RenderSettings.skybox = sky;
             }
@@ -209,9 +209,9 @@ namespace AldenFall.Editor
             // sheet at grazing angles - the last of the "flooded" look. A warm neutral sky ambient
             // keeps far ground reading as sunlit earth, not water.
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.60f, 0.59f, 0.55f);
-            RenderSettings.ambientEquatorColor = new Color(0.54f, 0.51f, 0.44f);
-            RenderSettings.ambientGroundColor = new Color(0.32f, 0.29f, 0.24f);
+            RenderSettings.ambientSkyColor = new Color(0.38f, 0.50f, 0.54f);
+            RenderSettings.ambientEquatorColor = new Color(0.29f, 0.38f, 0.37f);
+            RenderSettings.ambientGroundColor = new Color(0.22f, 0.27f, 0.22f);
 
             // Very light haze, pushed far out and warmed toward neutral so only the distant
             // mountains soften - no blue wash across the whole valley (the "flood" look).
@@ -224,8 +224,8 @@ namespace AldenFall.Editor
             // exponential-squared density per time of day.
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = new Color(0.74f, 0.80f, 0.86f);   // light cool haze, reads as depth
-            RenderSettings.fogDensity = 0.0011f;
+            RenderSettings.fogColor = new Color(0.23f, 0.34f, 0.35f);
+            RenderSettings.fogDensity = 0.006f;
         }
 
         private static void CreatePostProcessing()
@@ -316,7 +316,15 @@ namespace AldenFall.Editor
             }
 
             // (2) Last-resort catch floor far below — a backstop for anything that clips through.
-            ColliderBox("WorldCatchFloor", new Vector3(0f, -22f, 0f), new Vector3(1000f, 1f, 1200f), safety, groundLayer);
+            if (_worldDef != null)
+            {
+                var b = _worldDef.bounds;
+                ColliderBox("WorldCatchFloor",
+                    new Vector3((b.minX + b.maxX) * 0.5f, -42f, (b.minZ + b.maxZ) * 0.5f),
+                    new Vector3(b.maxX - b.minX + 80f, 1f, b.maxZ - b.minZ + 80f), safety, groundLayer);
+            }
+            else
+                ColliderBox("WorldCatchFloor", new Vector3(0f, -22f, 0f), new Vector3(1000f, 1f, 1200f), safety, groundLayer);
 
             // (3) Natural enclosing geography.
             if (!UseUnityTerrain)
@@ -1834,17 +1842,10 @@ namespace AldenFall.Editor
             Vector3 lossy = instance.transform.lossyScale;
             if (collision == PropCollision.FitBox)
             {
-                // Rock-shaped Meshy props (e.g. LavaRockGround) get a CONVEX mesh collider that hugs the
+                // Rock-shaped Meshy props (e.g. LavaRockGround) get CONVEX mesh colliders that hug the
                 // silhouette -- an AABB box around an irregular rock is the "invisible wall / big gap" bug.
                 // Boxy props (crates, barrels) keep the cheap fitted box.
-                var lod0 = PlacementCatalog.CategoryOf(name) == "rock" ? LargestMesh(instance) : null;
-                if (lod0 != null)
-                {
-                    var mc = instance.AddComponent<MeshCollider>();
-                    mc.sharedMesh = lod0;
-                    mc.convex = true;
-                }
-                else
+                if (PlacementCatalog.CategoryOf(name) != "rock" || !AddConvexRockColliders(instance))
                 {
                     var box = instance.AddComponent<BoxCollider>();
                     box.center = instance.transform.InverseTransformPoint(bounds.center);
@@ -1919,6 +1920,41 @@ namespace AldenFall.Editor
                 if (m != null && m.vertexCount > bestV) { best = m; bestV = m.vertexCount; }
             }
             return best;
+        }
+
+        // Convex colliders for a rock/boulder prop, one per mesh part of the MOST DECIMATED LOD level.
+        // PhysX convex cooking caps at 256 polys -- a photoscan LOD0 part blows past it and cooks a
+        // broken PARTIAL hull (the "invisible wall / can't reach the rock" bug), and hulling only the
+        // largest single part misses the rest of a multi-part boulder. The last LOD is the same real
+        // silhouette at collider-friendly density. Returns false if no LOD meshes were found.
+        private static bool AddConvexRockColliders(GameObject go)
+        {
+            var parts = new System.Collections.Generic.List<MeshFilter>();
+            var lg = go.GetComponentInChildren<LODGroup>();
+            if (lg != null)
+            {
+                var lods = lg.GetLODs();
+                for (int i = lods.Length - 1; i >= 0 && parts.Count == 0; i--)
+                    foreach (var r in lods[i].renderers)
+                        if (r != null && r.TryGetComponent<MeshFilter>(out var mf) && mf.sharedMesh != null)
+                            parts.Add(mf);
+            }
+            if (parts.Count == 0)
+            {
+                var single = LargestMesh(go);
+                if (single == null) return false;
+                var mc = go.AddComponent<MeshCollider>();
+                mc.sharedMesh = single;
+                mc.convex = true;
+                return true;
+            }
+            foreach (var mf in parts)
+            {
+                var mc = mf.gameObject.AddComponent<MeshCollider>();
+                mc.sharedMesh = mf.sharedMesh;
+                mc.convex = true;
+            }
+            return true;
         }
 
         private static GameObject PlaceKitTree(Transform parent, GameObject prefab, string name,
@@ -2007,18 +2043,11 @@ namespace AldenFall.Editor
             }
             else if (collision == PropCollision.FitBox)
             {
-                // Rocks/boulders: a CONVEX MESH collider hugs the actual silhouette so the player can walk
+                // Rocks/boulders: CONVEX MESH colliders hug the actual silhouette so the player can walk
                 // right up to (and onto) the rock. A full AABB box was the "invisible wall / big gap" bug --
                 // it collided with empty air around an irregular boulder. Fall back to a fitted box only if
-                // the mesh can't be found.
-                var lod0 = LargestMesh(instance);
-                if (lod0 != null)
-                {
-                    var mc = instance.AddComponent<MeshCollider>();
-                    mc.sharedMesh = lod0;
-                    mc.convex = true;
-                }
-                else
+                // no mesh can be found.
+                if (!AddConvexRockColliders(instance))
                 {
                     var box = instance.AddComponent<BoxCollider>();
                     box.center = instance.transform.InverseTransformPoint(b.center);
@@ -2923,17 +2952,19 @@ namespace AldenFall.Editor
                 Debug.LogError("CreateEnemies: monsters.json missing or empty, no mobs built!");
                 return;
             }
+            var encounters = EmberfallEncounterDefinition.Load();
 
             foreach (var def in defs)
             {
                 var prefab = BuildMobPrefab(def);
-                foreach (var spawn in def.spawns)
+                foreach (var authored in encounters.camps)
                 {
-                    var pos = new Vector3(spawn.x, spawn.y, spawn.z);
-                    if (spawn.kind == "camp")
-                        CreateCamp($"{def.id}_camp", prefab, pos, spawn.count, spawn.radius, spawn.respawn);
+                    if (authored.mobId != def.id) continue;
+                    var pos = new Vector3(authored.position[0], authored.position[1], authored.position[2]);
+                    if (authored.kind == "camp")
+                        CreateCamp(authored.id, prefab, pos, authored.count, authored.radius, authored.respawn);
                     else
-                        CreateSpawner($"{def.id}_spawner", prefab, pos, spawn.respawn);
+                        CreateSpawner(authored.id, prefab, pos, authored.respawn);
                 }
             }
             Debug.Log($"CreateEnemies: built {defs.Count} monster types from monsters.json");

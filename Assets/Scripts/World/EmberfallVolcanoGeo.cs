@@ -10,12 +10,12 @@ namespace AldenFall.World
     /// </summary>
     public static class EmberfallVolcanoGeo
     {
-        public const float EntranceZ = -315f;    // north mouth (world z)
-        public const float BossZ = -436f;        // boss chamber center
-        public const float BackZ = -450f;        // south back wall (behind the boss)
+        public const float EntranceZ = -1010f;   // north mouth (world z), beyond the extended approach
+        public const float BossZ = -1480f;       // boss chamber center after a full multi-wing crawl
+        public const float BackZ = -1535f;       // south back wall (behind the boss)
         public const float NorthZ = EntranceZ - 3f;   // envelope north face, just outside the mouth lintel (-318)
 
-        public const float HalfWidth = 56f;      // envelope half-width in x
+        public const float HalfWidth = 190f;     // supports side wings, loops and vertical chambers
         public const float FloorY = -0.55f;
         public const float CeilY = 8.5f;
         public const float WallCenterY = 4f;

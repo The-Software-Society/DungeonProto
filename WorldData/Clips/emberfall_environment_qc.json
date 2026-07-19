@@ -1,0 +1,13 @@
+{
+  "fps": 10,
+  "settle": 3,
+  "environmentOnly": true,
+  "steps": [
+    { "type":"spawn", "pos":[0,5,520], "yaw":8, "pitch":-7 },
+    { "type":"wait", "seconds":1.5 },
+    { "type":"spawn", "pos":[0,6,-42], "yaw":8, "pitch":-7 },
+    { "type":"wait", "seconds":1.5 },
+    { "type":"spawn", "pos":[18,5,-340], "yaw":176, "pitch":-7 },
+    { "type":"wait", "seconds":1.5 }
+  ]
+}

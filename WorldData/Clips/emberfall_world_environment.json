@@ -1,0 +1,59 @@
+{
+  "fps": 30,
+  "settle": 6,
+  "environmentOnly": true,
+  "steps": [
+    { "type":"spawn", "pos":[-34,7,475], "yaw":18, "pitch":-7 },
+    { "type":"moveTo", "pos":[20,6,545], "yaw":22, "pitch":-5, "speed":13 },
+    { "type":"wait", "seconds":1.2 },
+
+    { "type":"spawn", "pos":[-125,10,620], "yaw":24, "pitch":-6 },
+    { "type":"moveTo", "pos":[-65,8,690], "yaw":38, "pitch":-4, "speed":13 },
+    { "type":"turn", "yaw":112, "pitch":-5, "seconds":2.2 },
+
+    { "type":"spawn", "pos":[-245,68,710], "yaw":72, "pitch":-10 },
+    { "type":"turn", "yaw":132, "pitch":-7, "seconds":2.6 },
+    { "type":"wait", "seconds":1.0 },
+
+    { "type":"spawn", "pos":[-10,9,150], "yaw":180, "pitch":-8 },
+    { "type":"moveTo", "pos":[8,7,105], "yaw":180, "pitch":-5, "speed":10 },
+    { "type":"wait", "seconds":0.8 },
+
+    { "type":"spawn", "pos":[-88,12,72], "yaw":108, "pitch":-8 },
+    { "type":"moveTo", "pos":[-15,9,18], "yaw":135, "pitch":-5, "speed":12 },
+    { "type":"turn", "yaw":220, "pitch":-7, "seconds":2.0 },
+
+    { "type":"spawn", "pos":[-520,11,165], "yaw":160, "pitch":-6 },
+    { "type":"moveTo", "pos":[-425,8,95], "yaw":145, "pitch":-5, "speed":14 },
+    { "type":"wait", "seconds":0.8 },
+
+    { "type":"spawn", "pos":[455,12,145], "yaw":198, "pitch":-7 },
+    { "type":"moveTo", "pos":[525,10,95], "yaw":215, "pitch":-5, "speed":12 },
+
+    { "type":"spawn", "pos":[-105,12,-205], "yaw":180, "pitch":-7 },
+    { "type":"moveTo", "pos":[15,9,-370], "yaw":176, "pitch":-5, "speed":21 },
+    { "type":"wait", "seconds":0.8 },
+
+    { "type":"spawn", "pos":[-85,15,-545], "yaw":175, "pitch":-8 },
+    { "type":"moveTo", "pos":[15,11,-710], "yaw":183, "pitch":-6, "speed":21 },
+    { "type":"turn", "yaw":235, "pitch":-8, "seconds":1.6 },
+
+    { "type":"spawn", "pos":[-35,13,-790], "yaw":178, "pitch":-8 },
+    { "type":"moveTo", "pos":[8,11,-970], "yaw":181, "pitch":-6, "speed":22 },
+    { "type":"wait", "seconds":1.0 },
+
+    { "type":"spawn", "pos":[0,132,-1060], "yaw":0, "pitch":-12 },
+    { "type":"turn", "yaw":12, "pitch":-7, "seconds":2.7 },
+    { "type":"wait", "seconds":1.0 },
+
+    { "type":"spawn", "pos":[0,-4,-1095], "yaw":180, "pitch":-4 },
+    { "type":"moveTo", "pos":[-46,-16,-1245], "yaw":195, "pitch":-3, "speed":18 },
+    { "type":"spawn", "pos":[0,-14,-1360], "yaw":180, "pitch":-5 },
+    { "type":"moveTo", "pos":[0,-12,-1462], "yaw":180, "pitch":-4, "speed":16 },
+    { "type":"turn", "yaw":265, "pitch":-6, "seconds":2.0 },
+
+    { "type":"spawn", "pos":[520,84,790], "yaw":230, "pitch":-10 },
+    { "type":"turn", "yaw":285, "pitch":-7, "seconds":2.8 },
+    { "type":"wait", "seconds":1.5 }
+  ]
+}

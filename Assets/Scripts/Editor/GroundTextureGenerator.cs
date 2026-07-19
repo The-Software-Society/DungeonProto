@@ -68,13 +68,15 @@ namespace AldenFall.Editor
                  + TileNoise(u, v, baseFreq * 4f) * 0.1f;
         }
 
-        public static Color32[] Grass(int s)
+        public static Color32[] Grass(int s) => Grass(s,
+            new Color(0.14f, 0.28f, 0.10f), new Color(0.22f, 0.40f, 0.15f),
+            new Color(0.34f, 0.52f, 0.22f), new Color(0.44f, 0.46f, 0.22f));
+
+        /// <summary>Parametrized grass albedo ramp (dark base -> mid -> light blades -> dry tufts) so
+        /// the ground hue can be tuned/swept (ColorLab) instead of hard-coded here.</summary>
+        public static Color32[] Grass(int s, Color dark, Color mid, Color light, Color dry)
         {
             var px = new Color32[s * s];
-            Color dark = new Color(0.14f, 0.28f, 0.10f);
-            Color mid = new Color(0.22f, 0.40f, 0.15f);
-            Color light = new Color(0.34f, 0.52f, 0.22f);
-            Color dry = new Color(0.44f, 0.46f, 0.22f);
             for (int y = 0; y < s; y++)
                 for (int x = 0; x < s; x++)
                 {

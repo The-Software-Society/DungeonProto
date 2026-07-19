@@ -1,0 +1,55 @@
+{
+  "version": 2,
+  "seed": 18442,
+  "bounds": { "minX": -900, "minZ": -1650, "maxX": 900, "maxZ": 1000 },
+  "performance": {
+    "chunkSize": 64,
+    "normalSightline": 140,
+    "heroRadius": 25,
+    "midRadius": 60,
+    "farRadius": 140,
+    "targetFps": 100
+  },
+  "regions": [
+    { "id":"emberfall_city", "kind":"city", "biome":"urban_temperate", "center":[0,0], "radiusX":165, "radiusZ":155, "targetTraversalMinutes":5.5, "connectsTo":["north_woods","west_woods","east_woods","south_woods"], "purpose":"three-ring city with civic core, market, residential lanes, canal district and concealed secondary spaces" },
+    { "id":"north_woods", "kind":"forest", "biome":"lush_dark_forest", "center":[0,360], "radiusX":390, "radiusZ":260, "targetTraversalMinutes":7, "connectsTo":["emberfall_city","aldric_glade","great_lake"], "purpose":"deep enclosed forest rooms leading to the glade and lake reveal" },
+    { "id":"aldric_glade", "kind":"landmark", "biome":"lush_clearing", "center":[0,520], "radiusX":42, "radiusZ":38, "targetTraversalMinutes":1, "connectsTo":["north_woods","great_lake"], "purpose":"protected tutorial clearing and ColorLab quality benchmark" },
+    { "id":"great_lake", "kind":"water", "biome":"lake_shore", "center":[0,705], "radiusX":155, "radiusZ":145, "targetTraversalMinutes":5, "connectsTo":["aldric_glade","north_woods","lake_headlands"], "purpose":"large compartmentalized lake with coves, islands, headlands and waterfall sources" },
+    { "id":"west_woods", "kind":"forest", "biome":"temperate_forest", "center":[-430,30], "radiusX":280, "radiusZ":310, "targetTraversalMinutes":7, "connectsTo":["emberfall_city","goblin_territory","orc_highlands"], "purpose":"folded western woodland containing camps without exposing them from city gates" },
+    { "id":"east_woods", "kind":"forest", "biome":"temperate_forest", "center":[430,30], "radiusX":280, "radiusZ":320, "targetTraversalMinutes":7, "connectsTo":["emberfall_city","bandit_territory","eastern_falls"], "purpose":"ridge-separated eastern forest with river crossings and bandit territory" },
+    { "id":"south_woods", "kind":"forest", "biome":"southern_old_growth", "center":[0,-315], "radiusX":390, "radiusZ":250, "targetTraversalMinutes":8, "connectsTo":["emberfall_city","ashen_foothills"], "purpose":"new credible forest buffer between civilization and volcanic influence" },
+    { "id":"ashen_foothills", "kind":"transition", "biome":"forest_to_ash", "center":[0,-625], "radiusX":300, "radiusZ":190, "targetTraversalMinutes":6, "connectsTo":["south_woods","ember_approach"], "purpose":"graded living forest to sick forest to deadwood and soot" },
+    { "id":"ember_approach", "kind":"canyon", "biome":"volcanic", "center":[0,-850], "radiusX":150, "radiusZ":210, "targetTraversalMinutes":6, "connectsTo":["ashen_foothills","volcano_entrance"], "purpose":"enclosed volcanic canyon that reveals the caldera in controlled stages" },
+    { "id":"volcano_entrance", "kind":"landmark", "biome":"lava", "center":[0,-1050], "radiusX":115, "radiusZ":90, "targetTraversalMinutes":2, "connectsTo":["ember_approach","volcano_dungeon"], "purpose":"large graded caldera apron, staging area and monumental dungeon threshold" },
+    { "id":"volcano_dungeon", "kind":"dungeon", "biome":"subterranean_volcanic", "center":[0,-1270], "radiusX":190, "radiusZ":270, "targetTraversalMinutes":22, "connectsTo":["volcano_entrance"], "purpose":"four-times-depth multi-level dungeon graph with loops, secrets and encounter wings" }
+  ],
+  "rivers": [
+    { "id":"north_falls", "source":"north_mountains", "destination":"great_lake", "halfWidth":10, "purpose":"primary waterfall and northern lake source", "points":[{"x":0,"y":0,"z":970},{"x":8,"y":0,"z":925},{"x":-6,"y":0,"z":885},{"x":0,"y":0,"z":852}] },
+    { "id":"northeast_falls", "source":"northeast_mountains", "destination":"great_lake", "halfWidth":9, "purpose":"eastern vista waterfall and stepped forest river", "points":[{"x":700,"y":0,"z":900},{"x":585,"y":0,"z":860},{"x":465,"y":0,"z":825},{"x":350,"y":0,"z":790},{"x":245,"y":0,"z":765},{"x":145,"y":0,"z":748}] },
+    { "id":"northwest_falls", "source":"northwest_mountains", "destination":"great_lake", "halfWidth":9, "purpose":"western headland river and cove source", "points":[{"x":-700,"y":0,"z":900},{"x":-580,"y":0,"z":858},{"x":-455,"y":0,"z":820},{"x":-340,"y":0,"z":785},{"x":-235,"y":0,"z":760},{"x":-145,"y":0,"z":742}] },
+    { "id":"east_river_canal", "source":"east_mountains", "destination":"great_lake", "halfWidth":10, "purpose":"long watershed through eastern forest, city canal and north woods", "points":[{"x":850,"y":0,"z":110},{"x":690,"y":0,"z":95},{"x":520,"y":0,"z":72},{"x":350,"y":0,"z":44},{"x":205,"y":0,"z":22},{"x":75,"y":0,"z":12},{"x":-8,"y":0,"z":6},{"x":-92,"y":0,"z":72},{"x":-132,"y":0,"z":185},{"x":-125,"y":0,"z":320},{"x":-92,"y":0,"z":455},{"x":-58,"y":0,"z":575},{"x":-35,"y":0,"z":610}] }
+  ],
+  "landforms": [
+    { "id":"city_west_ridge", "kind":"ridge", "center":[-235,15], "radiusX":95, "radiusZ":260, "height":34, "yaw":-8, "purpose":"frame west gate and conceal western encounter rooms" },
+    { "id":"city_east_ridge", "kind":"ridge", "center":[238,10], "radiusX":98, "radiusZ":265, "height":36, "yaw":8, "purpose":"frame east gate and conceal eastern encounter rooms" },
+    { "id":"north_route_west", "kind":"ridge", "center":[-92,315], "radiusX":72, "radiusZ":180, "height":27, "yaw":-16, "purpose":"stage north-road reveals" },
+    { "id":"north_route_east", "kind":"ridge", "center":[98,340], "radiusX":76, "radiusZ":185, "height":30, "yaw":16, "purpose":"enclose dark-forest traversal" },
+    { "id":"glade_west_cradle", "kind":"hill", "center":[-92,525], "radiusX":82, "radiusZ":105, "height":28, "yaw":0, "purpose":"enclose Aldric glade" },
+    { "id":"glade_east_cradle", "kind":"hill", "center":[95,530], "radiusX":84, "radiusZ":108, "height":30, "yaw":0, "purpose":"hide lake until shore reveal" },
+    { "id":"lake_west_headland", "kind":"ridge", "center":[-245,710], "radiusX":130, "radiusZ":190, "height":58, "yaw":20, "purpose":"lake compartment and vista support" },
+    { "id":"lake_east_headland", "kind":"ridge", "center":[250,730], "radiusX":135, "radiusZ":200, "height":62, "yaw":-18, "purpose":"lake compartment and eastern falls approach" },
+    { "id":"south_forest_west_fold", "kind":"ridge", "center":[-175,-350], "radiusX":115, "radiusZ":260, "height":38, "yaw":-12, "purpose":"hide southern forest encounters and bend the main route" },
+    { "id":"south_forest_east_fold", "kind":"ridge", "center":[180,-385], "radiusX":120, "radiusZ":270, "height":42, "yaw":12, "purpose":"separate old growth from ash foothills" },
+    { "id":"approach_west_wall", "kind":"ridge", "center":[-150,-820], "radiusX":100, "radiusZ":300, "height":58, "yaw":-5, "purpose":"form volcanic approach canyon" },
+    { "id":"approach_east_wall", "kind":"ridge", "center":[155,-835], "radiusX":105, "radiusZ":310, "height":62, "yaw":5, "purpose":"form volcanic approach canyon" }
+  ],
+  "vistas": [
+    { "id":"vista_lake_headland", "displayName":"Crown of the Lake", "rewardId":"vista_lake_reward", "position":[-245,62,710], "yaw":72, "reveal":"great lake, glade canopy and distant city towers" },
+    { "id":"vista_eastern_falls", "displayName":"Watcher of the Falls", "rewardId":"vista_falls_reward", "position":[520,78,790], "yaw":230, "reveal":"waterfall network, lake and northern forest" },
+    { "id":"vista_caldera", "displayName":"Emberfall Summit", "rewardId":"vista_caldera_reward", "position":[0,125,-1060], "yaw":0, "reveal":"approach canyon, southern forest, city and distant lake" }
+  ],
+  "routes": [
+    { "id":"city_to_glade", "from":"emberfall_city", "to":"aldric_glade", "width":12, "points":[{"x":0,"z":155},{"x":18,"z":225},{"x":-12,"z":305},{"x":22,"z":390},{"x":-8,"z":470},{"x":0,"z":500}] },
+    { "id":"city_to_volcano", "from":"emberfall_city", "to":"volcano_entrance", "width":14, "points":[{"x":0,"z":-155},{"x":-24,"z":-245},{"x":18,"z":-340},{"x":-30,"z":-455},{"x":28,"z":-575},{"x":-18,"z":-700},{"x":12,"z":-835},{"x":0,"z":-980}] }
+  ]
+}

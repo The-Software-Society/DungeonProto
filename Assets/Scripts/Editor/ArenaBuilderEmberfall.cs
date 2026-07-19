@@ -30,8 +30,8 @@ namespace AldenFall.Editor
     public static partial class ArenaBuilder
     {
         // ---- City ----
-        private const float CityHalf = 55f;         // walls at ±55
-        private const float CityGate = 10f;         // gate opening width
+        private static float CityHalf = 55f;         // populated from authoritative region data
+        private static float CityGate = 10f;
 
         // ---- Lake (NW) ----
         // v8: Jon called the old 88m lake "a puddle at best". Genuinely big and DEEP now,
@@ -40,14 +40,15 @@ namespace AldenFall.Editor
         // Environment/Waterworks milestone: the lake is the northern STARTING vista (player +
         // Aldric spawn on its south shore), city-sized and cradled by mountains with a forest
         // buffer. Progression runs south: lake -> dark woods -> city -> ember approach -> volcano.
-        private static readonly Vector3 LakeCenter = new Vector3(0f, 0f, 300f);
-        private const float LakeHalf = 95f;         // ~190m across, bigger than the city
+        private static Vector3 LakeCenter = new Vector3(0f, 0f, 300f);
+        private static float LakeHalf = 95f;
         private const float LakeBedY = -5.0f;       // depth = WaterSurfaceY - LakeBedY = 4.65m (deep swim)
 
         // ---- Ember approach (south corridor) ----
-        private const float ApproachHalfW = 62f;    // corridor half-width in x
-        private const float ApproachNorthZ = -55f;  // starts at the south city gate
-        private const float ApproachSouthZ = -315f;  // ends at the volcano entrance
+        private static float ApproachHalfW = 62f;
+        private static float ApproachNorthZ = -55f;
+        private static float ApproachSouthZ = -315f;
+        private static float VolcanicVisualNorthZ = -90f;
 
         // ---- Volcano interior envelope: single source of truth in World.EmberfallVolcanoGeo,
         // shared with the runtime DungeonResetController safety envelope so they cannot desync. ----
@@ -68,6 +69,8 @@ namespace AldenFall.Editor
 
         private static void BuildEmberfallWorld(Transform root, int groundLayer)
         {
+            _worldDef = EmberfallWorldDefinition.Load();
+            ApplyAuthoredWorldScale();
             if (UseUnityTerrain)
             {
                 BuildEmberfallTerrain(root, groundLayer);  // real Terrain + splats + wind grass
@@ -92,6 +95,7 @@ namespace AldenFall.Editor
             BuildEmberApproach(root, groundLayer);
             BuildEmberfallVolcano(root, groundLayer);
             BuildMountainRange(root, groundLayer);     // real mountain-mesh border (when assets exist)
+            BuildAuthoredVistas(root, groundLayer);
             BuildAldricGlade(root, groundLayer);       // player spawn + hermit mentor (N of city)
             BuildEmberfallSystems(root, groundLayer);
             BuildGlobalSafety(root, groundLayer);      // mountain ring + underfill + catch floor
@@ -102,8 +106,57 @@ namespace AldenFall.Editor
         }
 
         // ---- Aldric's forest glade (player spawn) — a lush clearing N of the city ----
-        private static readonly Vector2 GladeCenter = new Vector2(0f, 200f);   // Aldric's lakeside camp / spawn (south shore of the lake)
-        private const float GladeRadius = 20f;
+        private static Vector2 GladeCenter = new Vector2(0f, 200f);
+        private static float GladeRadius = 20f;
+
+        private static EmberfallWorldDefinition.RegionDef Region(string id)
+        {
+            foreach (var r in _worldDef.regions) if (r.id == id) return r;
+            throw new System.InvalidOperationException($"World definition is missing required region '{id}'");
+        }
+
+        private static void ApplyAuthoredWorldScale()
+        {
+            var city = Region("emberfall_city");
+            CityHalf = Mathf.Min(city.radiusX, city.radiusZ);
+            CityGate = 18f;
+            var lake = Region("great_lake");
+            LakeCenter = new Vector3(lake.center[0], 0f, lake.center[1]);
+            LakeHalf = Mathf.Min(lake.radiusX, lake.radiusZ);
+            var glade = Region("aldric_glade");
+            GladeCenter = new Vector2(glade.center[0], glade.center[1]);
+            GladeRadius = Mathf.Max(glade.radiusX, glade.radiusZ);
+            var approach = Region("ember_approach");
+            ApproachHalfW = approach.radiusX;
+            ApproachNorthZ = -CityHalf;
+            ApproachSouthZ = VolcanoEntranceZ + 30f;
+            VolcanicVisualNorthZ = approach.center[1] + approach.radiusZ;
+            _encounterDef = EmberfallEncounterDefinition.Load();
+            RiverPaths = _worldDef.BuildRiverPaths();
+            RiverHalfWidths = new float[_worldDef.rivers.Length];
+            for (int i = 0; i < RiverHalfWidths.Length; i++) RiverHalfWidths[i] = _worldDef.rivers[i].halfWidth;
+        }
+
+        private static bool InAuthoredRegion(EmberfallWorldDefinition.RegionDef r, float x, float z)
+        {
+            if (r?.center == null || r.center.Length < 2) return false;
+            float dx = (x - r.center[0]) / Mathf.Max(1f, r.radiusX);
+            float dz = (z - r.center[1]) / Mathf.Max(1f, r.radiusZ);
+            return dx * dx + dz * dz <= 1f;
+        }
+
+        private static float DistanceToAuthoredRoutes(float x, float z, out float halfWidth)
+        {
+            float best = float.MaxValue; halfWidth = 0f; var p = new Vector2(x, z);
+            foreach (var route in _worldDef.routes)
+                for (int i = 0; i < route.points.Length - 1; i++)
+                {
+                    float d = DistToSegment(p, new Vector2(route.points[i].x, route.points[i].z),
+                        new Vector2(route.points[i + 1].x, route.points[i + 1].z));
+                    if (d < best) { best = d; halfWidth = route.width * 0.5f; }
+                }
+            return best;
+        }
 
         private static bool InGlade(float x, float z)
             => Vector2.Distance(new Vector2(x, z), GladeCenter) < GladeRadius + 3f;
@@ -189,14 +242,14 @@ namespace AldenFall.Editor
         //   R1 NE falls      (320,455) -> lake NE
         //   R2 NW falls      (-320,455)-> lake NW
         //   R3 East falls    (435,45)  -> through the CITY -> lake SW inlet
-        private static readonly Vector3[][] RiverPaths =
+        private static Vector3[][] RiverPaths =
         {
             new[] { new Vector3(0f,0f,485f), new Vector3(2f,0f,450f), new Vector3(-4f,0f,420f), new Vector3(0f,0f,398f) },
             new[] { new Vector3(320f,0f,455f), new Vector3(230f,0f,415f), new Vector3(140f,0f,378f), new Vector3(72f,0f,352f) },
             new[] { new Vector3(-320f,0f,455f), new Vector3(-230f,0f,415f), new Vector3(-140f,0f,378f), new Vector3(-72f,0f,352f) },
             new[] { new Vector3(435f,0f,45f), new Vector3(300f,0f,40f), new Vector3(170f,0f,28f), new Vector3(60f,0f,12f), new Vector3(-8f,0f,6f), new Vector3(-64f,0f,40f), new Vector3(-84f,0f,120f), new Vector3(-64f,0f,200f), new Vector3(-40f,0f,235f) },
         };
-        private static readonly float[] RiverHalfWidths = { 8f, 7f, 7f, 8f };
+        private static float[] RiverHalfWidths = { 8f, 7f, 7f, 8f };
         // Waterfall sources: index into RiverPaths whose first point sits on a mountain.
         private static readonly int[] RiverSourceFalls = { 0, 1, 2, 3 };
 
@@ -249,6 +302,8 @@ namespace AldenFall.Editor
         private static PlacementCatalog _catalog;
         private static PlacementCatalog _detailCatalog;   // scattered rocks/fences/shrubs (record-only, merged at export)
         private static WorldManifest _manifest;           // authoritative world record: ground grid + objects + barriers + buildings
+        private static EmberfallWorldDefinition _worldDef; // authoritative authored INPUT (Assets/World/Emberfall)
+        private static EmberfallEncounterDefinition _encounterDef;
         private const float MountainRingR = 244f;         // playable edge; beyond = impassable mountain ring
 
         /// <summary>Record a directly-placed scatter prop into the detail catalog so it lands in the
@@ -283,14 +338,17 @@ namespace AldenFall.Editor
         /// One place decides "what is at (x,z)"; nothing guesses independently after this.</summary>
         private static void BuildPlacementMap()
         {
-            _place = new PlacementMap(-260f, -330f, 260f, 260f);
+            _worldDef ??= EmberfallWorldDefinition.Load();
+            var wb = _worldDef.bounds;
+            _place = new PlacementMap(wb.minX, wb.minZ, wb.maxX, wb.maxZ);
             _catalog = new PlacementCatalog();
             _detailCatalog = new PlacementCatalog();
             ResetSolidHash();   // fresh placement gate for this bake
             _suppressAutoRecord = false;
             _place.Classify((x, z) =>
             {
-                float ring = Mathf.Sqrt(x * x + z * z);
+                float edge = Mathf.Min(Mathf.Min(x - wb.minX, wb.maxX - x),
+                                       Mathf.Min(z - wb.minZ, wb.maxZ - z));
                 // ---- ZONE (priority order) ----
                 PlaceZone zone;
                 bool nearCity = Mathf.Abs(x) < CityHalf + 8f && Mathf.Abs(z) < CityHalf + 8f;
@@ -299,13 +357,16 @@ namespace AldenFall.Editor
                 else if (nearCity) zone = PlaceZone.Wall;                                  // 8m ring around the walls
                 else if (InGlade(x, z)) zone = PlaceZone.Glade;
                 else if (InApproachFootprint(x, z)) zone = PlaceZone.Approach;
-                else if (Mathf.Abs(x) < 12f && z > -66f && z < 214f) zone = PlaceZone.Road;
-                else if (ring > 244f) zone = PlaceZone.Mountain;
+                else if (DistanceToAuthoredRoutes(x, z, out float routeHalf) < routeHalf) zone = PlaceZone.Road;
+                else if (edge < 42f) zone = PlaceZone.Mountain;
                 else
                 {
                     zone = PlaceZone.Open;
-                    foreach (var c in CampCenters)
-                        if ((x - c.x) * (x - c.x) + (z - c.y) * (z - c.y) < 20f * 20f) { zone = PlaceZone.Camp; break; }
+                    foreach (var c in _encounterDef.camps)
+                    {
+                        float dx = x - c.position[0], dz = z - c.position[2], reach = Mathf.Max(12f, c.radius + 6f);
+                        if (dx * dx + dz * dz < reach * reach) { zone = PlaceZone.Camp; break; }
+                    }
                 }
                 // ---- BIOME ----
                 float soot = SootAmount(x, z);
@@ -313,9 +374,17 @@ namespace AldenFall.Editor
                 PlaceBiome biome;
                 if (soot > 0.4f) biome = PlaceBiome.Volcanic;
                 else if (lakeDist < 16f) biome = PlaceBiome.Shore;
-                else if (Mathf.Abs(x) < 95f && z > 55f && z < 250f) biome = PlaceBiome.DarkForest;
-                else if (soot < 0.15f && lakeDist > 20f) biome = PlaceBiome.Meadow;
-                else biome = PlaceBiome.Lush;
+                else
+                {
+                    biome = PlaceBiome.Meadow;
+                    foreach (var region in _worldDef.regions)
+                    {
+                        if (!InAuthoredRegion(region, x, z)) continue;
+                        if (region.id == "north_woods") biome = PlaceBiome.DarkForest;
+                        else if (region.kind == "forest" || region.id == "aldric_glade") biome = PlaceBiome.Lush;
+                        break;
+                    }
+                }
                 return (zone, biome);
             });
 
@@ -330,8 +399,9 @@ namespace AldenFall.Editor
 
             _manifest = new WorldManifest(_place, _catalog)
             {
-                MountainRingRadius = MountainRingR,
-                PlayerSpawn = new Vector3(0f, GY(0f, 194f), 194f),   // in front of Aldric, glade south of the lake
+                MountainRingRadius = Mathf.Min((_worldDef.bounds.maxX - _worldDef.bounds.minX) * 0.5f,
+                    (_worldDef.bounds.maxZ - _worldDef.bounds.minZ) * 0.5f),
+                PlayerSpawn = new Vector3(0f, GY(0f, GladeCenter.y - 22f), GladeCenter.y - 22f),
             };
 
             // Let shared spawn code (CreateCamp) keep mob camps out of the lake/rivers.
@@ -345,8 +415,9 @@ namespace AldenFall.Editor
             System.Func<PlaceZone, bool> zoneOk)
         {
             if (_place == null || !_place.CanPlace(x, z, radius, zoneOk)) return false;
+            if (radius > 0.05f && SolidOverlaps(x, z, radius)) return false;
             _catalog.Add(type, x, GY(x, z), z, yaw, h, radius, _place.ZoneAt(x, z), _place.BiomeAt(x, z), _place.GroundAt(x, z));
-            _place.Occupy(x, z, radius);
+            if (radius > 0.05f) { _place.Occupy(x, z, radius); SolidAdd(x, z, radius); }
             return true;
         }
 
@@ -404,15 +475,33 @@ namespace AldenFall.Editor
         /// the type + position (deterministic) so the JSON stays pure placement data.</summary>
         private static void RenderCatalog(Transform container, int groundLayer)
         {
+            RenderTerrainTrees();
+            var chunks = new Dictionary<long, Transform>();
+            float chunkSize = _worldDef.performance.chunkSize;
+            Transform ChunkFor(float x, float z)
+            {
+                int cx = Mathf.FloorToInt((x - _worldDef.bounds.minX) / chunkSize);
+                int cz = Mathf.FloorToInt((z - _worldDef.bounds.minZ) / chunkSize);
+                long key = ((long)cx << 32) ^ (uint)cz;
+                if (chunks.TryGetValue(key, out var found)) return found;
+                var go = new GameObject($"VisualChunk_{cx}_{cz}"); go.transform.SetParent(container);
+                var marker = go.AddComponent<World.WorldChunkMarker>();
+                marker.center = new Vector2(_worldDef.bounds.minX + (cx + 0.5f) * chunkSize,
+                    _worldDef.bounds.minZ + (cz + 0.5f) * chunkSize);
+                marker.halfDiagonal = chunkSize * 0.708f;
+                chunks[key] = go.transform; return go.transform;
+            }
             _suppressAutoRecord = true;   // catalog objects are ALREADY recorded (TryScatter); don't double
             try
             {
             foreach (var kv in _catalog.Objects)
             {
+                string category = PlacementCatalog.CategoryOf(kv.Key);
+                if (category == "tree" || category == "deadtree") continue; // native Terrain instances
                 var collision = CatalogCollision(kv.Key);
                 foreach (var it in kv.Value)
                 {
-                    var go = PlaceMeshyProp(container, kv.Key, new Vector3(it.x, 0f, it.z), it.yaw, it.h, groundLayer, collision);
+                    var go = PlaceMeshyProp(ChunkFor(it.x, it.z), kv.Key, new Vector3(it.x, 0f, it.z), it.yaw, it.h, groundLayer, collision);
                     var tint = CatalogTint(kv.Key, it.x, it.z, it.biome);
                     if (go != null && tint.HasValue)
                     {
@@ -426,6 +515,65 @@ namespace AldenFall.Editor
             }
             }
             finally { _suppressAutoRecord = false; }
+            var streamer = container.GetComponent<World.WorldChunkStreamer>() ?? container.gameObject.AddComponent<World.WorldChunkStreamer>();
+            streamer.activeRadius = _worldDef.performance.normalSightline;
+        }
+
+        /// <summary>Real photoscan trees as Terrain tree instances. This replaces thousands of
+        /// instantiated LOD hierarchies with Unity's native batched distance culling while keeping
+        /// the exact catalog placements as source of truth.</summary>
+        private static void RenderTerrainTrees()
+        {
+            var terrain = Terrain.activeTerrain;
+            if (terrain == null || _catalog == null) return;
+            var prototypes = new List<TreePrototype>();
+            var instances = new List<TreeInstance>();
+            var naturalHeights = new List<float>();
+
+            foreach (var kv in _catalog.Objects)
+            {
+                string category = PlacementCatalog.CategoryOf(kv.Key);
+                if (category != "tree" && category != "deadtree") continue;
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{TreeKitImporter.PrefabDir}/{kv.Key}.prefab")
+                    ?? AssetDatabase.LoadAssetAtPath<GameObject>($"Assets/Models/Props/{kv.Key}.fbx");
+                if (prefab == null) continue;
+                int prototype = prototypes.Count;
+                prototypes.Add(new TreePrototype { prefab = prefab, bendFactor = category == "tree" ? 0.12f : 0f });
+
+                float naturalHeight = 1f;
+                var temp = (GameObject)PrefabUtility.InstantiatePrefab(prefab);
+                if (temp != null)
+                {
+                    bool have = false; Bounds bounds = default;
+                    foreach (var renderer in temp.GetComponentsInChildren<Renderer>())
+                    { if (!have) { bounds = renderer.bounds; have = true; } else bounds.Encapsulate(renderer.bounds); }
+                    if (have) naturalHeight = Mathf.Max(0.1f, bounds.size.y);
+                    Object.DestroyImmediate(temp);
+                }
+                naturalHeights.Add(naturalHeight);
+
+                foreach (var item in kv.Value)
+                {
+                    float scale = Mathf.Clamp(item.h / naturalHeight, 0.35f, 2.2f);
+                    float nx = (item.x - terrain.transform.position.x) / terrain.terrainData.size.x;
+                    float nz = (item.z - terrain.transform.position.z) / terrain.terrainData.size.z;
+                    float ny = (GY(item.x, item.z) - terrain.transform.position.y) / terrain.terrainData.size.y;
+                    instances.Add(new TreeInstance
+                    {
+                        position = new Vector3(nx, ny, nz), prototypeIndex = prototype,
+                        widthScale = scale, heightScale = scale,
+                        rotation = item.yaw * Mathf.Deg2Rad,
+                        color = Color.white, lightmapColor = Color.white
+                    });
+                }
+            }
+            terrain.terrainData.treePrototypes = prototypes.ToArray();
+            terrain.terrainData.SetTreeInstances(instances.ToArray(), true);
+            terrain.treeDistance = _worldDef.performance.farRadius + 35f;
+            terrain.treeBillboardDistance = _worldDef.performance.midRadius;
+            terrain.treeCrossFadeLength = 12f;
+            terrain.treeMaximumFullLODCount = 180;
+            EditorUtility.SetDirty(terrain.terrainData);
         }
 
         private static PropCollision CatalogCollision(string type)
@@ -473,12 +621,16 @@ namespace AldenFall.Editor
         /// conflicts do.</summary>
         private static void ExportAndValidateMobs(PlacementMap map)
         {
-            string mpath = "Assets/StreamingAssets/monsters.json";
-            if (!System.IO.File.Exists(mpath)) return;
-            MJRoot root;
-            try { root = JsonUtility.FromJson<MJRoot>(System.IO.File.ReadAllText(mpath)); }
-            catch (System.Exception e) { Debug.Log($"MOBS parse failed: {e.Message}"); return; }
-            if (root?.monsters == null) return;
+            var encounterDef = EmberfallEncounterDefinition.Load();
+            var grouped = new Dictionary<string, List<MJSpawn>>();
+            foreach (var c in encounterDef.camps)
+            {
+                if (!grouped.TryGetValue(c.mobId, out var list)) { list = new List<MJSpawn>(); grouped[c.mobId] = list; }
+                list.Add(new MJSpawn { kind = c.kind, x = c.position[0], y = c.position[1], z = c.position[2], count = c.count, radius = c.radius });
+            }
+            var monsters = new List<MJMonster>();
+            foreach (var pair in grouped) monsters.Add(new MJMonster { id = pair.Key, spawns = pair.Value.ToArray() });
+            var root = new MJRoot { monsters = monsters.ToArray() };
 
             var sb = new System.Text.StringBuilder(1 << 16);
             sb.Append("{\n  \"mobs\": {\n");
@@ -658,6 +810,29 @@ namespace AldenFall.Editor
         /// Groups objects by name-pattern and flags, per group: primitive-as-scenery, floating, buried,
         /// underwater, and fat colliders (invisible walls). Writes an uncapped report to WorldData/
         /// world_audit.txt so problems are FOUND from the data, not from screenshots. Fix the source.</summary>
+        /// <summary>Remove every missing-script component from the scene before save. A MonoBehaviour
+        /// whose class can't be resolved (e.g. class defined in a mismatched file name) bakes as a
+        /// "missing script"; the editor tolerates it but the STANDALONE build writes its orphaned data
+        /// into level0 and the typetree-less player misreads it -- "level0 corrupted" +
+        /// "[Position out of bounds!]" instant crash. Purge + log loudly so it can never ship.</summary>
+        private static void PurgeMissingScripts()
+        {
+            int purged = 0, gos = 0;
+            foreach (var go in Object.FindObjectsByType<GameObject>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                int n = UnityEditor.GameObjectUtility.GetMonoBehavioursWithMissingScriptCount(go);
+                if (n > 0)
+                {
+                    purged += UnityEditor.GameObjectUtility.RemoveMonoBehavioursWithMissingScript(go);
+                    gos++;
+                }
+            }
+            if (purged > 0)
+                Debug.LogWarning($"MISSING SCRIPTS purged: {purged} components on {gos} objects -- find the class-in-wrong-file bug that created them!");
+            else
+                Debug.Log("MISSING SCRIPTS: 0");
+        }
+
         private static void DumpWorldAudit(Transform root)
         {
             var terrain = Terrain.activeTerrain;
@@ -784,6 +959,7 @@ namespace AldenFall.Editor
                     foreach (var kv in byKind) Debug.Log($"WORLD CONFLICT {kv.Key}: {kv.Value}");
                 }
 
+                PurgeMissingScripts();           // missing-script components corrupt the standalone build
                 AuditScene(root);                // scene-TRUTH audit of the actually-placed kit props
                 DumpWorldAudit(root);            // COMPREHENSIVE audit of EVERY mesh (finds junk from data)
             }
@@ -821,11 +997,17 @@ namespace AldenFall.Editor
         /// </summary>
         private static void BuildEmberfallTerrain(Transform root, int groundLayer)
         {
+            _worldDef ??= EmberfallWorldDefinition.Load();
             // Expanded world (Environment milestone): room for a city-sized north lake + forest
             // buffer + real mountains, keeping city@origin + volcano south.
-            const float sizeX = 900f, sizeZ = 1040f, sizeY = 150f;   // tall Y range for real mountains
-            Vector3 origin = new Vector3(-450f, -sizeY / 2f, -470f);   // x[-450,450], z[-470,570]; surface base y=0
-            const int hmRes = 513, splatRes = 512, detailRes = 1024;
+            var worldBounds = _worldDef.bounds;
+            float sizeX = worldBounds.maxX - worldBounds.minX;
+            float sizeZ = worldBounds.maxZ - worldBounds.minZ;
+            const float sizeY = 220f;
+            Vector3 origin = new Vector3(worldBounds.minX, -sizeY / 2f, worldBounds.minZ);
+            // Preserve roughly the old metres-per-sample density across the expanded footprint.
+            // Detail is still distance-culled to 140m; total map area does not become active detail.
+            const int hmRes = 1025, splatRes = 1024, detailRes = 2048;
 
             var data = new TerrainData
             {
@@ -856,7 +1038,7 @@ namespace AldenFall.Editor
 
                     bool flatZone = InCityFootprint(wx, wz) || InGlade(wx, wz)
                                  || InApproachFootprint(wx, wz)
-                                 || (Mathf.Abs(wx) < 8f && wz > -322f && wz < 190f);   // city road (city -> glade)
+                                 || DistanceToAuthoredRoutes(wx, wz, out float terrainRouteHalf) < terrainRouteHalf;
                     if (!flatZone)
                         // Rolling valley floor lifted WELL above the waterline. The world-spanning
                         // water sheet sits at y-0.35; when the floor was ~0.05 (a 0.4m gap) the
@@ -868,10 +1050,16 @@ namespace AldenFall.Editor
                           + (Mathf.PerlinNoise(wx * 0.008f + 12.3f, wz * 0.008f + 5.1f) - 0.5f) * 2.0f
                           + (Mathf.PerlinNoise(wx * 0.024f + 31.7f, wz * 0.024f + 17.3f) - 0.5f) * 0.9f);
 
+                    // Authored traversal-room occluders. These are world-design inputs, not random
+                    // noise: they restrict ordinary sightlines to the 140m budget and stage reveals
+                    // around roads, the glade, camps, lake and volcano approach.
+                    if (!flatZone)
+                        h = Mathf.Max(h, 0.7f + _worldDef.LandformHeight(wx, wz));
+
                     // Glade (player spawn) + the lake/city road are DRY flatzones - lift them clear
                     // of the water sheet too, or it bleeds through the flat spawn (Aldric standing
                     // in a "flood"). North of the ember corridor only; the volcano approach stays low.
-                    if (InGlade(wx, wz) || (Mathf.Abs(wx) < 8f && wz > -55f && wz < 195f))
+                    if (InGlade(wx, wz) || DistanceToAuthoredRoutes(wx, wz, out float dryRouteHalf) < dryRouteHalf)
                         h = 0.85f;
 
                     if (InCityFootprint(wx, wz))
@@ -950,7 +1138,7 @@ namespace AldenFall.Editor
                     // tight lake plane, and a wide sand band on dry land read as water at grazing
                     // angles - the "flooded spawn"). Beyond the ring = grass (dry spawn glade).
                     bool shore = (lakeR > lakeEdgeS - 14f && lakeR < lakeEdgeS + 2f) || InAnyRiver(wx, wz);
-                    bool road = (Mathf.Abs(wx) < 7f && wz > -66f && wz < 214f);   // N-S dirt road (city -> lakeside)
+                    bool road = DistanceToAuthoredRoutes(wx, wz, out float splatRouteHalf) < splatRouteHalf;
                     float edge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
                                            Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
                     bool southCorridor = Mathf.Abs(wx) < ApproachHalfW + 24f && wz < -90f;
@@ -958,9 +1146,11 @@ namespace AldenFall.Editor
                     float g = 1f, s = 0f, so = 0f, d = 0f, rk = 0f;
                     if (!southCorridor && edge < 150f) { rk = Mathf.Clamp01((150f - edge) / 95f); g *= 1f - rk; }  // rock mountains
                     // Volcanic south gradient: green -> dry dirt -> cracked lava toward the volcano.
-                    if (wz < 40f)
+                    if (wz < -300f)
                     {
-                        float southT = Mathf.Clamp01(Mathf.InverseLerp(40f, -300f, wz));
+                        // A long authored ecological gradient: living southern forest first,
+                        // then dry/ailing forest, deadwood/ash foothills, and only finally lava.
+                        float southT = Mathf.Clamp01(Mathf.InverseLerp(-300f, ApproachSouthZ, wz));
                         so = Mathf.Clamp01((southT - 0.58f) * 2.6f);                      // lava/ash at the deep end
                         float dryDirt = Mathf.Clamp01(1f - Mathf.Abs(southT - 0.45f) * 3.0f) * (1f - so);  // dirt peaks mid
                         d = Mathf.Max(d, dryDirt);
@@ -970,9 +1160,9 @@ namespace AldenFall.Editor
                     // The ember CORRIDOR itself is charred end-to-end: dark soot from the
                     // south gate ramping to full at the volcano. Pale dirt here read as a
                     // watery sheet at grazing angles (bare-bright-ground = fake water).
-                    if (Mathf.Abs(wx) < ApproachHalfW + 8f && wz < ApproachNorthZ)
+                    if (Mathf.Abs(wx) < ApproachHalfW + 8f && wz < VolcanicVisualNorthZ)
                     {
-                        float ct = Mathf.InverseLerp(ApproachNorthZ, ApproachSouthZ, wz);
+                        float ct = Mathf.InverseLerp(VolcanicVisualNorthZ, ApproachSouthZ, wz);
                         so = Mathf.Max(so, Mathf.Lerp(0.6f, 1f, ct));
                         g = 0f; d *= 0.25f; rk = 0f;
                     }
@@ -1074,7 +1264,7 @@ namespace AldenFall.Editor
                     if (InLakeWater(wx, wz) || InFeederRiver(wx, wz)) continue;
                     if (Vector2.Distance(new Vector2(wx, wz), new Vector2(LakeCenter.x, LakeCenter.z)) < LakeEdge(wx, wz) + 2f) continue;  // grass grows right up to the narrow sand shore ring
                     if (SootAmount(wx, wz) > 0.25f) continue;
-                    if (Mathf.Abs(wx) < 8f && wz > -66f && wz < 214f) continue;  // full dirt-road clear (matches splat road)
+                    if (DistanceToAuthoredRoutes(wx, wz, out float grassRouteHalf) < grassRouteHalf) continue;
                     // Keep the water sources (waterfall gorges) bare so they read as rock, not a
                     // green hill: clear grass around each river source + the lake outflow notch.
                     bool nearSource = false;
@@ -1109,7 +1299,7 @@ namespace AldenFall.Editor
 
                     if (InCityFootprint(wx, wz)) continue;
                     if (InLakeWater(wx, wz) || InFeederRiver(wx, wz)) continue;
-                    if (Mathf.Abs(wx) < 8f && wz < ApproachNorthZ + 4f) continue;   // keep the ember road clear
+                    if (DistanceToAuthoredRoutes(wx, wz, out float ashRouteHalf) < ashRouteHalf) continue;
                     float dEdge = Mathf.Min(Mathf.Min(wx - origin.x, origin.x + sizeX - wx),
                                             Mathf.Min(wz - origin.z, origin.z + sizeZ - wz));
                     if (dEdge < 82f) continue;                                       // no cover on the rock mountains
@@ -1156,6 +1346,28 @@ namespace AldenFall.Editor
 
         private static TerrainLayer MakeTerrainLayer(string name, Color baseColor, float noise)
         {
+            string scanDir = "Assets/Textures/Ground/PolyHaven";
+            string scanDiffuse = name == "TL_Grass" ? $"{scanDir}/forest_ground_04_diff_2k.jpg"
+                : name == "TL_Dirt" ? $"{scanDir}/brown_mud_leaves_01_diff_2k.jpg" : null;
+            string scanNormal = name == "TL_Grass" ? $"{scanDir}/forest_ground_04_nor_gl_2k.jpg"
+                : name == "TL_Dirt" ? $"{scanDir}/brown_mud_leaves_01_nor_gl_2k.jpg" : null;
+            var scannedAlbedo = scanDiffuse != null ? AssetDatabase.LoadAssetAtPath<Texture2D>(scanDiffuse) : null;
+            if (scannedAlbedo != null)
+            {
+                AssetDatabase.DeleteAsset($"{MaterialDir}/{name}.terrainlayer");
+                var scanned = new TerrainLayer
+                {
+                    diffuseTexture = scannedAlbedo,
+                    normalMapTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(scanNormal),
+                    tileSize = new Vector2(name == "TL_Dirt" ? 7.5f : 6f, name == "TL_Dirt" ? 7.5f : 6f),
+                    normalScale = 1f,
+                    specular = Color.black,
+                    metallic = 0f,
+                    smoothness = name == "TL_Grass" ? 0.08f : 0.03f,
+                };
+                AssetDatabase.CreateAsset(scanned, $"{MaterialDir}/{name}.terrainlayer");
+                return scanned;
+            }
             // Rich procedural albedo (256px) per surface kind instead of a flat 64px noise wash
             // (the pale-ground problem that shelved the terrain). Tiles tightly so detail reads.
             const int s = 256;
@@ -1258,7 +1470,7 @@ namespace AldenFall.Editor
             // Alpha-cut grass-blade texture (double-sided) so each quad reads as a fuzzy tuft,
             // not a solid green card. Falls back to a solid material if the texture is missing.
             var grassTex = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Textures/Ground/grass_tuft_desat.png");
-            Color tint = matTint ?? Color.white;
+            Color tint = matTint ?? new Color(0.42f, 0.62f, 0.28f);
             Material mat;
             if (useGrassTex && grassTex != null)
             {
@@ -1433,6 +1645,78 @@ namespace AldenFall.Editor
         /// snapped to terrain; a missing fbx just means fewer of that kind (no cube fallback).</summary>
         private static void ScatterGroundDetail(Transform container, int groundLayer)
         {
+            // Expanded-world path: region ecology is authored by biome and recorded into the same
+            // chunked catalog as trees. This keeps tens of thousands of small props out of the
+            // hierarchy outside the active 140 m envelope. The legacy compact-ring scatter below
+            // remains only as rollback documentation.
+            if (_worldDef != null && _worldDef.version >= 2)
+            {
+                bool Clear(float x, float z)
+                {
+                    if (InCityFootprint(x, z) || InApproachFootprint(x, z) || InGlade(x, z)) return false;
+                    if (InLakeWater(x, z) || InAnyRiver(x, z) || DistToCityCanal(x, z) < 12f) return false;
+                    return DistanceToAuthoredRoutes(x, z, out float half) >= half + 3f;
+                }
+
+                foreach (var region in _worldDef.regions)
+                {
+                    if (region.center == null || region.center.Length < 2) continue;
+                    bool forest = region.kind == "forest";
+                    bool transition = region.id == "ashen_foothills";
+                    if (!forest && !transition) continue;
+
+                    float area = Mathf.PI * region.radiusX * region.radiusZ;
+                    int target = Mathf.Clamp(Mathf.RoundToInt(area / (forest ? 230f : 420f)), 120, 1900);
+                    for (int attempt = 0, placed = 0; attempt < target * 12 && placed < target; attempt++)
+                    {
+                        float ang = (float)rng.NextDouble() * Mathf.PI * 2f;
+                        float dist = Mathf.Sqrt((float)rng.NextDouble());
+                        float x = region.center[0] + Mathf.Cos(ang) * dist * region.radiusX;
+                        float z = region.center[1] + Mathf.Sin(ang) * dist * region.radiusZ;
+                        if (!Clear(x, z)) continue;
+
+                        double roll = rng.NextDouble();
+                        string asset;
+                        float height, footprint;
+                        if (roll < (transition ? 0.24 : 0.10))
+                        {
+                            asset = rng.NextDouble() < 0.55 ? "namaqualand_boulder_02" : "boulder_01";
+                            height = 0.8f + (float)rng.NextDouble() * 2.5f;
+                            footprint = Mathf.Max(0.7f, height * 0.42f);
+                        }
+                        else if (!transition && roll > 0.84)
+                        {
+                            asset = "shrub_02";
+                            height = 0.7f + (float)rng.NextDouble() * 0.8f;
+                            footprint = 0f;
+                        }
+                        else
+                        {
+                            asset = transition && z < -670f ? "shrub_03" : "fern_02";
+                            height = 0.45f + (float)rng.NextDouble() * (region.id == "south_woods" ? 1.0f : 0.65f);
+                            footprint = 0f;
+                        }
+                        if (TryScatter(asset, x, z, (float)rng.NextDouble() * 360f, height, footprint,
+                                zone => zone == PlaceZone.Open || zone == PlaceZone.Camp)) placed++;
+                    }
+                }
+
+                // Shore ecology is its own narrow habitat band, never a generic forest sprinkle.
+                for (int i = 0; i < 900; i++)
+                {
+                    float ang = (float)rng.NextDouble() * Mathf.PI * 2f;
+                    Vector2 dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
+                    float edge = LakeEdge(LakeCenter.x + dir.x * LakeHalf, LakeCenter.z + dir.y * LakeHalf);
+                    float r = edge + 1.5f + (float)rng.NextDouble() * 11f;
+                    float x = LakeCenter.x + dir.x * r, z = LakeCenter.z + dir.y * r;
+                    if (!Clear(x, z)) continue;
+                    TryScatter(rng.NextDouble() < 0.78 ? "fern_02" : "shrub_02", x, z,
+                        (float)rng.NextDouble() * 360f, 0.45f + (float)rng.NextDouble() * 0.55f, 0f,
+                        zone => zone == PlaceZone.Open);
+                }
+                return;
+            }
+
             bool Blocked(float x, float z)
             {
                 if (InCityFootprint(x, z) || InApproachFootprint(x, z)) return true;
@@ -1562,6 +1846,40 @@ namespace AldenFall.Editor
         /// the continuous ember-approach -> city -> lakeside road.</summary>
         private static void ScatterRoadDetail(Transform container, int groundLayer)
         {
+            if (_worldDef != null && _worldDef.version >= 2)
+            {
+                foreach (var route in _worldDef.routes)
+                {
+                    if (route.points == null) continue;
+                    for (int p = 0; p < route.points.Length - 1; p++)
+                    {
+                        Vector2 a = new Vector2(route.points[p].x, route.points[p].z);
+                        Vector2 b = new Vector2(route.points[p + 1].x, route.points[p + 1].z);
+                        float length = Vector2.Distance(a, b);
+                        int steps = Mathf.Max(1, Mathf.CeilToInt(length / 5.5f));
+                        Vector2 tangent = (b - a).normalized;
+                        Vector2 normal = new Vector2(-tangent.y, tangent.x);
+                        float yaw = Mathf.Atan2(tangent.x, tangent.y) * Mathf.Rad2Deg;
+                        for (int i = 0; i <= steps; i++)
+                        {
+                            Vector2 c = Vector2.Lerp(a, b, i / (float)steps);
+                            foreach (float side in new[] { -1f, 1f })
+                            {
+                                if (rng.NextDouble() > 0.36) continue;
+                                Vector2 q = c + normal * side * (route.width * 0.5f + 1.5f + (float)rng.NextDouble() * 3f);
+                                if (InCityFootprint(q.x, q.y) || InLakeWater(q.x, q.y) || InAnyRiver(q.x, q.y)) continue;
+                                string asset = rng.NextDouble() < 0.66 ? "namaqualand_boulder_02" : "shrub_03";
+                                float h = asset == "shrub_03" ? 0.55f + (float)rng.NextDouble() * 0.7f : 0.6f + (float)rng.NextDouble() * 1.4f;
+                                TryScatter(asset, q.x, q.y, yaw + (float)(rng.NextDouble() - 0.5) * 90f,
+                                    h, asset == "shrub_03" ? 0.25f : h * 0.35f,
+                                    zone => zone == PlaceZone.Open);
+                            }
+                        }
+                    }
+                }
+                return;
+            }
+
             var rutMat = Mat("RoadRut", new Color(0.22f, 0.16f, 0.11f));
             var mudMat = Mat("RoadMud", new Color(0.20f, 0.145f, 0.095f), smoothness: 0.14f);   // damp wet earth (subtle)
             bool haveShrub = HasMesh("shrub_03");
@@ -1627,6 +1945,28 @@ namespace AldenFall.Editor
                     PlaceMeshyProp(container, "Fence", new Vector3(p.x, 0f, p.z), yaw, sec, groundLayer, PropCollision.FitBox);
                 }
             }
+            if (_worldDef != null && _worldDef.version >= 2)
+            {
+                foreach (var route in _worldDef.routes)
+                {
+                    // Fencing is a sign of settlement, so it only follows the first ~100 m beyond
+                    // each city gate; wilderness routes remain visually organic.
+                    if (route.points == null || route.points.Length < 2) continue;
+                    int segmentLimit = Mathf.Min(2, route.points.Length - 1);
+                    for (int i = 0; i < segmentLimit; i++)
+                    {
+                        Vector2 a2 = new Vector2(route.points[i].x, route.points[i].z);
+                        Vector2 b2 = new Vector2(route.points[i + 1].x, route.points[i + 1].z);
+                        Vector2 n = new Vector2(-(b2 - a2).normalized.y, (b2 - a2).normalized.x);
+                        float shoulder = route.width * 0.5f + 2.5f;
+                        FenceRun(new Vector3(a2.x + n.x * shoulder, 0f, a2.y + n.y * shoulder),
+                            new Vector3(b2.x + n.x * shoulder, 0f, b2.y + n.y * shoulder));
+                        FenceRun(new Vector3(a2.x - n.x * shoulder, 0f, a2.y - n.y * shoulder),
+                            new Vector3(b2.x - n.x * shoulder, 0f, b2.y - n.y * shoulder));
+                    }
+                }
+                return;
+            }
             // Both shoulders of the N-S road, from the north gate up toward the lakeside.
             FenceRun(new Vector3(-9.5f, 0f, CityHalf + 5f), new Vector3(-9.5f, 0f, 172f));
             FenceRun(new Vector3(9.5f, 0f, CityHalf + 5f), new Vector3(9.5f, 0f, 172f));
@@ -1643,27 +1983,40 @@ namespace AldenFall.Editor
             // like the New World / BDO reference forests (see poly-haven-forest-kit memory).
             string[] aliveKit = { "island_tree_01", "island_tree_02", "island_tree_03", "island_tree_01", "tree_small_02" };
             string[] deadKit = { "dead_tree_trunk", "dead_tree_trunk_02" };
-            int planted = 0, alive = 0;
-            for (int attempt = 0; attempt < 16000 && planted < 680; attempt++)
+            bool NearRoute(float x, float z, float extra)
             {
-                float x = Mathf.Lerp(-246f, 246f, (float)rng.NextDouble());
-                float z = Mathf.Lerp(-52f, 252f, (float)rng.NextDouble());
-                // Keep trees BACK from the waterline -- no trunks in the lake/rivers (their wide canopies
-                // still lean out over the water naturally). ~8m shore buffer beyond the edge.
-                float lakeDist = Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) - LakeEdge(x, z);
-                if (lakeDist < 8f || InLakeWater(x, z) || InAnyRiver(x, z)) continue;
-                // Keep tree TRUNKS well back from the road (half-width 12m) so wide canopies don't
-                // overhang the path -- the "trees on the road" look. 20m trunk clearance = canopy clear.
-                if (Mathf.Abs(x) < 20f && z > -66f && z < 214f) continue;
-                var biome = _place.BiomeAt(x, z);
-                float radius = 4.5f + (float)rng.NextDouble() * 3.5f;          // wider footprint for big trees
-                bool dead = biome == PlaceBiome.Volcanic;
-                string species = dead ? deadKit[planted % deadKit.Length] : aliveKit[alive % aliveKit.Length];
-                float h = 11f + (float)rng.NextDouble() * 8f;                  // tall: 11-19m canopy
-                if (TryScatter(species, x, z, (float)rng.NextDouble() * 360f, h, radius, zn => zn == PlaceZone.Open))
+                var p = new Vector2(x, z);
+                foreach (var route in _worldDef.routes)
+                    for (int i = 0; i < route.points.Length - 1; i++)
+                        if (DistToSegment(p, new Vector2(route.points[i].x, route.points[i].z),
+                            new Vector2(route.points[i + 1].x, route.points[i + 1].z)) < route.width * 0.5f + extra)
+                            return true;
+                return false;
+            }
+            int planted = 0, alive = 0;
+            foreach (var region in _worldDef.regions)
+            {
+                bool forest = region.kind == "forest" || region.id == "ashen_foothills";
+                if (!forest || region.center == null || region.center.Length < 2) continue;
+                int target = Mathf.Clamp(Mathf.RoundToInt(Mathf.PI * region.radiusX * region.radiusZ / 250f), 220, 2600);
+                int accepted = 0;
+                for (int attempt = 0; attempt < target * 28 && accepted < target; attempt++)
                 {
-                    planted++;
-                    if (!dead) alive++;
+                    float a = (float)rng.NextDouble() * Mathf.PI * 2f;
+                    float d = Mathf.Sqrt((float)rng.NextDouble());
+                    float x = region.center[0] + Mathf.Cos(a) * d * region.radiusX;
+                    float z = region.center[1] + Mathf.Sin(a) * d * region.radiusZ;
+                    float lakeDist = Vector2.Distance(new Vector2(x, z), new Vector2(LakeCenter.x, LakeCenter.z)) - LakeEdge(x, z);
+                    if (lakeDist < 10f || InLakeWater(x, z) || InAnyRiver(x, z) || NearRoute(x, z, 14f)) continue;
+                    float radius = 4.5f + (float)rng.NextDouble() * 3.5f;
+                    float ashT = region.id == "ashen_foothills" ? Mathf.InverseLerp(-520f, VolcanicVisualNorthZ, z) : 0f;
+                    bool dead = region.id == "ashen_foothills" && rng.NextDouble() < Mathf.Lerp(0.15f, 0.82f, ashT);
+                    string species = dead ? deadKit[planted % deadKit.Length] : aliveKit[alive % aliveKit.Length];
+                    float h = region.id == "south_woods" ? 12f + (float)rng.NextDouble() * 7f
+                        : 10f + (float)rng.NextDouble() * 7f;
+                    if (!TryScatter(species, x, z, (float)rng.NextDouble() * 360f, h, radius,
+                            zn => zn == PlaceZone.Open || zn == PlaceZone.Camp)) continue;
+                    accepted++; planted++; if (!dead) alive++;
                 }
             }
 
@@ -1707,6 +2060,7 @@ namespace AldenFall.Editor
         private static void BuildEmberfallCity(Transform root, int groundLayer)
         {
             var container = Child(root, "EmberfallCity");
+            var cityDef = EmberfallCityDefinition.Load();
 
             // ---- Cobbled ground (stone TEXTURE so it isn't a flat grey Minecraft grid) ----
             var stoneTex = GetGeneratedTexture("CityStone_Tex", () => GroundTextureGenerator.Rock(256));
@@ -1725,6 +2079,20 @@ namespace AldenFall.Editor
             }
             var streetMat = StoneMat("CityStreet", new Color(1.0f, 0.94f, 0.86f), 1.5f);
             const float tile = 5f;
+            var cityVerts = new List<Vector3>();
+            var cityUvs = new List<Vector2>();
+            var cityTris = new List<int>[5];
+            for (int i = 0; i < cityTris.Length; i++) cityTris[i] = new List<int>();
+            bool NearAuthoredStreet(float x, float z)
+            {
+                var p = new Vector2(x, z);
+                foreach (var street in cityDef.streets)
+                    for (int i = 0; i < street.points.Length - 1; i++)
+                        if (DistToSegment(p, new Vector2(street.points[i].x, street.points[i].z),
+                            new Vector2(street.points[i + 1].x, street.points[i + 1].z)) < street.width * 0.5f)
+                            return true;
+                return false;
+            }
             for (float x = -CityHalf; x < CityHalf; x += tile)
                 for (float z = -CityHalf; z < CityHalf; z += tile)
                 {
@@ -1732,16 +2100,28 @@ namespace AldenFall.Editor
                     // Leave the canal channel OPEN (no cobble lid over the water — the "river runs
                     // under town" bug); the stone canal banks are built separately.
                     if (DistToCityCanal(cx, cz) < 8f) continue;
-                    // Streets: cross axes between the four gates.
-                    bool street = Mathf.Abs(cx) < 5f || Mathf.Abs(cz) < 5f;
-                    var mat = street ? streetMat : cobble[rng.Next(cobble.Length)];
-                    // Top sits at y=0.05 (clearly ABOVE the terrain) so the tiles don't z-fight/shimmer
-                    // with the ground on camera moves (Jon: "gray blocks shake on move").
-                    var t = Cube($"City_{x}_{z}", new Vector3(cx, -0.2f, cz),
-                        new Vector3(tile, 0.5f, tile), mat, container);
-                    t.isStatic = true;
-                    if (groundLayer >= 0) t.layer = groundLayer;
+                    bool street = NearAuthoredStreet(cx, cz);
+                    int sub = street ? 4 : rng.Next(cobble.Length);
+                    int vi = cityVerts.Count;
+                    cityVerts.Add(new Vector3(x, 0.055f, z));
+                    cityVerts.Add(new Vector3(x, 0.055f, z + tile));
+                    cityVerts.Add(new Vector3(x + tile, 0.055f, z));
+                    cityVerts.Add(new Vector3(x + tile, 0.055f, z + tile));
+                    cityUvs.Add(new Vector2(x / tile, z / tile));
+                    cityUvs.Add(new Vector2(x / tile, z / tile + 1));
+                    cityUvs.Add(new Vector2(x / tile + 1, z / tile));
+                    cityUvs.Add(new Vector2(x / tile + 1, z / tile + 1));
+                    cityTris[sub].AddRange(new[] { vi, vi + 1, vi + 2, vi + 2, vi + 1, vi + 3 });
                 }
+            var cityMesh = new Mesh { name = "AuthoredCityGround", indexFormat = UnityEngine.Rendering.IndexFormat.UInt32, subMeshCount = 5 };
+            cityMesh.SetVertices(cityVerts); cityMesh.SetUVs(0, cityUvs);
+            for (int i = 0; i < cityTris.Length; i++) cityMesh.SetTriangles(cityTris[i], i);
+            cityMesh.RecalculateNormals(); cityMesh.RecalculateBounds();
+            var cityGround = new GameObject("AuthoredCityGround"); cityGround.transform.SetParent(container);
+            cityGround.AddComponent<MeshFilter>().sharedMesh = cityMesh;
+            cityGround.AddComponent<MeshRenderer>().sharedMaterials = new[] { cobble[0], cobble[1], cobble[2], cobble[3], streetMat };
+            cityGround.AddComponent<MeshCollider>().sharedMesh = cityMesh;
+            cityGround.isStatic = true; if (groundLayer >= 0) cityGround.layer = groundLayer;
 
             BuildCityWalls(container, groundLayer);
             BuildCityCanal(container, groundLayer);
@@ -1757,26 +2137,20 @@ namespace AldenFall.Editor
             })
                 PlaceCityBuilding(container, "MarketStall", pos, yaw, 3.4f, groundLayer);
 
-            // ---- ENTERABLE district buildings: block shells + furnished Meshy interiors + NPCs
-            // with intention. A mix of 1/2/3 stories; doors face the plaza streets. All walkable in.
-            // BIG buildings (Jon: 2-3x, "so the city feels full") placed in the NORTH/SOUTH strips of
-            // each quadrant, kept clear of the diagonal R3 canal (east z~10 -> centre z~6 -> NW z~40)
-            // and the gate streets. 3-story inn + several 2-story.
-            // NW (north, clear of the canal's NW exit): the flagship 3-STORY inn + a home.
-            BuildTownBuilding(container, "TheEmberRest", new Vector3(-40f, 0f, 46f), 9f, 7f, 3, 3, "inn", groundLayer,
-                "Hobb", new[] { "cooked_fish", "cooked_trout", "cooked_bass", "cooked_carp" });
-            BuildTownBuilding(container, "HomeNW1", new Vector3(-18f, 0f, 44f), 8f, 7f, 2, 0, "house", groundLayer);
-            // NE (north): general store + provisioner (2-story shops).
-            BuildTownBuilding(container, "GeneralStore", new Vector3(39f, 0f, 42f), 11f, 9f, 2, 0, "shop", groundLayer);
-            BuildTownBuilding(container, "ProvisionerShop", new Vector3(18f, 0f, 42f), 8f, 7f, 1, 0, "shop", groundLayer);
-            // SE (south): the Forge (smithy) + armory + a home on the east wall.
-            BuildTownBuilding(container, "TheForge", new Vector3(38f, 0f, -36f), 10f, 9f, 1, 1, "smithy", groundLayer);
-            BuildTownBuilding(container, "Armory", new Vector3(18f, 0f, -40f), 8f, 7f, 2, 1, "shop", groundLayer);
-            BuildTownBuilding(container, "HomeSE1", new Vector3(46f, 0f, -16f), 8f, 8f, 1, 2, "house", groundLayer);
-            // SW (south): residential lane (a 2-story + homes).
-            BuildTownBuilding(container, "HomeSW1", new Vector3(-38f, 0f, -38f), 11f, 9f, 2, 1, "house", groundLayer);
-            BuildTownBuilding(container, "HomeSW2", new Vector3(-18f, 0f, -40f), 8f, 7f, 1, 1, "house", groundLayer);
-            BuildTownBuilding(container, "HomeSW3", new Vector3(-46f, 0f, -16f), 8f, 8f, 1, 3, "house", groundLayer);
+            // Exact district/building intent comes from city.json. Generated interiors remain a
+            // compiler concern, but their identity, parcel, role, dimensions and entrance heading
+            // are now inspectable and stable rather than buried in this method.
+            foreach (var b in cityDef.buildings)
+            {
+                float yaw = Mathf.Repeat(b.yaw, 360f);
+                int doorSide = yaw < 45f || yaw >= 315f ? 0 : yaw < 135f ? 2 : yaw < 225f ? 1 : 3;
+                var pos = new Vector3(b.position[0], 0f, b.position[1]);
+                if (b.role == "inn")
+                    BuildTownBuilding(container, b.id, pos, b.width, b.depth, b.stories, doorSide, b.role, groundLayer,
+                        "Hobb", new[] { "cooked_fish", "cooked_trout", "cooked_bass", "cooked_carp" });
+                else
+                    BuildTownBuilding(container, b.id, pos, b.width, b.depth, b.stories, doorSide, b.role, groundLayer);
+            }
 
             // Market dressing + lanterns.
             PlaceMeshyProp(container, "TownWell", new Vector3(18f, 0f, 18f), 0f, 3f, groundLayer);
@@ -2397,6 +2771,7 @@ namespace AldenFall.Editor
         /// carved terrain + WorldWater sheet + the reach's swim volume; this adds the built edges.</summary>
         private static void BuildCityCanal(Transform container, int groundLayer)
         {
+            var cityDef = EmberfallCityDefinition.Load();
             var stoneMat = Mat("CanalStone", new Color(0.44f, 0.42f, 0.39f), smoothness: 0.16f);
             var stoneDark = Mat("CanalStoneDark", new Color(0.31f, 0.30f, 0.28f), smoothness: 0.12f);
             var pts = RiverPaths[3];
@@ -2430,16 +2805,21 @@ namespace AldenFall.Editor
 
             // Stone footbridges where the two main streets cross the canal (canal is near z~7-9
             // through the plaza). Decks span the channel; keep them thin so they read as bridges.
-            foreach (var at in new[] { new Vector3(0f, 0.15f, 7f), new Vector3(28f, 0.15f, 10f), new Vector3(-30f, 0.15f, 26f) })
+            foreach (var authored in cityDef.bridges)
             {
-                var deck = Cube($"CanalBridge_{(int)at.x}", at, new Vector3(6.5f, 0.5f, half * 2f + 5f), stoneMat, container);
+                var at = new Vector3(authored.position[0], 0.15f, authored.position[1]);
+                var rotation = Quaternion.Euler(0f, authored.yaw, 0f);
+                var deck = Cube(authored.id, at, new Vector3(authored.width, 0.5f, authored.length), stoneMat, container);
+                deck.transform.rotation = rotation;
                 deck.isStatic = true;
                 if (groundLayer >= 0) deck.layer = groundLayer;
                 // Low parapets on the deck sides.
                 foreach (float sgn in new[] { 1f, -1f })
                 {
-                    var rail = Cube($"CanalRail_{(int)at.x}_{(sgn > 0 ? "R" : "L")}",
-                        at + new Vector3(sgn * 3.0f, 0.6f, 0f), new Vector3(0.5f, 1.0f, half * 2f + 5f), stoneDark, container);
+                    var rail = Cube($"{authored.id}_Rail_{(sgn > 0 ? "R" : "L")}",
+                        at + rotation * new Vector3(sgn * (authored.width * 0.46f), 0.6f, 0f),
+                        new Vector3(0.5f, 1.0f, authored.length), stoneDark, container);
+                    rail.transform.rotation = rotation;
                     rail.isStatic = true;
                     if (groundLayer >= 0) rail.layer = groundLayer;
                 }
@@ -2955,9 +3335,14 @@ namespace AldenFall.Editor
                 // interleave the meshes deterministically + a random offset so neighbours differ
                 string mesh = fallRocks[(rockPick++ + rng.Next(2)) % fallRocks.Length];
                 float sz = size * (0.85f + (float)rng.NextDouble() * 0.4f);
+                // Cliff-face rocks intentionally sit above the sampled terrain and therefore are
+                // visual structure, not terrain-grounded catalog solids.
+                bool priorSuppress = _suppressAutoRecord;
+                _suppressAutoRecord = true;
                 var r = PlaceMeshyProp(container, mesh, pos, ry, sz, groundLayer, PropCollision.FitBox)
                      ?? PlaceMeshyProp(container, "namaqualand_boulder_02", pos, ry, sz, groundLayer, PropCollision.FitBox)
                      ?? PlaceMeshyProp(container, "boulder_01", pos, ry, sz, groundLayer, PropCollision.FitBox);
+                _suppressAutoRecord = priorSuppress;
                 if (r != null)
                 {
                     // WET, DARKER cliff rock (distinct "_Wet" material so forest boulders stay bright)
@@ -2968,13 +3353,7 @@ namespace AldenFall.Editor
                     // gentle tilt only - big tilts read as a chaotic pile, not a cliff
                     r.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() - 0.5) * 12f, ry, (float)(rng.NextDouble() - 0.5) * 12f) * r.transform.rotation;
                 }
-                if (r == null)
-                {
-                    var c = Cube(label, pos, Vector3.one * sz, rockMat, container);
-                    c.transform.rotation = Quaternion.Euler((float)rng.NextDouble() * 35f, ry, (float)rng.NextDouble() * 35f);
-                    c.isStatic = true;
-                    if (groundLayer >= 0) c.layer = groundLayer;
-                }
+                // No primitive fallback: an absent scan leaves a cleaner silhouette than a cube.
             }
 
             // A real FALLING-WATER sheet (AldenFall/Waterfall shader: vertical foam veins + base
@@ -3075,6 +3454,8 @@ namespace AldenFall.Editor
 
             // FOLIAGE volume: ferns + bushes tucked among the wet rocks, moss boulders, and a pine
             // flanking each bank so the fall sits in living terrain, not bare geometry.
+            bool priorFoliageSuppress = _suppressAutoRecord;
+            _suppressAutoRecord = true; // gorge dressing follows the waterfall structure, not surface-grid height
             for (int i = 0; i < 8; i++)
             {
                 float sgn = i % 2 == 0 ? 1f : -1f;
@@ -3085,6 +3466,7 @@ namespace AldenFall.Editor
             Rock("Fall_MossR", basePos + toValley * 3f - right * (width * 0.9f), 2.5f + (float)rng.NextDouble());
             Foliage("island_tree_02", basePos + toValley * 4f + right * (width * 1.2f), 6f + (float)rng.NextDouble() * 3f);
             Foliage("island_tree_02", basePos + toValley * 4f - right * (width * 1.2f), 6f + (float)rng.NextDouble() * 3f);
+            _suppressAutoRecord = priorFoliageSuppress;
 
             // Cool mist glow at the base (steady, no flicker - bloom sells the spray).
             var mistObj = new GameObject("Fall_Mist");
@@ -3313,6 +3695,14 @@ namespace AldenFall.Editor
         private static void BuildDeepDarkWoods(Transform root, int groundLayer)
         {
             var container = Child(root, "DeepDarkWoods");
+            if (_worldDef != null && _worldDef.version >= 2)
+            {
+                // Canopy and understorey are already compiled from north_woods. This POI is the
+                // authored exploration payoff, tucked behind the western glade cradle.
+                CreateLootChest(container, new Vector3(-126f, 0f, 486f), 140f,
+                    new (string id, float chance)[] { ("raider_saber", 1f), ("bandit_cape", 0.8f), ("adept_focus", 0.5f) }, groundLayer);
+                return;
+            }
             Vector3 c = new Vector3(0f, 0f, 195f);
 
             var trunkMat = Mat("DarkTrunk", new Color(0.18f, 0.13f, 0.09f), smoothness: 0.04f);
@@ -3354,6 +3744,15 @@ namespace AldenFall.Editor
         {
             var container = Child(root, "WorldSecrets");
 
+            if (_worldDef != null && _worldDef.version >= 2)
+            {
+                CreateLootChest(container, new Vector3(-205f, 0f, 795f), 45f,
+                    new (string id, float chance)[] { ("iron_chestplate", 1f), ("cooked_carp", 1f), ("apprentice_focus", 0.6f) }, groundLayer);
+                CreateLootChest(container, new Vector3(74f, 0f, -718f), -60f,
+                    new (string id, float chance)[] { ("iron_legs", 1f), ("emberfang", 0.35f) }, groundLayer);
+                return;
+            }
+
             // Behind the lake's NW outflow, tucked against the mountain ring.
             CreateLootChest(container, new Vector3(-196f, 0f, 198f), 45f,
                 new (string id, float chance)[] { ("iron_chestplate", 1f), ("cooked_carp", 1f), ("apprentice_focus", 0.6f) }, groundLayer);
@@ -3368,6 +3767,19 @@ namespace AldenFall.Editor
         private static void BuildEmberForestCamps(Transform root, int groundLayer)
         {
             var container = Child(root, "ForestCamps");
+            if (_encounterDef != null && _worldDef != null && _worldDef.version >= 2)
+            {
+                foreach (var camp in _encounterDef.camps)
+                {
+                    if (camp.kind == "spawner" || camp.position == null || camp.position.Length < 3) continue;
+                    if (camp.region == "volcano_dungeon" || camp.region == "ember_approach" || camp.region == "volcano_entrance") continue;
+                    Vector3 p = new Vector3(camp.position[0], 0f, camp.position[2]);
+                    if (camp.mobId.Contains("goblin") || camp.mobId.Contains("bandit")) BuildBanditCampDressing(container, p);
+                    else if (camp.mobId.Contains("orc")) BuildOrcCampDressing(container, p);
+                    else BuildBanditCampDressing(container, p);
+                }
+                return;
+            }
             // Goblin Camp (W) — reuse the bandit-camp dressing (fire + tents) around (-195,0,0).
             BuildBanditCampDressing(container, new Vector3(-195f, 0f, 0f));
             BuildBanditCampDressing(container, new Vector3(-205f, 0f, -20f));
@@ -3385,6 +3797,12 @@ namespace AldenFall.Editor
         {
             var container = Child(root, "OrcWarcamp");
             Vector3 center = new Vector3(-110f, 0f, -120f);
+            if (_encounterDef != null && _worldDef != null && _worldDef.version >= 2)
+            {
+                foreach (var camp in _encounterDef.camps)
+                    if (camp.id == "orc_warcamp" && camp.position != null && camp.position.Length >= 3)
+                    { center = new Vector3(camp.position[0], 0f, camp.position[2]); break; }
+            }
 
             BuildOrcCampDressing(container, center + new Vector3(5f, 0f, 4f));
             BuildOrcCampDressing(container, center + new Vector3(-7f, 0f, -6f));
@@ -3648,8 +4066,10 @@ namespace AldenFall.Editor
         {
             if (!HasMesh("MountainRidge") && !HasMesh("MountainPeak")) return;
             var container = Child(root, "MountainRange");
-            const float xMin = -450f, xMax = 450f, zMin = -470f, zMax = 570f;
-            var center = new Vector2(0f, 50f);
+            _worldDef ??= EmberfallWorldDefinition.Load();
+            float xMin = _worldDef.bounds.minX, xMax = _worldDef.bounds.maxX;
+            float zMin = _worldDef.bounds.minZ, zMax = _worldDef.bounds.maxZ;
+            var center = new Vector2((xMin + xMax) * 0.5f, (zMin + zMax) * 0.5f);
             string[] peaks = { "MountainRidge", "MountainPeak", "MountainRidge" };
             int pk = 0;
 
@@ -3735,6 +4155,142 @@ namespace AldenFall.Editor
                 Place(xMax - 22f, z, false);                                   // east edge
                 Place(xMin + 22f, z, false);                                   // west edge
             }
+        }
+
+        /// <summary>Compile the three exceptional long-view rewards. Their locations and reveal
+        /// direction are authored input; terrain owns final elevation. Scanned boulders form a
+        /// readable cairn without introducing primitive placeholder visuals.</summary>
+        private static void BuildAuthoredVistas(Transform root, int groundLayer)
+        {
+            _worldDef ??= EmberfallWorldDefinition.Load();
+            if (_worldDef.vistas == null || _worldDef.vistas.Length == 0) return;
+
+            var container = Child(root, "AuthoredVistas");
+            var terrain = Terrain.activeTerrain;
+            float terrainY = terrain != null ? terrain.transform.position.y : 0f;
+            int index = 0;
+            foreach (var vista in _worldDef.vistas)
+            {
+                if (vista.position == null || vista.position.Length < 3) continue;
+                float x = vista.position[0], z = vista.position[2];
+                float y = terrain != null
+                    ? terrain.SampleHeight(new Vector3(x, 0f, z)) + terrainY
+                    : vista.position[1];
+
+                var summit = new GameObject(vista.id);
+                summit.transform.SetParent(container);
+                summit.transform.position = new Vector3(x, y + 1.25f, z);
+                summit.transform.rotation = Quaternion.Euler(0f, vista.yaw, 0f);
+                var discovery = summit.AddComponent<World.VistaDiscovery>();
+                discovery.Configure(vista.id, vista.displayName, 100 + index * 50);
+
+                // A low, asymmetrical cairn remains visible against foliage and communicates an
+                // intentional destination. Every visible component is a real scanned asset.
+                var offsets = new[]
+                {
+                    new Vector3(-1.4f, 0f, 0.5f), new Vector3(1.2f, 0f, 0.1f),
+                    new Vector3(0.1f, 0f, -1.15f), new Vector3(0.15f, 0f, 0.15f)
+                };
+                for (int i = 0; i < offsets.Length; i++)
+                {
+                    var rock = PlaceMeshyProp(container,
+                        i == offsets.Length - 1 ? "boulder_01" : "namaqualand_boulder_02",
+                        new Vector3(x + offsets[i].x, y + offsets[i].y, z + offsets[i].z),
+                        vista.yaw + i * 73f, i == offsets.Length - 1 ? 2.5f : 1.6f + i * 0.22f,
+                        groundLayer, PropCollision.FitBox);
+                    if (rock != null) rock.name = $"{vista.id}_Cairn_{i}";
+                }
+                index++;
+            }
+        }
+
+        private static void BuildAuthoredVolcanoDungeon(Transform container, int groundLayer,
+            Material floorMat, Material wallMat, Material rockMat, Material emberMat)
+        {
+            bool priorSuppress = _suppressAutoRecord;
+            _suppressAutoRecord = true; // underground structure is validated by dungeon.json, not surface height
+            var def = EmberfallDungeonDefinition.Load();
+            var origin = new Vector3(def.origin[0], def.origin[1], def.origin[2]);
+            var centres = new Dictionary<string, Vector3>();
+            var sizes = new Dictionary<string, Vector3>();
+
+            GameObject Slab(string name, Vector3 p, Vector3 s, Material m)
+            {
+                var go = Cube(name, p, s, m, container); go.isStatic = true;
+                if (groundLayer >= 0) go.layer = groundLayer;
+                return go;
+            }
+
+            foreach (var room in def.rooms)
+            {
+                Vector3 c = origin + new Vector3(room.center[0], room.center[1], room.center[2]);
+                Vector3 s = new Vector3(room.size[0], room.size[1], room.size[2]);
+                centres[room.id] = c; sizes[room.id] = s;
+                var group = new GameObject($"SG{room.streamGroup}_{room.id}"); group.transform.SetParent(container);
+                Slab($"{room.id}_Floor", c + Vector3.down * 0.3f, new Vector3(s.x, 0.6f, s.z), floorMat);
+                Slab($"{room.id}_Ceiling", c + Vector3.up * s.y, new Vector3(s.x + 2f, 0.8f, s.z + 2f), wallMat);
+                Slab($"{room.id}_WallW", c + new Vector3(-s.x * 0.5f, s.y * 0.5f, 0), new Vector3(1.2f, s.y, s.z), wallMat);
+                Slab($"{room.id}_WallE", c + new Vector3(s.x * 0.5f, s.y * 0.5f, 0), new Vector3(1.2f, s.y, s.z), wallMat);
+                // Real scanned rocks and pillars break the structural shell and carry scale/depth.
+                for (int i = 0; i < Mathf.Clamp(Mathf.RoundToInt((s.x + s.z) / 30f), 2, 8); i++)
+                {
+                    float side = i % 2 == 0 ? -1f : 1f;
+                    float z = c.z - s.z * 0.35f + (i / Mathf.Max(1f, Mathf.Clamp(Mathf.RoundToInt((s.x + s.z) / 30f), 2, 8) - 1f)) * s.z * 0.7f;
+                    PlaceMeshyProp(container, "namaqualand_boulder_02",
+                        new Vector3(c.x + side * (s.x * 0.43f), c.y, z), i * 47f, 3.5f + (i % 3), groundLayer, PropCollision.FitBox);
+                }
+                var lightGo = new GameObject($"{room.id}_Indirect"); lightGo.transform.SetParent(container);
+                lightGo.transform.position = c + Vector3.up * Mathf.Min(7f, s.y * 0.62f);
+                var light = lightGo.AddComponent<Light>(); light.type = LightType.Point;
+                light.color = room.kind == "secret" ? new Color(0.30f, 0.42f, 0.55f) : new Color(1f, 0.42f, 0.16f);
+                light.range = Mathf.Min(32f, Mathf.Max(s.x, s.z) * 0.55f); light.intensity = 2.2f; light.shadows = LightShadows.None;
+            }
+
+            foreach (var link in def.links)
+            {
+                if (!centres.TryGetValue(link.from, out var a) || !centres.TryGetValue(link.to, out var b)) continue;
+                Vector3 delta = b - a; float len = new Vector2(delta.x, delta.z).magnitude;
+                if (len < 1f) continue;
+                Vector3 mid = (a + b) * 0.5f;
+                float yaw = Mathf.Atan2(delta.x, delta.z) * Mathf.Rad2Deg;
+                float slopeLen = delta.magnitude;
+                float pitch = -Mathf.Asin(Mathf.Clamp(delta.y / Mathf.Max(0.01f, slopeLen), -1f, 1f)) * Mathf.Rad2Deg;
+                Quaternion rot = Quaternion.Euler(pitch, yaw, 0f);
+                var floor = Slab(link.id + "_Floor", mid - Vector3.up * 0.2f,
+                    new Vector3(link.width, 0.5f, slopeLen), floorMat); floor.transform.rotation = rot;
+                Vector3 right = Quaternion.Euler(0f, yaw, 0f) * Vector3.right;
+                foreach (float side in new[] { -1f, 1f })
+                {
+                    var wall = Slab(link.id + (side < 0 ? "_WallL" : "_WallR"),
+                        mid + right * side * (link.width * 0.52f) + Vector3.up * 4f,
+                        new Vector3(1f, 8f, slopeLen), wallMat); wall.transform.rotation = rot;
+                }
+                if (link.gated)
+                {
+                    var gate = Slab(link.id + "_Gate", mid + Vector3.up * 3.8f,
+                        new Vector3(link.width, 7.6f, 0.7f), emberMat);
+                    gate.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+                    gate.AddComponent<World.SealableDoor>().Configure(mid + Vector3.up * 4f,
+                        new Vector3(link.width + 5f, 12f, 12f));
+                }
+            }
+
+            foreach (var encounter in def.encounters)
+            {
+                if (!centres.TryGetValue(encounter.room, out var c)) continue;
+                if (encounter.reward.Contains("cache") || encounter.reward.Contains("checkpoint"))
+                    CreateLootChest(container, c + new Vector3(0f, 0f, 5f), 0f,
+                        new (string id, float chance)[] { ("ember_focus", 0.45f), ("knight_sword", 0.35f), ("cooked_bass", 1f) }, groundLayer);
+                if (encounter.room == "magma_works" || encounter.room == "caldera_heart")
+                    BuildLavaPool(container, c, new Vector2(sizes[encounter.room].x * 0.28f, sizes[encounter.room].z * 0.55f), groundLayer);
+            }
+
+            var trigger = new GameObject("EruptionTrigger"); trigger.transform.SetParent(container);
+            trigger.transform.position = centres["descent"];
+            trigger.AddComponent<World.EruptionTrigger>().Configure(centres["descent"], new Vector3(18f, 14f, 24f));
+            CreateLootChest(container, centres["boss_chamber"] + new Vector3(0f, 0f, -18f), 0f,
+                new (string id, float chance)[] { ("ember_focus", 1f), ("emberfang", 0.9f), ("knight_sword", 1f) }, groundLayer);
+            _suppressAutoRecord = priorSuppress;
         }
 
         private static void BuildEmberfallVolcano(Transform root, int groundLayer)
@@ -3882,6 +4438,11 @@ namespace AldenFall.Editor
             }
             CreateTorch(container, new Vector3(-7f, 0f, ez + 10f), 1.3f);
             CreateTorch(container, new Vector3(7f, 0f, ez + 10f), 1.3f);
+
+            // The authoritative graph replaces the legacy absolute-coordinate strip below. The
+            // return is intentional: no disconnected legacy rooms survive at the old volcano.
+            BuildAuthoredVolcanoDungeon(container, groundLayer, floorMat, wallMat, rockMat, emberMat);
+            return;
 
             // ---- Interior rooms + corridors (all floors walkable, Ground layer) ----
             void Slab(string name, Vector3 pos, Vector3 size, Material mat, bool walkable)
@@ -4245,13 +4806,13 @@ namespace AldenFall.Editor
             go.transform.position = pos;
             if (interactLayer >= 0) go.layer = interactLayer;
 
-            var rock = Cube("Rock", pos + Vector3.up * 0.8f, new Vector3(2.4f, 1.7f, 2.2f), rockMat, go.transform);
-            rock.transform.rotation = Quaternion.Euler((float)(rng.NextDouble() * 8 - 4), (float)(rng.NextDouble() * 360), 0f);
-            rock.isStatic = true;
-            if (groundLayer >= 0) rock.layer = groundLayer;
-            var vein = Cube("Vein", pos + Vector3.up * 1.1f, new Vector3(2.5f, 0.5f, 2.3f), oreMat, go.transform);
-            Object.DestroyImmediate(vein.GetComponent<BoxCollider>());
-            if (groundLayer >= 0) vein.layer = groundLayer;
+            var rock = PlaceMeshyProp(go.transform, "namaqualand_boulder_02", pos,
+                (float)(rng.NextDouble() * 360), 2.4f, groundLayer, PropCollision.FitBox)
+                ?? PlaceMeshyProp(go.transform, "boulder_01", pos,
+                    (float)(rng.NextDouble() * 360), 2.4f, groundLayer, PropCollision.FitBox);
+            if (rock != null)
+                foreach (var renderer in rock.GetComponentsInChildren<Renderer>())
+                    renderer.sharedMaterial = oreMat;
 
             var node = go.AddComponent<World.ResourceNode>();
             node.Configure("Mining", item, "pickaxe", level, 18f, 3f, 8, 20f);
@@ -4271,14 +4832,7 @@ namespace AldenFall.Editor
             // collider comes from the kit prefab; the ResourceNode drives the chop interaction.
             var visual = PlaceMeshyProp(go.transform, "island_tree_01", pos,
                 (float)(rng.NextDouble() * 360.0), 9f, groundLayer, PropCollision.Trunk);
-            if (visual == null)
-            {
-                // Fallback only if the kit prefab is missing: a plain trunk (never the sphere canopy).
-                var trunkMat = Mat("OakTrunk", new Color(0.34f, 0.24f, 0.15f), smoothness: 0.05f);
-                var trunk = Cylinder("Trunk", pos + Vector3.up * 2.2f, new Vector3(0.7f, 2.2f, 0.7f), trunkMat, go.transform);
-                trunk.isStatic = true;
-                if (groundLayer >= 0) trunk.layer = groundLayer;
-            }
+            // Missing scan = no visual fallback; primitive trunks violate the environment bar.
 
             var node = go.AddComponent<World.ResourceNode>();
             node.Configure("Woodcutting", "oak_log", "axe", 1, 16f, 3f, 10, 22f);
