@@ -92,7 +92,10 @@ namespace AldenFall.Editor
         // Fraction of LEAF / BRANCH triangles kept per tier. These photoscans are disconnected geometry
         // (leaf cards AND twig bits), so QEM floors -- we THIN triangles instead to differentiate LODs.
         // LOD0 keeps branches whole; far tiers thin both so a distant tree is genuinely cheap.
-        private static readonly float[] LeafKeep = { 0.9f, 0.4f, 0.15f };
+        // LOD1/2 leaf keeps were 0.4/0.15 ON TOP of the 0.3 base QEM (=12%/4.5% of source cards):
+        // distant trees rendered as bare twigs. 0.75/0.5 keeps distant canopies readable while
+        // ThinLeaves' vertex compaction keeps the far tiers genuinely cheaper.
+        private static readonly float[] LeafKeep = { 0.9f, 0.75f, 0.5f };
         private static readonly float[] BranchKeep = { 1.0f, 0.4f, 0.15f };
         public const string PrefabDir = "Assets/Prefabs/Trees";
 
@@ -223,6 +226,54 @@ namespace AldenFall.Editor
 
         /// <summary>Return a copy of baseMesh with each LEAF submesh's quads thinned to `keep` fraction
         /// (whole 2-triangle cards kept, so leaves stay intact -- just fewer of them at distance).</summary>
+        /// <summary>Rebuild a mesh keeping only vertices referenced by its triangles. SetTriangles
+        /// leaves every original vertex in the buffer, so thinned LOD tiers stayed as heavy (on disk
+        /// AND in VRAM) as LOD0 -- a 67MB "cheap" LOD2. Compaction makes far tiers genuinely small.</summary>
+        private static Mesh CompactVertices(Mesh m)
+        {
+            var map = new int[m.vertexCount];
+            for (int i = 0; i < map.Length; i++) map[i] = -1;
+            int used = 0;
+            var subTris = new int[m.subMeshCount][];
+            for (int s = 0; s < m.subMeshCount; s++)
+            {
+                subTris[s] = m.GetTriangles(s);
+                foreach (int idx in subTris[s]) if (map[idx] < 0) map[idx] = used++;
+            }
+            if (used == m.vertexCount) return m;   // nothing to strip
+
+            var v = m.vertices; var n = m.normals; var t = m.tangents; var uv = m.uv; var c = m.colors32;
+            var nv = new Vector3[used];
+            var nn = n != null && n.Length == v.Length ? new Vector3[used] : null;
+            var nt = t != null && t.Length == v.Length ? new Vector4[used] : null;
+            var nuv = uv != null && uv.Length == v.Length ? new Vector2[used] : null;
+            var nc = c != null && c.Length == v.Length ? new Color32[used] : null;
+            for (int i = 0; i < map.Length; i++)
+            {
+                int d = map[i]; if (d < 0) continue;
+                nv[d] = v[i];
+                if (nn != null) nn[d] = n[i];
+                if (nt != null) nt[d] = t[i];
+                if (nuv != null) nuv[d] = uv[i];
+                if (nc != null) nc[d] = c[i];
+            }
+            var outMesh = new Mesh { name = m.name, indexFormat = used > 65534 ? UnityEngine.Rendering.IndexFormat.UInt32 : UnityEngine.Rendering.IndexFormat.UInt16 };
+            outMesh.vertices = nv;
+            if (nn != null) outMesh.normals = nn;
+            if (nt != null) outMesh.tangents = nt;
+            if (nuv != null) outMesh.uv = nuv;
+            if (nc != null) outMesh.colors32 = nc;
+            outMesh.subMeshCount = m.subMeshCount;
+            for (int s = 0; s < m.subMeshCount; s++)
+            {
+                var tris = subTris[s];
+                for (int i = 0; i < tris.Length; i++) tris[i] = map[tris[i]];
+                outMesh.SetTriangles(tris, s);
+            }
+            outMesh.RecalculateBounds();
+            return outMesh;
+        }
+
         private static Mesh ThinLeaves(Mesh baseMesh, Material[] mats, float leafKeep, float branchKeep, string outName)
         {
             var m = Object.Instantiate(baseMesh);
@@ -244,8 +295,11 @@ namespace AldenFall.Editor
                 }
                 m.SetTriangles(kept, s);
             }
-            m.RecalculateBounds();
-            return m;
+            var compact = CompactVertices(m);
+            compact.name = outName;
+            if (compact != m) Object.DestroyImmediate(m);
+            compact.RecalculateBounds();
+            return compact;
         }
 
         /// <summary>Build (leaf cutout, bark opaque) materials for a tree; combines diff+alpha once, cached.</summary>

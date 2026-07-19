@@ -569,8 +569,11 @@ namespace AldenFall.Editor
             }
             terrain.terrainData.treePrototypes = prototypes.ToArray();
             terrain.terrainData.SetTreeInstances(instances.ToArray(), true);
-            terrain.treeDistance = _worldDef.performance.farRadius + 35f;
-            terrain.treeBillboardDistance = _worldDef.performance.midRadius;
+            // Photoscan LODGroup tree prototypes have NO terrain billboard asset -- beyond
+            // treeBillboardDistance they don't billboard, they VANISH (the "empty forest" bug).
+            // Draw real meshes the whole way; the prefabs' own LOD levels absorb the cost.
+            terrain.treeDistance = 320f;
+            terrain.treeBillboardDistance = terrain.treeDistance;
             terrain.treeCrossFadeLength = 12f;
             terrain.treeMaximumFullLODCount = 180;
             EditorUtility.SetDirty(terrain.terrainData);

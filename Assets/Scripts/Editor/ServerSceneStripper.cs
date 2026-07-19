@@ -57,6 +57,22 @@ namespace AldenFall.Editor
                 // Particle systems / trails / lights: pure visual, drop them.
                 foreach (var ps in root.GetComponentsInChildren<ParticleSystem>(true)) Object.DestroyImmediate(ps);
                 foreach (var lt in root.GetComponentsInChildren<Light>(true)) Object.DestroyImmediate(lt);
+                // TERRAIN VEGETATION: tree prototypes drag every photoscan LOD mesh + texture into
+                // the SERVER build (sharedassets ballooned 37MB -> 350MB, enough to OOM the 512MB
+                // Render plan). The server only needs the heightmap for collision/nav. Clone the
+                // TerrainData (NEVER mutate the shared asset -- the client build uses it) and empty
+                // trees/details/splat layers on the clone.
+                foreach (var terrain in root.GetComponentsInChildren<Terrain>(true))
+                {
+                    var td = Object.Instantiate(terrain.terrainData);
+                    td.treeInstances = System.Array.Empty<TreeInstance>();
+                    td.treePrototypes = System.Array.Empty<TreePrototype>();
+                    td.detailPrototypes = System.Array.Empty<DetailPrototype>();
+                    td.terrainLayers = System.Array.Empty<TerrainLayer>();
+                    terrain.terrainData = td;
+                    var tc = terrain.GetComponent<TerrainCollider>();
+                    if (tc != null) tc.terrainData = td;
+                }
             }
             Debug.Log($"[ServerStrip] '{scene.name}': removed {renderers} renderers, {filters} filters, {lods} LODGroups, {meshCols} meshColliders->box (headless server -- lean RAM)");
         }

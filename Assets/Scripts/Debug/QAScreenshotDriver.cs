@@ -34,18 +34,21 @@ namespace AldenFall.DebugTools
         // (shot name, teleport position, facing yaw — the camera snaps behind the avatar)
         private static readonly (string name, Vector3 pos, float yaw)[] Shots =
         {
-            ("01_glade_spawn",    new Vector3(0f, 1.5f, 84f),     0f),    // face Aldric
-            ("02_city_north_gate",new Vector3(0f, 1.5f, 62f),     180f),  // approach the city wall
-            ("03_city_plaza",     new Vector3(0f, 1.5f, 14f),     180f),  // fountain + streets
-            ("04_city_market",    new Vector3(24f, 1.5f, 20f),    20f),   // market row + vendor
-            ("05_lake_bank",      new Vector3(-74f, 1.5f, 140f), 315f),  // lake + goblins + fishing
-            ("06_dark_woods",     new Vector3(0f, 1.5f, 180f),    0f),
-            ("07_goblin_camp",    new Vector3(-180f, 1.5f, 0f),   270f),
-            ("08_orc_warcamp",    new Vector3(-98f, 1.5f, -108f), 225f),  // grukmar + cage
-            ("09_ember_approach", new Vector3(0f, 1.5f, -150f),   180f),  // soot gradient toward volcano
-            ("10_volcano_mouth",  new Vector3(0f, 1.5f, -300f),   180f),
-            ("11_dungeon_lavahall", new Vector3(0f, 1.5f, -360f), 180f),  // lava channels
-            ("12_boss_chamber",   new Vector3(0f, 1.5f, -426f),   180f),  // boss + sealed door behind
+            // Positions follow the AUTHORED world layout (Assets/World/Emberfall/world.json regions/
+            // vistas + encounters.json camps). Surface shots ground-snap in Teleport(); a NEGATIVE
+            // authored Y means subterranean (volcano dungeon) and is used as-is.
+            ("01_glade_spawn",    new Vector3(0f, 1f, 505f),      0f),    // aldric_glade (0,520), face Aldric
+            ("02_city_north_gate",new Vector3(0f, 1f, 180f),      180f),  // approach the city wall from the north road
+            ("03_city_plaza",     new Vector3(10f, 1f, -8f),      0f),    // plaza looking north (NOT inside the fountain)
+            ("04_city_market",    new Vector3(84f, 1f, 48f),      60f),   // market anchor at (108,54)
+            ("05_lake_bank",      new Vector3(-30f, 1f, 575f),    15f),   // great_lake south bank (dry land, facing the water)
+            ("06_dark_woods",     new Vector3(0f, 1f, 340f),      0f),    // north_woods lush_dark_forest core
+            ("07_goblin_camp",    new Vector3(-395f, 1f, 108f),   250f),  // goblin_hollow_2 camp (-410,118)
+            ("08_orc_warcamp",    new Vector3(-100f, 1f, -240f),  200f),  // orc_south_1 (-115,-250)
+            ("09_ember_approach", new Vector3(0f, 1f, -760f),     180f),  // soot gradient toward volcano
+            ("10_volcano_mouth",  new Vector3(0f, 1f, -985f),     180f),  // volcano_entrance (0,-1050)
+            ("11_dungeon_lavahall", new Vector3(0f, -14f, -1360f), 180f), // lava channels (subterranean)
+            ("12_boss_chamber",   new Vector3(0f, -12f, -1462f),  180f),  // boss + sealed door behind
         };
 
         private bool uiMode;
@@ -286,6 +289,12 @@ namespace AldenFall.DebugTools
 
         private void Teleport(GameObject player, Vector3 pos, float yaw)
         {
+            // Surface shots snap to the terrain (heights vary across the authored world); an
+            // authored NEGATIVE y is subterranean (volcano dungeon) and is trusted as-is.
+            var terrain = Terrain.activeTerrain;
+            if (terrain != null && pos.y >= 0f)
+                pos.y = terrain.SampleHeight(pos) + terrain.transform.position.y + 1.2f;
+
             var cc = player.GetComponent<CharacterController>();
             if (cc != null) cc.enabled = false;
             player.transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, yaw, 0f));
