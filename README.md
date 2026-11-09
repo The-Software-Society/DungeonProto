@@ -128,7 +128,7 @@ It is not affiliated with or endorsed by any other game or studio.
 ## License
 
 MIT, Copyright (c) 2026 The Software Society. Third-party components keep their own licenses;
-see `LICENSE`.
+see `THIRD_PARTY_NOTICES.md`.
 
 ## Roadmap
 
