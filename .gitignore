@@ -98,9 +98,15 @@ bld/
 
 # Meshy pipeline
 tools/meshy_state.json
+tools/saymotion_state.json
 .meshy_key
-.env.local
+
+# Secrets: never commit env files (the template is the exception)
 .env
+.env.*
+!.env.example
+*.pem
+*.key
 
 # Social media workspace (large video files)
 Social/
@@ -114,3 +120,20 @@ scratchpad/
 Assets/_Recovery/
 Assets/_Recovery.meta
 mono_crash.*.json
+
+# Durable local rollback archives; evidence manifests remain trackable.
+WorldData/ImplementationEvidence/**/*.tar.gz
+WorldData/ImplementationEvidence/**/preexisting.patch
+
+# Runtime verification tools are source, not compiler Debug output.
+!Assets/Scripts/Debug/
+!Assets/Scripts/Debug/*.cs
+!Assets/Scripts/Debug/*.meta
+
+# Python caches
+__pycache__/
+*.pyc
+
+# Local media and capture output
+DevClips/**/*.mp4
+*.mov
